@@ -1,0 +1,44 @@
+CREATE OR REPLACE FUNCTION get_effective_rating(p_card_id INT, p_target_position VARCHAR)
+RETURNS INT AS $$
+DECLARE
+    v_natural_pos VARCHAR(10);
+    v_current_rating INT;
+    v_penalty INT := 0;
+BEGIN
+    
+    SELECT PositionCode, CurrentOverallRating
+    INTO v_natural_pos, v_current_rating
+    FROM card
+    WHERE CardID = p_card_id;
+
+   
+    IF v_natural_pos = p_target_position THEN
+        RETURN v_current_rating;
+    END IF;
+
+  
+    SELECT Penalty INTO v_penalty
+    FROM positionpenalty
+    WHERE FromPosition = v_natural_pos AND ToPosition = p_target_position;
+
+   
+    IF v_penalty IS NULL THEN
+        v_penalty := 0; 
+    END IF;
+
+   
+    RETURN GREATEST(0, v_current_rating - v_penalty);
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION trigger_set_effective_rating()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Calculate and set effective rating before insert/update
+    NEW."EffectiveRating" := get_effective_rating(NEW."CardID", NEW."AssignedPosition");
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+

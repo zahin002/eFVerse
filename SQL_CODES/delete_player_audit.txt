@@ -1,0 +1,29 @@
+CREATE TABLE Player_Deleted_Audit (
+    AuditID SERIAL PRIMARY KEY,
+    PlayerID INT,
+    PlayerName VARCHAR(100),
+    Age INT,
+    LeagueID INT,
+    ClubID INT,
+    NationalityID INT,
+    DeletedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION log_player_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    
+    INSERT INTO Player_Deleted_Audit (PlayerID, PlayerName, Age, LeagueID, ClubID, NationalityID)
+    VALUES (OLD.PlayerID, OLD.PlayerName, OLD.Age, OLD.LeagueID, OLD.ClubID, OLD.NationalityID);
+    
+    RETURN OLD; 
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_player_delete
+AFTER DELETE ON Player
+FOR EACH ROW
+EXECUTE FUNCTION log_player_delete();
+
+
