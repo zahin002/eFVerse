@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "backend": "npm --prefix backend start",
+    "backend:dev": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.8",
+    "cookie-parser": "^1.4.7",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
