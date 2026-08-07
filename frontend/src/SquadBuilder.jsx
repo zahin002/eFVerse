@@ -848,140 +848,153 @@ export default function SquadBuilder({ currentUser, onBack }) {
         </div>
     );
 
-    const renderModal = () => (
-        <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.9)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-        }}>
+    const renderModal = () => {
+        const usedCardIds = lineup
+            .filter((slot, idx) => slot.card && idx !== currentSlot)
+            .map(slot => safeGet(slot.card, 'CardID', 'cardid'))
+            .filter(Boolean);
+
+        const availableCards = (myCards || []).filter(c => {
+            if (!c) return false;
+            const cid = safeGet(c, 'CardID', 'cardid');
+            return !usedCardIds.includes(cid);
+        });
+
+        return (
             <div style={{
-                background: '#1a1a1a',
-                padding: '20px',
-                borderRadius: '10px',
-                width: '550px',
-                maxHeight: '75vh',
-                overflowY: 'auto',
-                border: '1px solid #333'
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'rgba(0,0,0,0.9)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }}>
-                    <h3 style={{ color: 'white', margin: 0 }}>
-                        Select for {currentSlot !== null ? lineup[currentSlot]?.position : 'N/A'}
-                        <span style={{ color: '#ffd700', marginLeft: '8px' }}>
-                            ({currentSlot !== null ? lineup[currentSlot]?.position : 'N/A'} - {currentSlot !== null ? getRoleGroup(lineup[currentSlot]?.position) : 'N/A'})
-                        </span>
-                    </h3>
-                    <button
-                        onClick={() => setModalOpen(false)}
-                        style={{
-                            background: '#dc3545',
-                            color: 'white',
-                            padding: '5px 10px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            border: 'none',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        ✕
-                    </button>
-                </div>
-
-                {!myCards || myCards.length === 0 ? (
-                    <div style={{ color: '#999', textAlign: 'center', padding: '30px' }}>
-                        ❌ No cards available. Add players to your collection first.
+                <div style={{
+                    background: '#1a1a1a',
+                    padding: '20px',
+                    borderRadius: '10px',
+                    width: '550px',
+                    maxHeight: '75vh',
+                    overflowY: 'auto',
+                    border: '1px solid #333'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }}>
+                        <h3 style={{ color: 'white', margin: 0 }}>
+                            Select for {currentSlot !== null ? lineup[currentSlot]?.position : 'N/A'}
+                            <span style={{ color: '#ffd700', marginLeft: '8px' }}>
+                                ({currentSlot !== null ? lineup[currentSlot]?.position : 'N/A'} - {currentSlot !== null ? getRoleGroup(lineup[currentSlot]?.position) : 'N/A'})
+                            </span>
+                        </h3>
+                        <button
+                            onClick={() => setModalOpen(false)}
+                            style={{
+                                background: '#dc3545',
+                                color: 'white',
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                border: 'none',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            ✕
+                        </button>
                     </div>
-                ) : (
-                    <div>
-                        <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '10px', padding: '10px', background: '#333', borderRadius: '4px' }}>
-                            📇 {myCards.length} cards loaded
+
+                    {availableCards.length === 0 ? (
+                        <div style={{ color: '#999', textAlign: 'center', padding: '30px' }}>
+                            {myCards && myCards.length > 0 
+                                ? '🚫 All available cards are already placed in this squad.' 
+                                : '❌ No cards available. Add players to your collection first.'}
                         </div>
-                        {myCards.map(c => {
-                            if (!c) return null;
+                    ) : (
+                        <div>
+                            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '10px', padding: '10px', background: '#333', borderRadius: '4px' }}>
+                                📇 {availableCards.length} available cards ({usedCardIds.length} already placed in squad)
+                            </div>
+                            {availableCards.map(c => {
+                                const playerName = safeGet(c, 'PlayerName', 'playername') || 'Unknown';
+                                const position = (safeGet(c, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
+                                const rating = parseInt(safeGet(c, 'CurrentOverallRating', 'currentoverallrating') || 0);
+                                const cardId = safeGet(c, 'CardID', 'cardid');
+                                const clubName = safeGet(c, 'ClubName', 'clubname') || 'N/A';
 
-                            const playerName = safeGet(c, 'PlayerName', 'playername') || 'Unknown';
-                            const position = (safeGet(c, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
-                            const rating = parseInt(safeGet(c, 'CurrentOverallRating', 'currentoverallrating') || 0);
-                            const cardId = safeGet(c, 'CardID', 'cardid');
-                            const clubName = safeGet(c, 'ClubName', 'clubname') || 'N/A';
+                                if (!cardId) return null;
 
-                            if (!cardId) return null;
+                                const targetPosition = currentSlot !== null ? lineup[currentSlot]?.position : null;
+                                const penalty = targetPosition ? getPositionPenalty(position, targetPosition) : 0;
+                                const effectiveRating = Math.max(0, rating - penalty);
+                                const isPenalized = penalty > 0;
 
-                            const targetPosition = currentSlot !== null ? lineup[currentSlot]?.position : null;
-                            const penalty = targetPosition ? getPositionPenalty(position, targetPosition) : 0;
-                            const effectiveRating = Math.max(0, rating - penalty);
-                            const isPenalized = penalty > 0;
-
-                            return (
-                                <div
-                                    key={cardId}
-                                    onClick={() => handleAddPlayer(c)}
-                                    style={{
-                                        padding: '12px',
-                                        borderBottom: '1px solid #333',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        background: isPenalized ? '#2a1a1a' : '#2a2a2a',
-                                        marginBottom: '5px',
-                                        borderRadius: '4px',
-                                        border: isPenalized ? '1px solid #ff6b6b' : '1px solid transparent',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = isPenalized ? '#3a2a2a' : '#333'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = isPenalized ? '#2a1a1a' : '#2a2a2a'}
-                                >
-                                    <div>
-                                        <span style={{ color: 'white', fontWeight: 'bold' }}>
-                                            {playerName} {rating > 0 && `(${rating})`}
-                                        </span>
-                                        <span style={{ color: '#999', fontSize: '0.85em', marginLeft: '8px' }}>
-                                            {position} • {clubName}
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{
-                                                color: isPenalized ? '#ff6b6b' : '#00ff7f',
-                                                fontWeight: 'bold',
-                                                fontSize: '1.2em'
-                                            }}>
-                                                {effectiveRating}
-                                            </div>
-                                            {targetPosition && (
-                                                <div style={{ fontSize: '0.75em', color: isPenalized ? '#ff9999' : '#aaa', marginTop: '2px' }}>
-                                                    {targetPosition} ({getRoleGroup(targetPosition)}) {isPenalized && `(-${penalty})`}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{
-                                            background: isPenalized ? '#ff6b6b20' : '#00ff7f20',
-                                            padding: '6px 10px',
+                                return (
+                                    <div
+                                        key={cardId}
+                                        onClick={() => handleAddPlayer(c)}
+                                        style={{
+                                            padding: '12px',
+                                            borderBottom: '1px solid #333',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            background: isPenalized ? '#2a1a1a' : '#2a2a2a',
+                                            marginBottom: '5px',
                                             borderRadius: '4px',
-                                            fontWeight: 'bold',
-                                            color: isPenalized ? '#ff6b6b' : '#00ff7f',
-                                            fontSize: '1.1em',
-                                            minWidth: '40px',
-                                            textAlign: 'center'
-                                        }}>
-                                            {rating}
+                                            border: isPenalized ? '1px solid #ff6b6b' : '1px solid transparent',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = isPenalized ? '#3a2a2a' : '#333'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = isPenalized ? '#2a1a1a' : '#2a2a2a'}
+                                    >
+                                        <div>
+                                            <span style={{ color: 'white', fontWeight: 'bold' }}>
+                                                {playerName} {rating > 0 && `(${rating})`}
+                                            </span>
+                                            <span style={{ color: '#999', fontSize: '0.85em', marginLeft: '8px' }}>
+                                                {position} • {clubName}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{
+                                                    color: isPenalized ? '#ff6b6b' : '#00ff7f',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '1.2em'
+                                                }}>
+                                                    {effectiveRating}
+                                                </div>
+                                                {targetPosition && (
+                                                    <div style={{ fontSize: '0.75em', color: isPenalized ? '#ff9999' : '#aaa', marginTop: '2px' }}>
+                                                        {targetPosition} ({getRoleGroup(targetPosition)}) {isPenalized && `(-${penalty})`}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{
+                                                background: isPenalized ? '#ff6b6b20' : '#00ff7f20',
+                                                padding: '6px 10px',
+                                                borderRadius: '4px',
+                                                fontWeight: 'bold',
+                                                color: isPenalized ? '#ff6b6b' : '#00ff7f',
+                                                fontSize: '1.1em',
+                                                minWidth: '40px',
+                                                textAlign: 'center'
+                                            }}>
+                                                {rating}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     // ============================================
     // MAIN RENDER

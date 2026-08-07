@@ -138,15 +138,45 @@ export default function AdminPanel() {
       if (!playerForm.marketvalue) {
           return setMessage('❌ Please enter a Market Value!');
       }
-      axios.post('http://localhost:5001/api/players/add-player', playerForm).then(() => { 
-          setMessage('✅ Player Saved!'); 
-          setPlayerForm({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '', marketvalue: '' });
-          fetchAllData(); 
-      }); 
+      axios.post('http://localhost:5001/api/players/add-player', playerForm)
+          .then(() => { 
+              setMessage('✅ Player Saved!'); 
+              setPlayerForm({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '', marketvalue: '' });
+              fetchAllData(); 
+          })
+          .catch(err => {
+              const dbError = err.response?.data?.error || err.message;
+              setMessage(`❌ Error saving player: ${dbError}`);
+          }); 
   };
-  const handleCardSubmit = (e) => { e.preventDefault(); axios.post('http://localhost:5001/api/players/add-card', cardForm).then(() => { setMessage('✅ Card Created!'); fetchAllData(); }); };
-  const handleManagerSubmit = (e) => { e.preventDefault(); axios.post('http://localhost:5001/api/managers/add', managerForm).then(() => { setMessage('✅ Manager Registered!'); fetchManagers(); }); };
-const handleStatsSubmit = async (e) => { 
+
+  const handleCardSubmit = (e) => { 
+      e.preventDefault(); 
+      axios.post('http://localhost:5001/api/players/add-card', cardForm)
+          .then(() => { 
+              setMessage('✅ Card Created!'); 
+              fetchAllData(); 
+          })
+          .catch(err => {
+              const dbError = err.response?.data?.error || err.message;
+              setMessage(`❌ Error creating card: ${dbError}`);
+          }); 
+  };
+
+  const handleManagerSubmit = (e) => { 
+      e.preventDefault(); 
+      axios.post('http://localhost:5001/api/managers/add', managerForm)
+          .then(() => { 
+              setMessage('✅ Manager Registered!'); 
+              fetchManagers(); 
+          })
+          .catch(err => {
+              const dbError = err.response?.data?.error || err.message;
+              setMessage(`❌ Error registering manager: ${dbError}`);
+          }); 
+  };
+
+  const handleStatsSubmit = async (e) => { 
       e.preventDefault(); 
       try {
           await axios.post('http://localhost:5001/api/players/add-stats', statsForm);

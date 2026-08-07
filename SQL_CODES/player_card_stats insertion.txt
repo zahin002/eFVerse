@@ -19,8 +19,6 @@ BEGIN
     RETURN json_build_object('message', 'Player added!', 'id', new_id);
 END;
 $$;
-DROP FUNCTION IF EXISTS insert_player_sql;
-
 
 
 

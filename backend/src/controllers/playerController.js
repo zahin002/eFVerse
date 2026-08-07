@@ -851,7 +851,7 @@ const getConsistentPlayers = async (req, res) => {
             JOIN Card c ON p.PlayerID = c.PlayerID
             JOIN PlayerForm pf ON p.PlayerID = pf.PlayerID
             JOIN FormType ft ON pf.FormTypeID = ft.FormTypeID
-            WHERE ft.FormName = 'A'
+            WHERE ft.FormName = 'Form A' OR ft.FormName = 'A'
             GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode
             ORDER BY a_form_count DESC
             LIMIT 10;

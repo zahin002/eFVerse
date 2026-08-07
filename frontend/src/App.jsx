@@ -392,7 +392,7 @@ function App() {
         {/* --- TOP NAVIGATION BAR --- */}
         <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 5vw', borderBottom: '1px solid rgba(255,255,255,0.05)', borderRadius: 0, position: 'sticky', top: 0, zIndex: 100 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <div style={{ background: 'linear-gradient(45deg, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '1.5em', fontWeight: '900', letterSpacing: '1px' }}>FHUB</div>
+                <div style={{ background: 'linear-gradient(45deg, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '1.5em', fontWeight: '900', letterSpacing: '1px' }}>eFVerse</div>
                 <div style={{ padding: '4px 10px', background: user.role === 'ADMIN' ? 'rgba(255, 77, 77, 0.1)' : 'rgba(0, 242, 254, 0.1)', color: user.role === 'ADMIN' ? '#ff4d4d' : '#00f2fe', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold', border: `1px solid ${user.role === 'ADMIN' ? 'rgba(255, 77, 77, 0.3)' : 'rgba(0, 242, 254, 0.3)'}` }}>
                     {user.role}
                 </div>
@@ -715,7 +715,7 @@ function App() {
 
       <div className="glass-panel" style={{ width: '100%', maxWidth: '450px', padding: '50px 40px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <h1 style={{ margin: '0 0 30px 0', fontSize: '2.5em', background: 'linear-gradient(45deg, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', letterSpacing: '2px' }}>
-            FHUB Core
+            eFVerse Core
         </h1>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: 'rgba(0,0,0,0.3)', padding: '5px', borderRadius: '10px' }}>
