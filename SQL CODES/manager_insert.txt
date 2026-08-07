@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION insert_manager_sql(
+    p_name VARCHAR,
+    p_playstyle VARCHAR,
+    p_league_id INT,
+    p_club_id INT,
+    p_nationality_id INT
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    new_id INT;
+BEGIN
+    INSERT INTO Manager (ManagerName, PlayStyle, LeagueID, ClubID, NationalityID)
+    VALUES (p_name, p_playstyle, p_league_id, p_club_id, p_nationality_id)
+    RETURNING ManagerID INTO new_id;
+    
+    RETURN json_build_object('message', 'Manager added via SQL!', 'id', new_id);
+END;
+$$;
