@@ -1,0 +1,20 @@
+# Dependency directories
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Production build outputs
+frontend/dist/
+
+# Env config files
+.env
+backend/.env
+frontend/.env
+
+# Temporary and IDE files
+.gemini/
+.agents/
+scratch/
+*.log
+.DS_Store
+Thumbs.db
