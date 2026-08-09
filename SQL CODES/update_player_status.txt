@@ -1,0 +1,34 @@
+CREATE OR REPLACE PROCEDURE update_player_status_proc(
+    p_player_id INT,
+    p_form_id INT,
+    p_injury_id INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- 1. Update old Form
+    UPDATE PlayerForm 
+    SET EndDate = CURRENT_DATE
+    WHERE PlayerID = p_player_id AND EndDate IS NULL;
+
+    -- 2. Insert new Form
+    INSERT INTO PlayerForm (PlayerID, FormTypeID, StartDate)
+    VALUES (p_player_id, p_form_id, CURRENT_DATE);
+
+    -- 3. Update old Injury
+    UPDATE InjuryRecord 
+    SET EndDate = CURRENT_DATE, Status = 'Recovered'
+    WHERE PlayerID = p_player_id AND Status = 'Active';
+
+    -- 4. Insert new Injury 
+    IF p_injury_id IS NOT NULL AND p_injury_id != 0 THEN
+        INSERT INTO InjuryRecord (PlayerID, InjuryTypeID, StartDate, Status)
+        VALUES (p_player_id, p_injury_id, CURRENT_DATE, 'Active');
+    END IF;
+
+    
+    PERFORM update_player_valuation(p_player_id, p_form_id, p_injury_id);
+
+ 
+END;
+$$;
