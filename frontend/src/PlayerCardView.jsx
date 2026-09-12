@@ -13,15 +13,15 @@ import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, getL
 axios.defaults.withCredentials = true;
 
 const HexagonBadge = ({ color = '#38bdf8', onClick, title }) => (
-    <svg
-        width="24"
-        height="24"
-        viewBox="0 0 100 100"
+    <svg 
+        width="24" 
+        height="24" 
+        viewBox="0 0 100 100" 
         onClick={onClick}
         title={title}
-        style={{
-            display: 'inline-block',
-            verticalAlign: 'middle',
+        style={{ 
+            display: 'inline-block', 
+            verticalAlign: 'middle', 
             filter: `drop-shadow(0 0 6px ${color})`,
             cursor: onClick ? 'pointer' : 'default',
             transition: 'transform 0.15s ease'
@@ -148,8 +148,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const [communityBuildsList, setCommunityBuildsList] = useState([]);
     const [saveBuildForm, setSaveBuildForm] = useState({ name: '', isPublic: false });
     const [dialog, setDialog] = useState(null);
-    const [loadedBuild, setLoadedBuild] = useState(null);
-    const [saveMode, setSaveMode] = useState('replace'); // 'replace' | 'new'
 
     const handleOpenBuildsModal = async (tab) => {
         setBuildsModalTab(tab);
@@ -205,7 +203,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     });
                 }
             },
-            onCancel: () => { }
+            onCancel: () => {}
         });
     };
 
@@ -261,28 +259,15 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     gk3: allocations.gk3 || 0
                 }
             };
-
-            const isReplacing = loadedBuild && loadedBuild.buildid && saveMode === 'replace';
-
-            if (isReplacing) {
-                await axios.put(`http://localhost:5001/api/progression/build/${loadedBuild.buildid}`, buildPayload);
-                setDialog({
-                    type: 'success',
-                    title: '🔄 Build Replaced & Updated',
-                    message: `Concept build "${buildPayload.buildName}" has been successfully updated in place!`,
-                    confirmText: 'OK'
-                });
-            } else {
-                await axios.post('http://localhost:5001/api/progression/save-snapshot', buildPayload);
-                setDialog({
-                    type: 'success',
-                    title: '✨ Build Saved',
-                    message: `Concept build "${buildPayload.buildName}" saved successfully!`,
-                    confirmText: 'OK'
-                });
-            }
-
+            await axios.post('http://localhost:5001/api/progression/save-snapshot', buildPayload);
+            setSaveBuildForm({ name: '', isPublic: false });
             handleOpenBuildsModal('mine');
+            setDialog({
+                type: 'success',
+                title: '✨ Build Saved',
+                message: `Concept build "${buildPayload.buildName}" saved successfully!`,
+                confirmText: 'OK'
+            });
         } catch (err) {
             console.error("Error saving build:", err);
             setDialog({
@@ -295,30 +280,19 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     };
 
     const handleLoadBuild = (build) => {
-        setLoadedBuild(build);
-        setSaveMode('replace');
-        setSaveBuildForm({
-            name: build.buildname || '',
-            isPublic: !!build.ispublic
-        });
         setAllocations({
             shooting: build.finishing || build.shooting || 0,
             passing: build.passing || 0,
             dribbling: build.dribbling || 0,
             dexterity: build.offensiveawareness || build.dexterity || 0,
-            lowerBody: build.speed || build.lowerbody || build.lowerBody || 0,
+            lowerBody: build.speed || build.lowerbody || build.lowerBody || 0, 
             aerial: build.jump || build.aerial || 0,
             defending: build.defensiveawareness || build.defending || 0,
             gk1: build.gkawareness || build.gk1 || 0,
             gk2: build.gkcatching || build.gk2 || 0,
             gk3: build.gkparrying || build.gk3 || 0
         });
-        setDialog({
-            type: 'info',
-            title: '⚡ Build Loaded',
-            message: `Loaded concept build "${build.buildname}". Any changes will now replace and update this build directly!`,
-            confirmText: 'OK'
-        });
+        alert(`Loaded Concept Build: ${build.buildname}`);
     };
 
     useEffect(() => {
@@ -376,36 +350,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
     const handleCompareSelect = (otherCardId) => {
         setCompareCardId(otherCardId);
-        window.history.pushState({ compare: true }, '', `/card/${cardid}/compare/${otherCardId}`);
     };
-
-    useEffect(() => {
-        const path = window.location.pathname.toLowerCase();
-        if (path.includes('/compare/')) {
-            const parts = path.split('/compare/')[1]?.split('/')[0];
-            if (parts) {
-                setCompareMode(true);
-                setCompareCardId(parts);
-            }
-        }
-
-        const handlePopState = () => {
-            const currentPath = window.location.pathname.toLowerCase();
-            if (currentPath.includes('/compare/')) {
-                const parts = currentPath.split('/compare/')[1]?.split('/')[0];
-                if (parts) {
-                    setCompareMode(true);
-                    setCompareCardId(parts);
-                }
-            } else {
-                setCompareMode(false);
-                setCompareCardId(null);
-            }
-        };
-
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, [cardid]);
 
     if (compareMode && compareCardId) {
         return (
@@ -413,13 +358,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                 cardId1={cardid}
                 cardId2={compareCardId}
                 onBack={() => {
-                    if (window.history.length > 1) {
-                        window.history.back();
-                    } else {
-                        setCompareMode(false);
-                        setCompareCardId(null);
-                        window.history.replaceState({ path: `/card/${cardid}` }, '', `/card/${cardid}`);
-                    }
+                    setCompareMode(false);
+                    setCompareCardId(null);
                 }}
             />
         );
@@ -577,7 +517,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const boostedOvr = getBoostedOvr();
 
     const selectedManager = managersList.find(m => m.managerid.toString() === selectedManagerId);
-    const managerAffinity = selectedManager
+    const managerAffinity = selectedManager 
         ? (selectedManager.managername.toLowerCase().includes("flick") ? 88 : 85)
         : 70;
 
@@ -639,10 +579,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('community')}>COMMUNITY BUILDS</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => setShowReviews(!showReviews)}>REVIEWS</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }}>SHARE</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }}>SCREENSHOT</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }}>SETTINGS</span>
                 </div>
             </div>
 
@@ -696,19 +634,19 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 </div>
                                 {/* Boosters Row - Compact 220px Width Matching Card */}
                                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', background: '#111722', padding: '5px 6px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', width: '220px', boxSizing: 'border-box', position: 'relative' }}>
-                                    <select
+                                    <select 
                                         ref={booster1Ref}
-                                        value={booster1}
-                                        onChange={(e) => setBooster1(e.target.value)}
-                                        style={{
-                                            background: '#0d1117',
-                                            color: getBoosterCategoryColor(booster1),
-                                            border: `1px solid ${getBoosterCategoryColor(booster1)}`,
-                                            borderRadius: '6px',
-                                            padding: '3px 4px',
-                                            fontSize: '0.68em',
-                                            fontWeight: 'bold',
-                                            outline: 'none',
+                                        value={booster1} 
+                                        onChange={(e) => setBooster1(e.target.value)} 
+                                        style={{ 
+                                            background: '#0d1117', 
+                                            color: getBoosterCategoryColor(booster1), 
+                                            border: `1px solid ${getBoosterCategoryColor(booster1)}`, 
+                                            borderRadius: '6px', 
+                                            padding: '3px 4px', 
+                                            fontSize: '0.68em', 
+                                            fontWeight: 'bold', 
+                                            outline: 'none', 
                                             cursor: 'pointer',
                                             maxWidth: '72px',
                                             textOverflow: 'ellipsis',
@@ -724,27 +662,27 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                         ))}
                                     </select>
 
-                                    <DoubleBoosterLogo
-                                        color1={getBoosterCategoryColor(booster1)}
-                                        color2={getEffectiveBooster2Color()}
+                                    <DoubleBoosterLogo 
+                                        color1={getBoosterCategoryColor(booster1)} 
+                                        color2={getEffectiveBooster2Color()} 
                                         onBooster1Click={handleBooster1Click}
                                         onBooster2Click={handleBooster2Click}
                                     />
 
                                     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                                        <select
+                                        <select 
                                             ref={booster2Ref}
-                                            value={booster2}
-                                            onChange={(e) => setBooster2(e.target.value)}
-                                            style={{
-                                                background: '#0d1117',
-                                                color: getEffectiveBooster2Color(),
-                                                border: `1px solid ${getEffectiveBooster2Color()}`,
-                                                borderRadius: '6px',
-                                                padding: '3px 4px',
-                                                fontSize: '0.68em',
-                                                fontWeight: 'bold',
-                                                outline: 'none',
+                                            value={booster2} 
+                                            onChange={(e) => setBooster2(e.target.value)} 
+                                            style={{ 
+                                                background: '#0d1117', 
+                                                color: getEffectiveBooster2Color(), 
+                                                border: `1px solid ${getEffectiveBooster2Color()}`, 
+                                                borderRadius: '6px', 
+                                                padding: '3px 4px', 
+                                                fontSize: '0.68em', 
+                                                fontWeight: 'bold', 
+                                                outline: 'none', 
                                                 cursor: 'pointer',
                                                 maxWidth: '72px',
                                                 textOverflow: 'ellipsis',
@@ -803,8 +741,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 <span style={{ fontSize: '0.75em', fontWeight: '900', color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                     ⚡ Select Booster 2 Category
                                                 </span>
-                                                <button
-                                                    type="button"
+                                                <button 
+                                                    type="button" 
                                                     onClick={() => setShowBooster2TypeMenu(false)}
                                                     style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9em', cursor: 'pointer', fontWeight: 'bold' }}
                                                 >
@@ -887,9 +825,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                     {player.playstyle || 'GOAL POACHER'}
                                 </div>
 
-                                <button style={{ marginTop: '16px', padding: '10px 24px', background: '#1e293b', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85em', cursor: 'pointer', width: 'fit-content', display: 'block' }}>
-                                    Rate this player
-                                </button>
+
 
                                 {/* MANAGER SELECTOR — functional dropdown */}
                                 <div style={{ marginTop: '14px', background: '#111722', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '12px', padding: '10px 14px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
@@ -922,14 +858,14 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         </div>
 
                         {/* RIGHT SECTION: TACTICAL POSITION RATINGS BLOCK GRID */}
-                        <PositionRatingsPitch
-                            baseOvr={boostedOvr}
-                            primaryPosition={primaryposition}
-                            playstyle={player.playstyle}
-                            boostedStats={boostedStats}
-                            customPrimaryPositions={data.primarypositions}
-                            customSecondaryPositions={data.secondarypositions}
-                        />
+                            <PositionRatingsPitch 
+                                baseOvr={boostedOvr} 
+                                primaryPosition={primaryposition} 
+                                playstyle={player.playstyle}
+                                boostedStats={boostedStats}
+                                customPrimaryPositions={data.primarypositions}
+                                customSecondaryPositions={data.secondarypositions}
+                            />
 
                     </div>
 
@@ -999,7 +935,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             scrollbarWidth: 'thin'
                                         }}>
                                             {otherVersions.map(vCard => (
-                                                <div
+                                                <div 
                                                     key={vCard.cardid}
                                                     onClick={() => {
                                                         if (onSelectCard) onSelectCard(vCard.cardid);
@@ -1095,13 +1031,13 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             {showBuildsModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
                     <div style={{ background: '#111722', width: '100%', maxWidth: '650px', borderRadius: '16px', border: '1px solid rgba(0, 242, 254, 0.3)', padding: '28px', color: '#fff', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
-
+                        
                         {/* Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '15px' }}>
                             <h3 style={{ margin: 0, fontSize: '1.4em', fontWeight: '900', color: '#00f2fe', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 ⚽ Player Progression Builds
                             </h3>
-                            <button
+                            <button 
                                 onClick={() => setShowBuildsModal(false)}
                                 style={{ background: '#1e293b', color: '#94a3b8', border: 'none', width: '32px', height: '32px', borderRadius: '50%', fontWeight: 'bold', cursor: 'pointer' }}
                             >
@@ -1111,19 +1047,19 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                         {/* Tabs */}
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: '#0a0d14', padding: '6px', borderRadius: '10px' }}>
-                            <button
+                            <button 
                                 onClick={() => setBuildsModalTab('mine')}
                                 style={{ flex: 1, padding: '10px', background: buildsModalTab === 'mine' ? '#00f2fe' : 'transparent', color: buildsModalTab === 'mine' ? '#000' : '#94a3b8', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.85em', cursor: 'pointer', transition: 'all 0.2s ease' }}
                             >
                                 📁 MY BUILDS ({myBuildsList.length})
                             </button>
-                            <button
+                            <button 
                                 onClick={() => setBuildsModalTab('community')}
                                 style={{ flex: 1, padding: '10px', background: buildsModalTab === 'community' ? '#00f2fe' : 'transparent', color: buildsModalTab === 'community' ? '#000' : '#94a3b8', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.85em', cursor: 'pointer', transition: 'all 0.2s ease' }}
                             >
                                 🌐 COMMUNITY BUILDS ({communityBuildsList.length})
                             </button>
-                            <button
+                            <button 
                                 onClick={() => setBuildsModalTab('save')}
                                 style={{ flex: 1, padding: '10px', background: buildsModalTab === 'save' ? '#22c55e' : 'transparent', color: buildsModalTab === 'save' ? '#000' : '#94a3b8', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.85em', cursor: 'pointer', transition: 'all 0.2s ease' }}
                             >
@@ -1136,7 +1072,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                             <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {myBuildsList.length === 0 ? (
                                     <div style={{ color: '#64748b', textAlign: 'center', padding: '30px', fontStyle: 'italic' }}>
-                                        No custom progression builds saved for this card yet.<br />Click "SAVE CONCEPT" to save your custom build!
+                                        No custom progression builds saved for this card yet.<br/>Click "SAVE CONCEPT" to save your custom build!
                                     </div>
                                 ) : (
                                     myBuildsList.map(b => (
@@ -1148,19 +1084,19 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <button
+                                                <button 
                                                     onClick={() => handleToggleBuildPrivacy(b.buildid, b.ispublic)}
                                                     style={{ background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', padding: '6px 10px', borderRadius: '6px', fontSize: '0.75em', fontWeight: 'bold', cursor: 'pointer' }}
                                                 >
                                                     {b.ispublic ? '🔒 Make Private' : '🌐 Share'}
                                                 </button>
-                                                <button
+                                                <button 
                                                     onClick={() => handleDeleteBuild(b.buildid)}
                                                     style={{ background: '#ef444422', color: '#ef4444', border: '1px solid #ef4444aa', padding: '6px 10px', borderRadius: '6px', fontSize: '0.75em', fontWeight: 'bold', cursor: 'pointer' }}
                                                 >
                                                     🗑️
                                                 </button>
-                                                <button
+                                                <button 
                                                     onClick={() => { handleLoadBuild(b); setShowBuildsModal(false); }}
                                                     style={{ background: '#00f2fe', color: '#000', border: 'none', padding: '7px 14px', borderRadius: '6px', fontWeight: '900', fontSize: '0.78em', cursor: 'pointer' }}
                                                 >
@@ -1178,7 +1114,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                             <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {communityBuildsList.length === 0 ? (
                                     <div style={{ color: '#64748b', textAlign: 'center', padding: '30px', fontStyle: 'italic' }}>
-                                        No community builds published for this card yet.<br />Be the first to share your build with the eFVerse community!
+                                        No community builds published for this card yet.<br/>Be the first to share your build with the eFVerse community!
                                     </div>
                                 ) : (
                                     communityBuildsList.map(b => (
@@ -1193,7 +1129,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     <button onClick={() => handleReaction(b.buildid, 'LIKE')} style={{ background: b.my_reaction === 'LIKE' ? '#22c55e' : '#0f172a', color: b.my_reaction === 'LIKE' ? '#000' : '#888', border: '1px solid #334155', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold' }}>👍 {b.likes || 0}</button>
                                                     <button onClick={() => handleReaction(b.buildid, 'DISLIKE')} style={{ background: b.my_reaction === 'DISLIKE' ? '#ef4444' : '#0f172a', color: b.my_reaction === 'DISLIKE' ? '#fff' : '#888', border: '1px solid #334155', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold' }}>👎 {b.dislikes || 0}</button>
                                                 </div>
-                                                <button
+                                                <button 
                                                     onClick={() => { handleLoadBuild(b); setShowBuildsModal(false); }}
                                                     style={{ background: '#00f2fe', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: '900', fontSize: '0.8em', cursor: 'pointer' }}
                                                 >
@@ -1209,114 +1145,40 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         {/* Content Tab 3: SAVE BUILD FORM */}
                         {buildsModalTab === 'save' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {loadedBuild && (
-                                    <div style={{
-                                        background: 'rgba(0, 242, 254, 0.08)',
-                                        border: '1px solid rgba(0, 242, 254, 0.25)',
-                                        borderRadius: '10px',
-                                        padding: '14px 16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '10px'
-                                    }}>
-                                        <div style={{ fontSize: '0.82em', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>
-                                            Active Concept Build: <strong style={{ color: '#00f2fe' }}>{loadedBuild.buildname}</strong>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSaveMode('replace')}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px 12px',
-                                                    borderRadius: '8px',
-                                                    border: saveMode === 'replace' ? '1.5px solid #00FF87' : '1px solid #334155',
-                                                    background: saveMode === 'replace' ? 'rgba(0, 255, 135, 0.15)' : 'rgba(255,255,255,0.04)',
-                                                    color: saveMode === 'replace' ? '#00FF87' : '#94a3b8',
-                                                    fontWeight: '800',
-                                                    fontSize: '0.8em',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                🔄 Replace Old Build
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSaveMode('new')}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px 12px',
-                                                    borderRadius: '8px',
-                                                    border: saveMode === 'new' ? '1.5px solid #00f2fe' : '1px solid #334155',
-                                                    background: saveMode === 'new' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.04)',
-                                                    color: saveMode === 'new' ? '#00f2fe' : '#94a3b8',
-                                                    fontWeight: '800',
-                                                    fontSize: '0.8em',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                ➕ Save As New Build
-                                            </button>
-                                        </div>
-                                        <div style={{ fontSize: '0.75em', color: saveMode === 'replace' ? '#00FF87' : '#00f2fe' }}>
-                                            {saveMode === 'replace'
-                                                ? `✅ Will overwrite and update "${loadedBuild.buildname}" in place without creating duplicates.`
-                                                : "ℹ️ Will preserve the old build and create a new separate version."}
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div>
                                     <label style={{ fontSize: '0.85em', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Build Title / Name</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Max Dribbling & Speed Concept"
-                                        value={saveBuildForm.name}
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g. Max Dribbling & Speed Concept" 
+                                        value={saveBuildForm.name} 
                                         onChange={(e) => setSaveBuildForm(prev => ({ ...prev, name: e.target.value }))}
-                                        style={{ width: '100%', padding: '12px', boxSizing: 'border-box', borderRadius: '8px', border: '1px solid #334155', background: '#0a0d14', color: '#fff', fontSize: '0.9em', outline: 'none' }}
+                                        style={{ width: '100%', padding: '12px', boxSizing: 'border-box', borderRadius: '8px', border: '1px solid #334155', background: '#0a0d14', color: '#fff', fontSize: '0.9em', outline: 'none' }} 
                                     />
                                 </div>
 
                                 {/* SHARE WITH COMMUNITY CHECKBOX */}
                                 <div style={{ background: '#0a0d14', padding: '14px', borderRadius: '10px', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9em', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={saveBuildForm.isPublic}
+                                        <input 
+                                            type="checkbox" 
+                                            checked={saveBuildForm.isPublic} 
                                             onChange={(e) => setSaveBuildForm(prev => ({ ...prev, isPublic: e.target.checked }))}
                                             style={{ width: '18px', height: '18px', accentColor: '#00f2fe', cursor: 'pointer' }}
                                         />
                                         <span>🌐 Share this build with eFVerse Community</span>
                                     </label>
                                     <div style={{ fontSize: '0.78em', color: '#64748b', marginTop: '6px', paddingLeft: '30px' }}>
-                                        {saveBuildForm.isPublic
+                                        {saveBuildForm.isPublic 
                                             ? "✅ Your custom build will be saved in 'MY BUILDS' AND published to 'COMMUNITY BUILDS' for all eFVerse users!"
                                             : "🔒 Private: Your build will only be saved in your personal 'MY BUILDS'."}
                                     </div>
                                 </div>
 
-                                <button
+                                <button 
                                     onClick={handleSaveCustomBuild}
-                                    style={{
-                                        width: '100%',
-                                        padding: '14px',
-                                        background: loadedBuild && saveMode === 'replace'
-                                            ? 'linear-gradient(135deg, #00FF87 0%, #00a855 100%)'
-                                            : 'linear-gradient(135deg, #00f2fe 0%, #00b0ff 100%)',
-                                        color: '#000',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: '900',
-                                        fontSize: '0.95em',
-                                        cursor: 'pointer',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        boxShadow: loadedBuild && saveMode === 'replace'
-                                            ? '0 4px 15px rgba(0, 255, 135, 0.3)'
-                                            : '0 4px 15px rgba(0, 242, 254, 0.3)'
-                                    }}
+                                    style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #00f2fe 0%, #00b0ff 100%)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.95em', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 4px 15px rgba(0, 242, 254, 0.3)' }}
                                 >
-                                    {loadedBuild && saveMode === 'replace' ? '🔄 Replace & Update Build' : '💾 Save & Publish Build'}
+                                    💾 Save & Publish Build
                                 </button>
                             </div>
                         )}
@@ -1324,70 +1186,70 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     </div>
                 </div>
             )}
-            {dialog && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 99999, padding: '20px', fontFamily: "'Outfit', sans-serif"
-                }}>
-                    <div style={{
-                        background: '#111722',
-                        border: dialog.type === 'danger' ? '1px solid rgba(239, 68, 68, 0.4)' : dialog.type === 'success' ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(0, 242, 254, 0.4)',
-                        borderRadius: '16px',
-                        padding: '30px',
-                        maxWidth: '450px',
-                        width: '100%',
-                        color: '#fff',
-                        boxShadow: dialog.type === 'danger' ? '0 10px 40px rgba(239, 68, 68, 0.25)' : dialog.type === 'success' ? '0 10px 40px rgba(74, 222, 128, 0.25)' : '0 10px 40px rgba(0, 242, 254, 0.25)',
-                        textAlign: 'center',
-                        animation: 'fadeIn 0.2s ease'
-                    }}>
-                        <div style={{ fontSize: '3em', marginBottom: '15px' }}>
-                            {dialog.type === 'danger' ? '⚠️' : dialog.type === 'success' ? '✨' : 'ℹ️'}
-                        </div>
-                        <h3 style={{ margin: '0 0 15px 0', fontSize: '1.4em', fontWeight: '900', color: dialog.type === 'danger' ? '#ef4444' : dialog.type === 'success' ? '#4ade80' : '#00f2fe' }}>
-                            {dialog.title}
-                        </h3>
-                        <p style={{ margin: '0 0 25px 0', color: '#94a3b8', fontSize: '0.95em', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                            {dialog.message}
-                        </p>
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            {dialog.onCancel && (
-                                <button
-                                    onClick={() => {
-                                        if (dialog.onCancel) dialog.onCancel();
-                                        setDialog(null);
-                                    }}
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #334155',
-                                        background: 'transparent', color: '#94a3b8', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                            )}
-                            <button
-                                onClick={() => {
-                                    if (dialog.onConfirm) dialog.onConfirm();
-                                    setDialog(null);
-                                }}
-                                style={{
-                                    flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
-                                    background: dialog.type === 'danger'
-                                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                                        : dialog.type === 'success' ? 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' : 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
-                                    color: dialog.type === 'danger' || dialog.type === 'success' ? '#fff' : '#000',
-                                    fontWeight: 'bold', cursor: 'pointer', transition: '0.2s',
-                                    boxShadow: dialog.type === 'danger' ? '0 4px 14px rgba(239, 68, 68, 0.4)' : dialog.type === 'success' ? '0 4px 14px rgba(34, 197, 94, 0.4)' : '0 4px 14px rgba(0, 242, 254, 0.3)'
-                                }}
-                            >
-                                {dialog.confirmText || 'Confirm'}
-                            </button>
-                        </div>
-                    </div>
+      {dialog && (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99999, padding: '20px', fontFamily: "'Outfit', sans-serif"
+        }}>
+            <div style={{
+                background: '#111722',
+                border: dialog.type === 'danger' ? '1px solid rgba(239, 68, 68, 0.4)' : dialog.type === 'success' ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(0, 242, 254, 0.4)',
+                borderRadius: '16px',
+                padding: '30px',
+                maxWidth: '450px',
+                width: '100%',
+                color: '#fff',
+                boxShadow: dialog.type === 'danger' ? '0 10px 40px rgba(239, 68, 68, 0.25)' : dialog.type === 'success' ? '0 10px 40px rgba(74, 222, 128, 0.25)' : '0 10px 40px rgba(0, 242, 254, 0.25)',
+                textAlign: 'center',
+                animation: 'fadeIn 0.2s ease'
+            }}>
+                <div style={{ fontSize: '3em', marginBottom: '15px' }}>
+                    {dialog.type === 'danger' ? '⚠️' : dialog.type === 'success' ? '✨' : 'ℹ️'}
                 </div>
-            )}
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '1.4em', fontWeight: '900', color: dialog.type === 'danger' ? '#ef4444' : dialog.type === 'success' ? '#4ade80' : '#00f2fe' }}>
+                    {dialog.title}
+                </h3>
+                <p style={{ margin: '0 0 25px 0', color: '#94a3b8', fontSize: '0.95em', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                    {dialog.message}
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    {dialog.onCancel && (
+                        <button 
+                            onClick={() => {
+                                if (dialog.onCancel) dialog.onCancel();
+                                setDialog(null);
+                            }}
+                            style={{
+                                flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #334155',
+                                background: 'transparent', color: '#94a3b8', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => {
+                            if (dialog.onConfirm) dialog.onConfirm();
+                            setDialog(null);
+                        }}
+                        style={{
+                            flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
+                            background: dialog.type === 'danger' 
+                                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
+                                : dialog.type === 'success' ? 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' : 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                            color: dialog.type === 'danger' || dialog.type === 'success' ? '#fff' : '#000',
+                            fontWeight: 'bold', cursor: 'pointer', transition: '0.2s',
+                            boxShadow: dialog.type === 'danger' ? '0 4px 14px rgba(239, 68, 68, 0.4)' : dialog.type === 'success' ? '0 4px 14px rgba(34, 197, 94, 0.4)' : '0 4px 14px rgba(0, 242, 254, 0.3)'
+                        }}
+                    >
+                        {dialog.confirmText || 'Confirm'}
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
         </div>
     );
