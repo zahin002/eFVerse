@@ -996,7 +996,7 @@ function App() {
             <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 5vw', borderBottom: '1px solid rgba(255,255,255,0.05)', borderRadius: 0, position: 'sticky', top: 0, zIndex: 100 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div onClick={handleGoHome} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                        <img src="/logo.png" alt="eFVerse Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', boxShadow: '0 0 10px rgba(0, 242, 254, 0.3)' }} />
+                        <img src="/logo.png" alt="eFVerse Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(0, 242, 254, 0.45))', transition: 'transform 0.2s ease' }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} />
                         <div style={{ background: 'linear-gradient(45deg, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '1.5em', fontWeight: '900', letterSpacing: '1px' }}>eFVerse</div>
                     </div>
                     <div style={{ padding: '4px 10px', background: user?.role === 'ADMIN' ? 'rgba(255, 77, 77, 0.1)' : 'rgba(0, 242, 254, 0.1)', color: user?.role === 'ADMIN' ? '#ff4d4d' : '#00f2fe', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold', border: `1px solid ${user?.role === 'ADMIN' ? 'rgba(255, 77, 77, 0.3)' : 'rgba(0, 242, 254, 0.3)'}` }}>
@@ -1481,7 +1481,7 @@ function App() {
                         }}>
                             {/* Compact logo + brand row */}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px' }}>
-                                <img src="/logo.png" alt="eFVerse Logo" style={{ width: '38px', height: '38px', borderRadius: '10px', boxShadow: '0 0 12px rgba(0,242,254,0.35)', border: '1px solid rgba(0,242,254,0.25)', flexShrink: 0 }} />
+                                <img src="/logo.png" alt="eFVerse Logo" style={{ width: '42px', height: '42px', objectFit: 'contain', filter: 'drop-shadow(0 0 12px rgba(0,242,254,0.45))', flexShrink: 0 }} />
                                 <h1 style={{ margin: 0, fontSize: '1.7em', background: 'linear-gradient(135deg, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900', letterSpacing: '1.5px' }}>
                                     eFVerse
                                 </h1>
