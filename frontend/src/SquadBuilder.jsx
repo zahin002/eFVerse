@@ -82,6 +82,22 @@ const AnimationStyles = () => (
             from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+        .sb-heading-cyan {
+            background: linear-gradient(135deg, #ffffff 0%, #d8e8f8 50%, #00f2fe 100%);
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            color: transparent !important;
+            display: inline-block;
+        }
+        .sb-heading-purple {
+            background: linear-gradient(135deg, #ffffff 0%, #d8c8f8 50%, #a78bfa 100%);
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            color: transparent !important;
+            display: inline-block;
+        }
     `}</style>
 );
 
@@ -89,7 +105,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
     // ============================================
     // STATE
     // ============================================
-    const [view, setView] = useState('list'); // 'list' | 'builder'
+    const [view, setView] = useState('list'); // 'list' | 'builder' | 'community'
     const [mySquads, setMySquads] = useState([]);
     const [managers, setManagers] = useState([]);
     const [myCards, setMyCards] = useState([]);
@@ -104,6 +120,11 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [currentSlot, setCurrentSlot] = useState(null);
     const [editingSquadId, setEditingSquadId] = useState(null);
+
+    // Community Squads State
+    const [communitySquads, setCommunitySquads] = useState([]);
+    const [communityLoading, setCommunityLoading] = useState(false);
+    const [communityViewSquad, setCommunityViewSquad] = useState(null); // for viewing details of a community squad
 
     // In-App Toast Notification State
     const [notification, setNotification] = useState(null); // { type: 'success'|'error'|'warning'|'info', message: string }
@@ -648,6 +669,85 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
     }, [refreshData, notify]);
 
+    // ============================================
+    // COMMUNITY SHARING HANDLERS
+    // ============================================
+    const fetchCommunitySquads = useCallback(async () => {
+        try {
+            setCommunityLoading(true);
+            const res = await axios.get(`${API_BASE_URL}/squads/community/all`);
+            setCommunitySquads(res.data || []);
+        } catch (err) {
+            console.error("Failed to load community squads:", err);
+            notify('error', "Failed to load community squads.");
+        } finally {
+            setCommunityLoading(false);
+        }
+    }, [notify]);
+
+    const handleShareSquad = useCallback(async (squadId) => {
+        if (!currentUser) {
+            notify('warning', "Please sign in to share squads.");
+            return;
+        }
+        try {
+            setLoading(true);
+            await axios.post(`${API_BASE_URL}/squads/${squadId}/share`);
+            await refreshData();
+            notify('success', "🌍 Squad shared to the community!");
+        } catch (err) {
+            console.error("Share error:", err);
+            notify('error', "Error sharing squad: " + (err.response?.data?.error || err.message));
+        } finally {
+            setLoading(false);
+        }
+    }, [currentUser, refreshData, notify]);
+
+    const handleUnshareSquad = useCallback(async (squadId) => {
+        if (!currentUser) return;
+        try {
+            setLoading(true);
+            await axios.post(`${API_BASE_URL}/squads/${squadId}/unshare`);
+            await refreshData();
+            notify('info', "🔒 Squad removed from community.");
+        } catch (err) {
+            console.error("Unshare error:", err);
+            notify('error', "Error unsharing squad: " + (err.response?.data?.error || err.message));
+        } finally {
+            setLoading(false);
+        }
+    }, [currentUser, refreshData, notify]);
+
+    const handleShareCurrentSquad = useCallback(async () => {
+        if (!editingSquadId) {
+            notify('warning', "Please save the squad first before sharing.");
+            return;
+        }
+        const squad = mySquads.find(s => {
+            const sid = safeGet(s, 'SquadID', 'squadid');
+            return sid && sid.toString() === editingSquadId.toString();
+        });
+        const isShared = squad && (safeGet(squad, 'IsSharedToCommunity', 'issharedtocommunity') === true);
+        if (isShared) {
+            await handleUnshareSquad(editingSquadId);
+        } else {
+            await handleShareSquad(editingSquadId);
+        }
+    }, [editingSquadId, mySquads, safeGet, handleShareSquad, handleUnshareSquad, notify]);
+
+    const handleViewCommunitySquad = useCallback(async (squadId) => {
+        try {
+            setCommunityLoading(true);
+            const res = await axios.get(`${API_BASE_URL}/squads/${squadId}`);
+            setCommunityViewSquad(res.data);
+        } catch (err) {
+            console.error("Error loading community squad details:", err);
+            notify('error', "Failed to load squad details.");
+        } finally {
+            setCommunityLoading(false);
+        }
+    }, [notify]);
+
     const handleAddPlayer = useCallback((cardData) => {
         if (currentSlot === null || !cardData) return;
 
@@ -845,7 +945,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
     // RENDER: SAVED SQUADS LIST VIEW
     // ============================================
     const renderSquadList = () => (
-        <div style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
+        <div key="squad-list-view" style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
             {/* Page Title — only shown in list view */}
             <div style={{ textAlign: 'center', marginBottom: '36px' }}>
                 <div style={{
@@ -865,17 +965,16 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 }}>
                     🏟️ TACTICAL MASTERPIECE STUDIO
                 </div>
-                <h1 style={{
-                    fontSize: 'clamp(2.2em, 4vw, 3.2em)',
-                    fontWeight: '900',
-                    margin: '0 0 8px 0',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #d8e8f8 50%, #00f2fe 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.5px'
-                }}>
-                    Your Tactical Roster
-                </h1>
+                <div>
+                    <h1 key="squad-list-title" className="sb-heading-cyan" style={{
+                        fontSize: 'clamp(2.2em, 4vw, 3.2em)',
+                        fontWeight: '900',
+                        margin: '0 0 8px 0',
+                        letterSpacing: '-0.5px'
+                    }}>
+                        Your Tactical Roster
+                    </h1>
+                </div>
                 <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
                     Manage, edit, and optimize your saved custom matchday squads
                 </p>
@@ -994,6 +1093,36 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     >
                                         ✏️ Open & Edit
                                     </button>
+                                    {/* Share/Unshare Toggle */}
+                                    {(() => {
+                                        const isShared = safeGet(sq, 'IsSharedToCommunity', 'issharedtocommunity') === true;
+                                        return (
+                                            <button
+                                                onClick={() => isShared ? handleUnshareSquad(squadId) : handleShareSquad(squadId)}
+                                                style={{
+                                                    padding: '10px 14px',
+                                                    background: isShared
+                                                        ? 'rgba(167, 139, 250, 0.12)'
+                                                        : 'rgba(167, 139, 250, 0.08)',
+                                                    color: isShared ? '#c4b5fd' : '#a78bfa',
+                                                    border: `1px solid ${isShared ? 'rgba(167, 139, 250, 0.4)' : 'rgba(167, 139, 250, 0.2)'}`,
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.82em',
+                                                    fontWeight: '700',
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = isShared ? 'rgba(167, 139, 250, 0.2)' : 'rgba(167, 139, 250, 0.15)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = isShared ? 'rgba(167, 139, 250, 0.12)' : 'rgba(167, 139, 250, 0.08)'}
+                                                title={isShared ? 'Remove from Community' : 'Share to Community'}
+                                            >
+                                                {isShared ? '🔒' : '🌍'}
+                                            </button>
+                                        );
+                                    })()}
                                     <button
                                         onClick={() => handleDeleteSquad(squadId)}
                                         style={{
@@ -1077,6 +1206,351 @@ export default function SquadBuilder({ currentUser, onBack }) {
             )}
         </div>
     );
+
+    // ============================================
+    // RENDER: COMMUNITY BUILDS VIEW
+    // ============================================
+    const renderCommunityView = () => {
+        // If viewing a specific community squad
+        if (communityViewSquad) {
+            const sq = communityViewSquad;
+            const formKey = sq.formation || '4-3-3';
+            const formLayout = FORMATIONS[formKey] || FORMATIONS['4-3-3'];
+
+            return (
+                <div style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
+                    <button
+                        onClick={() => setCommunityViewSquad(null)}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: '#94a3b8',
+                            borderRadius: '999px',
+                            padding: '8px 18px',
+                            fontSize: '0.85em',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            marginBottom: '16px',
+                            transition: 'all 0.25s ease'
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)'; e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)'; e.currentTarget.style.color = '#a78bfa'; }}
+                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
+                    >
+                        ← Back to Community
+                    </button>
+
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                        <h2 style={{ fontSize: '1.6em', fontWeight: '900', color: '#fff', margin: '0 0 6px 0' }}>
+                            {sq.squadName}
+                        </h2>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', fontSize: '0.82em', color: '#94a3b8' }}>
+                            <span style={{ background: 'rgba(167,139,250,0.1)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.25)' }}>
+                                📐 {sq.formation}
+                            </span>
+                            <span style={{ background: 'rgba(0,242,254,0.08)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(0,242,254,0.25)' }}>
+                                💪 {sq.teamStrength} OVR
+                            </span>
+                            {sq.manager && sq.manager.managerName && (
+                                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    👔 {sq.manager.managerName}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Read-only pitch view */}
+                    <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
+                        <div style={{
+                            width: '100%',
+                            paddingBottom: '78%',
+                            position: 'relative',
+                            background: 'repeating-linear-gradient(90deg, #2b8423 0px, #2b8423 50px, #3ba630 50px, #3ba630 100px)',
+                            borderRadius: '16px',
+                            border: '3px solid rgba(255, 255, 255, 0.45)',
+                            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 166, 48, 0.25)',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%)', pointerEvents: 'none' }} />
+                            <SvgPitch />
+
+                            {/* Render players on pitch */}
+                            {sq.players && sq.players.map((player, idx) => {
+                                const slot = formLayout[idx];
+                                if (!slot || !player) return null;
+                                const rating = player.currentOverallRating || player.baseOverallRating || 0;
+                                const posColor = getPositionColor(slot.position);
+                                return (
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            position: 'absolute',
+                                            top: `${slot.top}%`,
+                                            left: `${slot.left}%`,
+                                            transform: 'translate(-50%, -50%)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '2px',
+                                            zIndex: 10
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '42px',
+                                            height: '42px',
+                                            borderRadius: '50%',
+                                            background: `linear-gradient(145deg, ${posColor}33, ${posColor}88)`,
+                                            border: `2px solid ${posColor}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.85em',
+                                            fontWeight: '900',
+                                            color: '#fff',
+                                            boxShadow: `0 4px 12px ${posColor}55`
+                                        }}>
+                                            {rating}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.6em',
+                                            fontWeight: '800',
+                                            color: '#fff',
+                                            textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                                            maxWidth: '70px',
+                                            textAlign: 'center',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {(player.playerName || 'Unknown').split(' ').pop()}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.5em',
+                                            fontWeight: '700',
+                                            color: posColor,
+                                            background: 'rgba(0,0,0,0.5)',
+                                            padding: '1px 5px',
+                                            borderRadius: '4px'
+                                        }}>
+                                            {player.assignedPosition}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Community list
+        return (
+            <div key="community-view" style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
+                <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(167,139,250,0.08)',
+                        border: '1px solid rgba(167,139,250,0.25)',
+                        borderRadius: '999px',
+                        padding: '6px 18px',
+                        fontSize: '0.8em',
+                        fontWeight: '800',
+                        color: '#a78bfa',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        marginBottom: '12px'
+                    }}>
+                        🌍 COMMUNITY HUB
+                    </div>
+                    <div>
+                        <h1 key="community-title" className="sb-heading-purple" style={{
+                            fontSize: 'clamp(2.2em, 4vw, 3.2em)',
+                            fontWeight: '900',
+                            margin: '0 0 8px 0',
+                            letterSpacing: '-0.5px'
+                        }}>
+                            Community Squad Builds
+                        </h1>
+                    </div>
+                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
+                        Browse tactical squads shared by the community
+                    </p>
+                </div>
+
+                {communityLoading ? (
+                    <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '2em', marginBottom: '12px', animation: 'sbGlow 1.5s ease-in-out infinite' }}>⏳</div>
+                        Loading community squads...
+                    </div>
+                ) : communitySquads.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+                        {communitySquads.map(sq => {
+                            const squadId = sq.squadid;
+                            const name = sq.squadname || 'Tactical XI';
+                            const form = sq.formation || '4-3-3';
+                            const playerCount = sq.playercount || 0;
+                            const strength = sq.teamstrength || 0;
+                            const username = sq.username || 'Anonymous';
+                            const managerName = sq.managername || 'Unknown';
+                            const sharedAt = sq.sharedat ? new Date(sq.sharedat).toLocaleDateString() : '';
+
+                            return (
+                                <div
+                                    key={squadId}
+                                    style={{
+                                        background: 'rgba(10, 16, 28, 0.75)',
+                                        border: '1px solid rgba(167, 139, 250, 0.15)',
+                                        borderRadius: '20px',
+                                        padding: '24px',
+                                        backdropFilter: 'blur(16px)',
+                                        boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                        transition: 'all 0.3s ease',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        animation: 'sbSlideIn 0.4s ease-out'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.45)';
+                                        e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(167, 139, 250, 0.15)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.borderColor = 'rgba(167, 139, 250, 0.15)';
+                                        e.currentTarget.style.boxShadow = '0 12px 36px rgba(0,0,0,0.4)';
+                                    }}
+                                >
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #a78bfa, #7c3aed)' }} />
+
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                            <div>
+                                                <span style={{
+                                                    fontSize: '0.72em',
+                                                    fontWeight: '800',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '4px',
+                                                    background: 'rgba(167, 139, 250, 0.12)',
+                                                    color: '#a78bfa',
+                                                    border: '1px solid rgba(167, 139, 250, 0.25)',
+                                                    letterSpacing: '0.8px',
+                                                    textTransform: 'uppercase'
+                                                }}>
+                                                    {form} FORMATION
+                                                </span>
+                                                <h3 style={{ margin: '8px 0 0 0', fontSize: '1.25em', fontWeight: '900', color: '#fff' }}>
+                                                    {name}
+                                                </h3>
+                                            </div>
+                                            <div style={{
+                                                fontSize: '1.4em',
+                                                fontWeight: '900',
+                                                color: '#ffd166',
+                                                textShadow: '0 0 16px rgba(255, 209, 102, 0.4)',
+                                                lineHeight: 1
+                                            }}>
+                                                {strength} <span style={{ fontSize: '0.5em', color: '#94a3b8' }}>OVR</span>
+                                            </div>
+                                        </div>
+
+                                        <div style={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: '10px',
+                                            margin: '16px 0 20px',
+                                            fontSize: '0.82em',
+                                            color: '#94a3b8'
+                                        }}>
+                                            <div style={{ background: 'rgba(167,139,250,0.08)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.15)' }}>
+                                                👤 <strong style={{ color: '#c4b5fd' }}>{username}</strong>
+                                            </div>
+                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                👥 <strong style={{ color: '#fff' }}>{playerCount}/11</strong> Starters
+                                            </div>
+                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                👔 <strong style={{ color: '#fff' }}>{managerName}</strong>
+                                            </div>
+                                            {sharedAt && (
+                                                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                    📅 {sharedAt}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <button
+                                            onClick={() => handleViewCommunitySquad(squadId)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 16px',
+                                                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontWeight: '800',
+                                                cursor: 'pointer',
+                                                fontSize: '0.88em',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px',
+                                                transition: 'opacity 0.2s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                        >
+                                            👁️ View Squad
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div style={{
+                        maxWidth: '640px',
+                        margin: '40px auto',
+                        background: 'rgba(10, 16, 28, 0.75)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '24px',
+                        padding: '60px 40px',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(16px)',
+                        boxShadow: '0 16px 40px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{
+                            width: '84px',
+                            height: '84px',
+                            borderRadius: '50%',
+                            background: 'radial-gradient(circle, rgba(167,139,250,0.15) 0%, transparent 70%)',
+                            border: '1px solid rgba(167,139,250,0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '2.5em',
+                            margin: '0 auto 20px'
+                        }}>
+                            🌍
+                        </div>
+                        <h2 style={{ fontSize: '1.8em', fontWeight: '900', color: '#fff', margin: '0 0 10px 0' }}>
+                            No Community Squads Yet
+                        </h2>
+                        <p style={{ color: '#94a3b8', fontSize: '0.95em', lineHeight: 1.6, marginBottom: '32px' }}>
+                            Be the first to share your squad build with the community! Open any of your saved squads and click the 🌍 Share button.
+                        </p>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // ============================================
     // RENDER: PITCH PLAYER TOKEN
@@ -1474,6 +1948,41 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     >
                         {loading ? '⏳...' : editingSquadId ? '💾 Update' : '💾 Save'}
                     </button>
+
+                    {/* Share to Community Button — only show when editing an existing saved squad */}
+                    {editingSquadId && (() => {
+                        const squad = mySquads.find(s => {
+                            const sid = safeGet(s, 'SquadID', 'squadid');
+                            return sid && sid.toString() === editingSquadId.toString();
+                        });
+                        const isShared = squad && (safeGet(squad, 'IsSharedToCommunity', 'issharedtocommunity') === true);
+                        return (
+                            <button
+                                onClick={handleShareCurrentSquad}
+                                disabled={loading}
+                                style={{
+                                    padding: '10px 16px',
+                                    background: isShared
+                                        ? 'rgba(255, 77, 77, 0.12)'
+                                        : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                                    color: isShared ? '#ff9999' : '#fff',
+                                    border: isShared ? '1px solid rgba(255, 77, 77, 0.3)' : 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: '800',
+                                    fontSize: '0.78em',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    boxShadow: isShared ? 'none' : '0 0 14px rgba(167, 139, 250, 0.35)',
+                                    transition: 'all 0.25s ease',
+                                    whiteSpace: 'nowrap',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                }}
+                            >
+                                {isShared ? '🔒 Unshare' : '🌍 Share'}
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
 
@@ -1834,6 +2343,9 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                 setView('list');
                                 window.history.replaceState({ squadView: 'list' }, '', '/squad-builder');
                             }
+                        } else if (view === 'community') {
+                            setCommunityViewSquad(null);
+                            setView('list');
                         } else {
                             onBack();
                         }
@@ -1855,11 +2367,11 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     onMouseOver={e => { e.currentTarget.style.background = 'rgba(0,242,254,0.1)'; e.currentTarget.style.borderColor = 'rgba(0,242,254,0.4)'; e.currentTarget.style.color = '#00f2fe'; }}
                     onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
                 >
-                    {view === 'builder' ? '← Tactical Roster' : '← Home'}
+                    {view === 'builder' ? '← Tactical Roster' : view === 'community' ? '← My Squads' : '← Home'}
                 </button>
 
                 {/* Tab Pill Buttons */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                         onClick={() => {
                             if (view === 'builder') {
@@ -1870,6 +2382,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     window.history.replaceState({ squadView: 'list' }, '', '/squad-builder');
                                 }
                             } else {
+                                setCommunityViewSquad(null);
                                 setView('list');
                             }
                         }}
@@ -1889,6 +2402,29 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         }}
                     >
                         📋 Squads ({mySquads.length})
+                    </button>
+                    <button
+                        onClick={() => {
+                            setCommunityViewSquad(null);
+                            setView('community');
+                            fetchCommunitySquads();
+                        }}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: view === 'community' ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255,255,255,0.03)',
+                            color: view === 'community' ? '#a78bfa' : '#64748b',
+                            border: `1px solid ${view === 'community' ? 'rgba(167, 139, 250, 0.4)' : 'rgba(255,255,255,0.08)'}`,
+                            padding: '8px 16px',
+                            borderRadius: '10px',
+                            fontWeight: '800',
+                            fontSize: '0.82em',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        🌍 Community
                     </button>
                     <button
                         onClick={startNewSquad}
@@ -1985,7 +2521,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             )}
 
             {/* Main Content */}
-            {view === 'list' ? renderSquadList() : renderBuilder()}
+            {view === 'list' ? renderSquadList() : view === 'community' ? renderCommunityView() : renderBuilder()}
             {modalOpen && renderModal()}
         </div>
     );

@@ -301,6 +301,8 @@ const getUserSquads = async (req, res) => {
                 s.CreatedAt,
                 s.UpdatedAt,
                 s.IsFavourite,
+                s.IsSharedToCommunity,
+                s.SharedAt,
                 COUNT(sp.CardID) as PlayerCount,
                 m.ManagerName,
                 m.PlayStyle
@@ -308,7 +310,7 @@ const getUserSquads = async (req, res) => {
             LEFT JOIN SquadPlayer sp ON s.SquadID = sp.SquadID
             LEFT JOIN Manager m ON s.ManagerID = m.ManagerID
             WHERE s.UserID = $1
-            GROUP BY s.SquadID, s.UserID, s.ManagerID, s.SquadName, s.Formation, s.TeamStrength, s.CreatedAt, s.UpdatedAt, s.IsFavourite, m.ManagerName, m.PlayStyle
+            GROUP BY s.SquadID, s.UserID, s.ManagerID, s.SquadName, s.Formation, s.TeamStrength, s.CreatedAt, s.UpdatedAt, s.IsFavourite, s.IsSharedToCommunity, s.SharedAt, m.ManagerName, m.PlayStyle
             ORDER BY s.IsFavourite DESC, s.CreatedAt DESC
         `;
 
@@ -615,6 +617,126 @@ const toggleFavorite = async (req, res) => {
 };
 
 
+const shareSquadToCommunity = async (req, res) => {
+    const { squadId } = req.params;
+    const userId = req.user?.userId || req.user?.userid;
+
+    if (!squadId) {
+        return res.status(400).json({ error: "Squad ID required" });
+    }
+
+    try {
+        // Verify squad belongs to the user
+        const ownerCheck = await pool.query(
+            'SELECT squadid, userid FROM squad WHERE squadid = $1',
+            [squadId]
+        );
+
+        if (ownerCheck.rows.length === 0) {
+            return res.status(404).json({ error: "Squad not found" });
+        }
+
+        if (String(ownerCheck.rows[0].userid) !== String(userId)) {
+            return res.status(403).json({ error: "You can only share your own squads" });
+        }
+
+        const result = await pool.query(
+            'UPDATE squad SET issharedtocommunity = TRUE, sharedat = CURRENT_TIMESTAMP WHERE squadid = $1 RETURNING squadid, issharedtocommunity, sharedat',
+            [squadId]
+        );
+
+        console.log(`✅ Squad ${squadId} shared to community by user ${userId}`);
+        res.json({
+            success: true,
+            message: "🌍 Squad shared to the community!",
+            squadId: result.rows[0].squadid,
+            isShared: result.rows[0].issharedtocommunity,
+            sharedAt: result.rows[0].sharedat
+        });
+    } catch (error) {
+        console.error("❌ Share Squad Error:", error.message);
+        res.status(500).json({ error: "Failed to share squad: " + error.message });
+    }
+};
+
+
+const unshareSquad = async (req, res) => {
+    const { squadId } = req.params;
+    const userId = req.user?.userId || req.user?.userid;
+
+    if (!squadId) {
+        return res.status(400).json({ error: "Squad ID required" });
+    }
+
+    try {
+        const ownerCheck = await pool.query(
+            'SELECT squadid, userid FROM squad WHERE squadid = $1',
+            [squadId]
+        );
+
+        if (ownerCheck.rows.length === 0) {
+            return res.status(404).json({ error: "Squad not found" });
+        }
+
+        if (String(ownerCheck.rows[0].userid) !== String(userId)) {
+            return res.status(403).json({ error: "You can only unshare your own squads" });
+        }
+
+        const result = await pool.query(
+            'UPDATE squad SET issharedtocommunity = FALSE, sharedat = NULL WHERE squadid = $1 RETURNING squadid, issharedtocommunity',
+            [squadId]
+        );
+
+        console.log(`✅ Squad ${squadId} unshared from community by user ${userId}`);
+        res.json({
+            success: true,
+            message: "🔒 Squad removed from community.",
+            squadId: result.rows[0].squadid,
+            isShared: false
+        });
+    } catch (error) {
+        console.error("❌ Unshare Squad Error:", error.message);
+        res.status(500).json({ error: "Failed to unshare squad: " + error.message });
+    }
+};
+
+
+const getCommunitySquads = async (req, res) => {
+    try {
+        console.log("🌍 Fetching community shared squads...");
+
+        const result = await pool.query(`
+            SELECT 
+                s.squadid,
+                s.userid,
+                s.squadname,
+                s.formation,
+                s.teamstrength,
+                s.sharedat,
+                s.createdat,
+                u.username,
+                m.managername,
+                m.playstyle,
+                COUNT(sp.cardid) as playercount
+            FROM squad s
+            INNER JOIN "User" u ON s.userid = u.userid
+            LEFT JOIN manager m ON s.managerid = m.managerid
+            LEFT JOIN squadplayer sp ON s.squadid = sp.squadid
+            WHERE s.issharedtocommunity = TRUE
+            GROUP BY s.squadid, s.userid, s.squadname, s.formation, s.teamstrength, 
+                     s.sharedat, s.createdat, u.username, m.managername, m.playstyle
+            ORDER BY s.sharedat DESC NULLS LAST
+        `);
+
+        console.log(`✅ Found ${result.rows.length} community squads`);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("❌ Get Community Squads Error:", error.message);
+        res.status(500).json({ error: "Failed to fetch community squads: " + error.message });
+    }
+};
+
+
 
 module.exports = { 
     
@@ -630,5 +752,8 @@ module.exports = {
     getSquadDetails,
     updateSquad,
     deleteSquad,
-    toggleFavorite
-};
+    toggleFavorite,
+    shareSquadToCommunity,
+    unshareSquad,
+    getCommunitySquads
+};
