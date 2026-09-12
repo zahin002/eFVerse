@@ -205,6 +205,11 @@ const saveSquad = async (req, res) => {
         return res.status(400).json({ error: "Missing required fields: userId, managerId, squadName, players" });
     }
 
+    const cardIds = players.map(p => p.cardId);
+    if (new Set(cardIds).size !== cardIds.length) {
+        return res.status(400).json({ error: "Each player card can only be used once per squad." });
+    }
+
     const client = await pool.connect();
     try {
         console.log("🔄 Starting transaction: saveSquad");
@@ -446,7 +451,7 @@ const getSquadDetails = async (req, res) => {
 
 const updateSquad = async (req, res) => {
     const { squadId } = req.params;
-    const { squadName, formation, players, teamStrength } = req.body;
+    const { squadName, formation, players, teamStrength, managerId } = req.body;
 
     if (!squadId) {
         return res.status(400).json({ error: "Squad ID required" });
@@ -456,25 +461,45 @@ const updateSquad = async (req, res) => {
         return res.status(400).json({ error: "Squad name and players are required" });
     }
 
+    const cardIds = players.map(p => p.cardId);
+    if (new Set(cardIds).size !== cardIds.length) {
+        return res.status(400).json({ error: "Each player card can only be used once per squad." });
+    }
+
     const client = await pool.connect();
     try {
         console.log("🔄 Starting transaction: updateSquad for ID:", squadId);
         await client.query('BEGIN');
 
+        const parsedManagerId = (managerId !== undefined && managerId !== null && managerId !== '') 
+            ? parseInt(managerId, 10) 
+            : null;
+        const parsedSquadId = parseInt(squadId, 10);
+
         const updateSql = `
             UPDATE squad 
-            SET squadname = $1, formation = $2, teamstrength = $3, updatedat = CURRENT_TIMESTAMP
-            WHERE squadid = $4
+            SET squadname = $1, 
+                formation = $2, 
+                teamstrength = $3, 
+                managerid = COALESCE($4::integer, managerid), 
+                updatedat = CURRENT_TIMESTAMP
+            WHERE squadid = $5
             RETURNING squadid
         `;
-        const updateRes = await client.query(updateSql, [squadName.trim(), formation || '4-3-3', teamStrength || 0, squadId]);
+        const updateRes = await client.query(updateSql, [
+            squadName.trim(), 
+            formation || '4-3-3', 
+            teamStrength || 0, 
+            parsedManagerId, 
+            parsedSquadId
+        ]);
 
         if (updateRes.rows.length === 0) {
             throw new Error("Squad not found");
         }
         console.log("✅ Squad updated");
 
-        await client.query('DELETE FROM squadplayer WHERE squadid = $1', [squadId]);
+        await client.query('DELETE FROM squadplayer WHERE squadid = $1', [parsedSquadId]);
         console.log("✅ Old players deleted");
 
         for (let p of players) {
@@ -484,7 +509,7 @@ const updateSquad = async (req, res) => {
             await client.query(`
                 INSERT INTO squadplayer (squadid, cardid, assignedposition, isstartingxi)
                 VALUES ($1, $2, $3, $4)
-            `, [squadId, p.cardId, p.position, p.isStarting !== false]);
+            `, [parsedSquadId, parseInt(p.cardId, 10), p.position, p.isStarting !== false]);
         }
         console.log("✅ Added", players.length, "new players");
 

@@ -148,6 +148,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const [communityBuildsList, setCommunityBuildsList] = useState([]);
     const [saveBuildForm, setSaveBuildForm] = useState({ name: '', isPublic: false });
     const [dialog, setDialog] = useState(null);
+    const [loadedBuild, setLoadedBuild] = useState(null);
+    const [saveMode, setSaveMode] = useState('replace'); // 'replace' | 'new'
 
     const handleOpenBuildsModal = async (tab) => {
         setBuildsModalTab(tab);
@@ -259,15 +261,28 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     gk3: allocations.gk3 || 0
                 }
             };
-            await axios.post('http://localhost:5001/api/progression/save-snapshot', buildPayload);
-            setSaveBuildForm({ name: '', isPublic: false });
+
+            const isReplacing = loadedBuild && loadedBuild.buildid && saveMode === 'replace';
+
+            if (isReplacing) {
+                await axios.put(`http://localhost:5001/api/progression/build/${loadedBuild.buildid}`, buildPayload);
+                setDialog({
+                    type: 'success',
+                    title: '🔄 Build Replaced & Updated',
+                    message: `Concept build "${buildPayload.buildName}" has been successfully updated in place!`,
+                    confirmText: 'OK'
+                });
+            } else {
+                await axios.post('http://localhost:5001/api/progression/save-snapshot', buildPayload);
+                setDialog({
+                    type: 'success',
+                    title: '✨ Build Saved',
+                    message: `Concept build "${buildPayload.buildName}" saved successfully!`,
+                    confirmText: 'OK'
+                });
+            }
+
             handleOpenBuildsModal('mine');
-            setDialog({
-                type: 'success',
-                title: '✨ Build Saved',
-                message: `Concept build "${buildPayload.buildName}" saved successfully!`,
-                confirmText: 'OK'
-            });
         } catch (err) {
             console.error("Error saving build:", err);
             setDialog({
@@ -280,6 +295,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     };
 
     const handleLoadBuild = (build) => {
+        setLoadedBuild(build);
+        setSaveMode('replace');
+        setSaveBuildForm({
+            name: build.buildname || '',
+            isPublic: !!build.ispublic
+        });
         setAllocations({
             shooting: build.finishing || build.shooting || 0,
             passing: build.passing || 0,
@@ -292,7 +313,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             gk2: build.gkcatching || build.gk2 || 0,
             gk3: build.gkparrying || build.gk3 || 0
         });
-        alert(`Loaded Concept Build: ${build.buildname}`);
+        setDialog({
+            type: 'info',
+            title: '⚡ Build Loaded',
+            message: `Loaded concept build "${build.buildname}". Any changes will now replace and update this build directly!`,
+            confirmText: 'OK'
+        });
     };
 
     useEffect(() => {
@@ -1149,6 +1175,63 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         {/* Content Tab 3: SAVE BUILD FORM */}
                         {buildsModalTab === 'save' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {loadedBuild && (
+                                    <div style={{
+                                        background: 'rgba(0, 242, 254, 0.08)',
+                                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                                        borderRadius: '10px',
+                                        padding: '14px 16px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '10px'
+                                    }}>
+                                        <div style={{ fontSize: '0.82em', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>
+                                            Active Concept Build: <strong style={{ color: '#00f2fe' }}>{loadedBuild.buildname}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSaveMode('replace')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px 12px',
+                                                    borderRadius: '8px',
+                                                    border: saveMode === 'replace' ? '1.5px solid #00FF87' : '1px solid #334155',
+                                                    background: saveMode === 'replace' ? 'rgba(0, 255, 135, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                    color: saveMode === 'replace' ? '#00FF87' : '#94a3b8',
+                                                    fontWeight: '800',
+                                                    fontSize: '0.8em',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                🔄 Replace Old Build
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSaveMode('new')}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px 12px',
+                                                    borderRadius: '8px',
+                                                    border: saveMode === 'new' ? '1.5px solid #00f2fe' : '1px solid #334155',
+                                                    background: saveMode === 'new' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.04)',
+                                                    color: saveMode === 'new' ? '#00f2fe' : '#94a3b8',
+                                                    fontWeight: '800',
+                                                    fontSize: '0.8em',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                ➕ Save As New Build
+                                            </button>
+                                        </div>
+                                        <div style={{ fontSize: '0.75em', color: saveMode === 'replace' ? '#00FF87' : '#00f2fe' }}>
+                                            {saveMode === 'replace' 
+                                                ? `✅ Will overwrite and update "${loadedBuild.buildname}" in place without creating duplicates.`
+                                                : "ℹ️ Will preserve the old build and create a new separate version."}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
                                     <label style={{ fontSize: '0.85em', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Build Title / Name</label>
                                     <input 
@@ -1180,9 +1263,26 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                                 <button 
                                     onClick={handleSaveCustomBuild}
-                                    style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #00f2fe 0%, #00b0ff 100%)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '900', fontSize: '0.95em', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 4px 15px rgba(0, 242, 254, 0.3)' }}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '14px', 
+                                        background: loadedBuild && saveMode === 'replace'
+                                            ? 'linear-gradient(135deg, #00FF87 0%, #00a855 100%)'
+                                            : 'linear-gradient(135deg, #00f2fe 0%, #00b0ff 100%)', 
+                                        color: '#000', 
+                                        border: 'none', 
+                                        borderRadius: '8px', 
+                                        fontWeight: '900', 
+                                        fontSize: '0.95em', 
+                                        cursor: 'pointer', 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.5px', 
+                                        boxShadow: loadedBuild && saveMode === 'replace'
+                                            ? '0 4px 15px rgba(0, 255, 135, 0.3)'
+                                            : '0 4px 15px rgba(0, 242, 254, 0.3)' 
+                                    }}
                                 >
-                                    💾 Save & Publish Build
+                                    {loadedBuild && saveMode === 'replace' ? '🔄 Replace & Update Build' : '💾 Save & Publish Build'}
                                 </button>
                             </div>
                         )}

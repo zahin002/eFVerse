@@ -59,21 +59,31 @@ const getCardsList = async (req, res) => {
             WHERE 1=1 
         `;
 
+        const params = [];
+        let paramIdx = 1;
+
         if (filter === 'cards_only') {
             sql += ` AND c.CardID IS NOT NULL`;
         } else if (filter === 'no_cards') {
             sql += ` AND c.CardID IS NULL`;
+        } else if (['Legendary', 'POTW', 'Standard'].includes(filter)) {
+            sql += ` AND c.CardType = $${paramIdx++}`;
+            params.push(filter);
         }
 
         if (sort === 'ovr_desc') {
-            sql += ` ORDER BY c.BaseOverallRating DESC NULLS LAST`;
+            sql += ` ORDER BY c.BaseOverallRating DESC NULLS LAST, p.PlayerName ASC`;
         } else if (sort === 'ovr_asc') {
-            sql += ` ORDER BY c.BaseOverallRating ASC NULLS LAST`;
+            sql += ` ORDER BY c.BaseOverallRating ASC NULLS LAST, p.PlayerName ASC`;
+        } else if (sort === 'name_asc') {
+            sql += ` ORDER BY p.PlayerName ASC`;
+        } else if (sort === 'name_desc') {
+            sql += ` ORDER BY p.PlayerName DESC`;
         } else {
             sql += ` ORDER BY p.PlayerID DESC, c.CardID DESC`; 
         }
 
-        const result = await pool.query(sql);
+        const result = await pool.query(sql, params);
         
         const formattedData = result.rows.map(row => ({
             cardid: row.cardid,

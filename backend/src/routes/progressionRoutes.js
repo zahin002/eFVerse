@@ -21,5 +21,6 @@ router.post('/save-snapshot', verifyToken, progressionController.saveBuildSnapsh
 router.post('/react', verifyToken, progressionController.reactToBuild);
 router.delete('/build/:id', verifyToken, progressionController.deleteBuild);
 router.put('/build-privacy/:id', verifyToken, progressionController.toggleBuildPrivacy);
+router.put('/build/:id', verifyToken, progressionController.updateBuildSnapshot);
 
 module.exports = router;

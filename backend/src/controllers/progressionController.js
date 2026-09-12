@@ -150,6 +150,70 @@ const saveBuildSnapshot = async (req, res) => {
     }
 };
 
+const updateBuildSnapshot = async (req, res) => {
+    const { id } = req.params;
+    const { buildName, points, isPublic } = req.body;
+    const userId = req.user ? (req.user.userid || req.user.userId) : null;
+
+    if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!id) {
+        return res.status(400).json({ error: "Build ID is required" });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const updateBuildRes = await client.query(
+            `UPDATE Build 
+             SET BuildName = COALESCE($1, BuildName), 
+                 IsPublic = COALESCE($2, IsPublic),
+                 UpdatedAt = CURRENT_TIMESTAMP
+             WHERE BuildID = $3 AND UserID = $4
+             RETURNING BuildID`,
+            [buildName ? buildName.trim() : null, isPublic !== undefined ? isPublic : null, parseInt(id, 10), userId]
+        );
+
+        if (updateBuildRes.rows.length === 0) {
+            throw new Error("Build not found or permission denied.");
+        }
+
+        if (points) {
+            await client.query(
+                `UPDATE BuildStats SET
+                    Finishing = $1, Passing = $2, Dribbling = $3, OffensiveAwareness = $4,
+                    Speed = $5, Jump = $6, DefensiveAwareness = $7, GkAwareness = $8,
+                    GkCatching = $9, GkParrying = $10
+                 WHERE BuildID = $11`,
+                [
+                    points.shooting || 0,
+                    points.passing || 0,
+                    points.dribbling || 0,
+                    points.dexterity || 0,
+                    points.lowerBody || 0,
+                    points.aerial || 0,
+                    points.defending || 0,
+                    points.gk1 || 0,
+                    points.gk2 || 0,
+                    points.gk3 || 0,
+                    parseInt(id, 10)
+                ]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: `✅ Build '${buildName || 'Custom build'}' replaced and updated successfully!` });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Update Build Error:", err.message);
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
+};
+
 
 const getProgressionRules = async (req, res) => {
     try {
@@ -436,5 +500,6 @@ module.exports = {
     getManagersWithEffects,
     getPositions,
     deleteBuild,
-    toggleBuildPrivacy
+    toggleBuildPrivacy,
+    updateBuildSnapshot
 };
