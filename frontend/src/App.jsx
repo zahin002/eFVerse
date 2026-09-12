@@ -142,29 +142,35 @@ function App() {
     // 🔐 LOGIN & REGISTRATION
     // ==========================================
     const handleSubmit = async (e) => {
-        e.preventDefault()
-        setMessage("Processing...")
+    e.preventDefault();
+    setMessage("Processing...");
 
-        const endpoint = view === 'login' ? '/api/auth/login' : '/api/auth/register'
-        const apiUrl = `http://localhost:5001${endpoint}`
+    const endpoint = view === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const apiUrl = `http://localhost:5001${endpoint}`;
 
-        try {
-            const response = await axios.post(apiUrl, formData)
-            setMessage(response.data.message)
+    try {
+        const response = await axios.post(apiUrl, formData);
+        setMessage(response.data.message);
 
-            if (view === 'login') {
-                const userData = response.data.user || response.data;
+        if (view === 'login') {
+            const userData = response.data.user || response.data;
 
-                localStorage.setItem('user', JSON.stringify(userData));
-                setUser(userData);
-                setShowAuthModal(false); // Automatically close modal on login
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+            setShowAuthModal(false);
+
+            // Redirect based on role
+            if (userData.role === 'ADMIN') {
+                setView('adminDashboard'); // Switch view state to Admin Dashboard
+            } else {
+                setView('home'); // Switch view state to Standard User view
             }
-        } catch (error) {
-            const errorMsg = error.response?.data?.error || error.message;
-            setMessage("Error: " + errorMsg);
         }
+    } catch (error) {
+        const errorMsg = error.response?.data?.error || error.message;
+        setMessage("Error: " + errorMsg);
     }
-
+};
     // --- REAL GOOGLE OAUTH IDENTITY SERVICES SDK INIT ---
     useEffect(() => {
         if (user) return;
@@ -1567,13 +1573,13 @@ function App() {
                                 {view === 'register' && (
                                     <>
                                         <input className="input-modern" name="email" type="email" placeholder="Email Address" onChange={handleChange} required style={{ fontSize: '0.95em', padding: '11px 14px' }} />
-                                        <div style={{ textAlign: 'left' }}>
+                                        {/* <div style={{ textAlign: 'left' }}>
                                             <label style={{ color: '#64748b', fontSize: '0.72em', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', fontWeight: '700' }}>Clearance Level</label>
                                             <select className="input-modern" name="role" onChange={handleChange} value={formData.role} style={{ fontSize: '0.95em', padding: '11px 14px' }}>
                                                 <option value="USER">Standard User</option>
                                                 <option value="ADMIN">System Administrator</option>
                                             </select>
-                                        </div>
+                                        </div> */}
                                     </>
                                 )}
 
