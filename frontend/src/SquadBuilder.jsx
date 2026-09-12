@@ -5,6 +5,86 @@ axios.defaults.withCredentials = true;
 
 const API_BASE_URL = 'http://localhost:5001/api';
 
+// ============================================
+// SVG PITCH COMPONENT
+// ============================================
+const SvgPitch = () => (
+    <svg
+        viewBox="0 0 680 530"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        {/* Outer boundary */}
+        <rect x="20" y="12" width="640" height="506" rx="3" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" />
+
+        {/* Halfway line */}
+        <line x1="20" y1="265" x2="660" y2="265" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+
+        {/* Center circle */}
+        <circle cx="340" cy="265" r="56" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Center spot */}
+        <circle cx="340" cy="265" r="3" fill="rgba(255,255,255,0.85)" />
+
+        {/* === TOP HALF (attacking end) === */}
+        {/* Top penalty area (18-yard box) */}
+        <rect x="185" y="12" width="310" height="115" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Top goal area (6-yard box) */}
+        <rect x="255" y="12" width="170" height="46" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Top penalty spot */}
+        <circle cx="340" cy="96" r="2.5" fill="rgba(255,255,255,0.85)" />
+        {/* Top penalty arc */}
+        <path d="M 288 127 A 56 56 0 0 0 392 127" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Top goal mouth */}
+        <rect x="300" y="3" width="80" height="9" rx="1" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
+
+        {/* === BOTTOM HALF (defensive end) === */}
+        {/* Bottom penalty area */}
+        <rect x="185" y="403" width="310" height="115" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Bottom goal area */}
+        <rect x="255" y="472" width="170" height="46" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Bottom penalty spot */}
+        <circle cx="340" cy="434" r="2.5" fill="rgba(255,255,255,0.85)" />
+        {/* Bottom penalty arc */}
+        <path d="M 288 403 A 56 56 0 0 1 392 403" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+        {/* Bottom goal mouth */}
+        <rect x="300" y="518" width="80" height="9" rx="1" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
+
+        {/* Corner arcs */}
+        <path d="M 20 24 A 12 12 0 0 0 32 12" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" />
+        <path d="M 648 12 A 12 12 0 0 0 660 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" />
+        <path d="M 20 506 A 12 12 0 0 1 32 518" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" />
+        <path d="M 648 518 A 12 12 0 0 1 660 506" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" />
+    </svg>
+);
+
+// ============================================
+// CSS KEYFRAME ANIMATIONS (injected once)
+// ============================================
+const AnimationStyles = () => (
+    <style>{`
+        @keyframes sbPulseSlot {
+            0%, 100% { box-shadow: 0 0 8px rgba(0,242,254,0.15); }
+            50% { box-shadow: 0 0 20px rgba(0,242,254,0.4); }
+        }
+        @keyframes sbSlideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes sbModalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes sbGlow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        @keyframes sbToastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    `}</style>
+);
+
 export default function SquadBuilder({ currentUser, onBack }) {
     // ============================================
     // STATE
@@ -40,12 +120,35 @@ export default function SquadBuilder({ currentUser, onBack }) {
         return () => clearTimeout(timer);
     }, [notification]);
 
+    // Sync squad builder view with browser URL & history
+    useEffect(() => {
+        const initialPath = window.location.pathname.toLowerCase();
+        if (initialPath.includes('/squad-builder/pitch') || initialPath.includes('/squad-builder/edit')) {
+            setView('builder');
+        } else {
+            setView('list');
+        }
+
+        const handlePopState = () => {
+            const currentPath = window.location.pathname.toLowerCase();
+            if (currentPath.includes('/squad-builder/pitch') || currentPath.includes('/squad-builder/edit')) {
+                setView('builder');
+            } else if (currentPath === '/squad-builder' || currentPath === '/squad-builder/') {
+                setView('list');
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
     // Modal Search & Filter States
     const [searchQuery, setSearchQuery] = useState('');
     const [positionFilter, setPositionFilter] = useState('all');
 
     // ============================================
-    // FORMATION LAYOUTS
+    // FORMATION LAYOUTS (top% = Y on pitch, left% = X)
+    // Only the top half of the pitch is used (GK at bottom, forwards at top)
     // ============================================
     const FORMATIONS = useMemo(() => ({
         '4-3-3': [
@@ -279,6 +382,29 @@ export default function SquadBuilder({ currentUser, onBack }) {
         return map;
     }, [lineup, currentSlot, safeGet]);
 
+    // Full used maps (for all slots, not excluding currentSlot) — used for modal filtering
+    const allUsedCardIds = useMemo(() => {
+        const set = new Set();
+        lineup.forEach((slot) => {
+            if (slot && slot.card) {
+                const cId = safeGet(slot.card, 'CardID', 'cardid');
+                if (cId) set.add(cId.toString());
+            }
+        });
+        return set;
+    }, [lineup, safeGet]);
+
+    const allUsedPlayerIds = useMemo(() => {
+        const set = new Set();
+        lineup.forEach((slot) => {
+            if (slot && slot.card) {
+                const pId = safeGet(slot.card, 'PlayerID', 'playerid');
+                if (pId) set.add(pId.toString());
+            }
+        });
+        return set;
+    }, [lineup, safeGet]);
+
     const refreshData = useCallback(async () => {
         if (!currentUser) return;
         setLoading(true);
@@ -321,6 +447,9 @@ export default function SquadBuilder({ currentUser, onBack }) {
         setFormation('4-3-3');
         setLineup(getInitialLineup('4-3-3'));
         setView('builder');
+        if (!window.location.pathname.toLowerCase().includes('/squad-builder/pitch')) {
+            window.history.pushState({ squadView: 'builder' }, '', '/squad-builder/pitch');
+        }
     }, [getInitialLineup, managers]);
 
     const handleEditSquad = useCallback(async (squad) => {
@@ -392,6 +521,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
             setLineup(newLineup);
             setView('builder');
+            window.history.pushState({ squadView: 'builder', squadId }, '', `/squad-builder/edit/${squadId}`);
         } catch (err) {
             console.error("Error loading squad:", err);
             notify('error', "Error loading squad: " + err.message);
@@ -408,6 +538,28 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
     }, [getInitialLineup]);
 
+    // ============================================
+    // POSITION ZONE VALIDATION
+    // ============================================
+    const validateZoneCaps = useCallback(() => {
+        const filledSlots = lineup.filter(s => s && s.card);
+        let gk = 0, def = 0, mid = 0, fwd = 0;
+        filledSlots.forEach(s => {
+            const p = (s.position || '').toUpperCase();
+            if (p === 'GK') gk++;
+            else if (['CB', 'LB', 'RB'].includes(p)) def++;
+            else if (['DMF', 'CMF', 'AMF', 'LMF', 'RMF'].includes(p)) mid++;
+            else if (['CF', 'SS', 'LWF', 'RWF'].includes(p)) fwd++;
+        });
+
+        if (gk > 1) return 'Only 1 GK allowed';
+        if (def > 5) return 'Maximum 5 defenders allowed';
+        if (mid > 6) return 'Maximum 6 midfielders allowed';
+        if (fwd > 3) return 'Maximum 3 forwards allowed';
+        if (filledSlots.length > 11) return 'Maximum 11 starters allowed';
+        return null;
+    }, [lineup]);
+
     const handleSaveSquad = useCallback(async () => {
         if (!currentUser) {
             notify('warning', "Please sign in to save your squad.");
@@ -419,6 +571,13 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
         if (playersInSquad === 0) {
             notify('warning', "Please add at least one player to your starting lineup.");
+            return;
+        }
+
+        // Zone validation
+        const zoneError = validateZoneCaps();
+        if (zoneError) {
+            notify('error', `Invalid formation: ${zoneError}`);
             return;
         }
 
@@ -463,13 +622,16 @@ export default function SquadBuilder({ currentUser, onBack }) {
             await refreshData();
             setEditingSquadId(null);
             setView('list');
+            if (window.location.pathname.toLowerCase() !== '/squad-builder') {
+                window.history.replaceState({ squadView: 'list' }, '', '/squad-builder');
+            }
         } catch (err) {
             console.error("Save error:", err);
             notify('error', "Error saving squad: " + (err.response?.data?.error || err.message));
         } finally {
             setLoading(false);
         }
-    }, [currentUser, selectedManager, playersInSquad, lineup, squadName, formation, totalStrength, refreshData, safeGet, editingSquadId, notify]);
+    }, [currentUser, selectedManager, playersInSquad, lineup, squadName, formation, totalStrength, refreshData, safeGet, editingSquadId, notify, validateZoneCaps]);
 
     const handleDeleteSquad = useCallback(async (squadId) => {
         if (!window.confirm("Are you sure you want to permanently delete this squad?")) return;
@@ -529,25 +691,133 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
     }, [lineup, safeGet, notify]);
 
+    const getZonePosition = useCallback((top, left) => {
+        // GK is fixed to slot 0 — outfield players dragged here get CB
+        if (top >= 85) return 'CB';
+        if (top >= 68) {
+            if (left < 25) return 'LB';
+            if (left > 75) return 'RB';
+            return 'CB';
+        }
+        if (top >= 35) {
+            if (left < 22) return 'LMF';
+            if (left > 78) return 'RMF';
+            if (top >= 55) return 'DMF';
+            if (top <= 44) return 'AMF';
+            return 'CMF';
+        }
+        // Forwards (top < 35)
+        if (left < 25) return 'LWF';
+        if (left > 75) return 'RWF';
+        if (top < 16) return 'CF';
+        return 'SS';
+    }, []);
+
+    // Helper: classify a position into its zone
+    const getPositionZone = useCallback((pos) => {
+        const p = (pos || '').toUpperCase();
+        if (p === 'GK') return 'GK';
+        if (['CB', 'LB', 'RB'].includes(p)) return 'DEF';
+        if (['DMF', 'CMF', 'AMF', 'LMF', 'RMF'].includes(p)) return 'MID';
+        if (['CF', 'SS', 'LWF', 'RWF'].includes(p)) return 'FWD';
+        return 'UNKNOWN';
+    }, []);
+
+    const ZONE_MAX = useMemo(() => ({ GK: 1, DEF: 5, MID: 6, FWD: 4 }), []);
+    const ZONE_LABELS = useMemo(() => ({ GK: 'Goalkeeper', DEF: 'Defender', MID: 'Midfielder', FWD: 'Forward' }), []);
+
+    // Sub-position caps within each zone
+    const SUB_POS_MAX = useMemo(() => ({
+        // Forwards: CF+SS ≤ 3, LWF ≤ 1, RWF ≤ 1, zone total ≤ 4
+        LWF: 1, RWF: 1,
+        // Midfielders: AMF ≤ 3, LMF ≤ 1, RMF ≤ 1, zone total ≤ 6
+        AMF: 3, LMF: 1, RMF: 1,
+        // Defenders: LB ≤ 1, RB ≤ 1, zone total ≤ 5
+        LB: 1, RB: 1,
+    }), []);
+
+    // Validate whether a specific position can accept one more player
+    const validatePositionDrop = useCallback((newPos, slotIndex) => {
+        const targetZone = getPositionZone(newPos);
+        const currentZone = getPositionZone(lineup[slotIndex]?.position);
+        const currentPos = (lineup[slotIndex]?.position || '').toUpperCase();
+
+        // Count existing positions (excluding the dragged slot)
+        const counts = {};
+        let zoneCount = 0;
+        lineup.forEach((slot, idx) => {
+            if (idx === slotIndex) return;
+            const pos = (slot.position || '').toUpperCase();
+            counts[pos] = (counts[pos] || 0) + 1;
+            if (getPositionZone(pos) === targetZone) zoneCount++;
+        });
+
+        // 1. Zone total cap (only if moving to a different zone)
+        if (currentZone !== targetZone && zoneCount >= ZONE_MAX[targetZone]) {
+            return `⚠️ ${ZONE_LABELS[targetZone]} zone is full! Maximum ${ZONE_MAX[targetZone]} players allowed.`;
+        }
+
+        // 2. Sub-position cap (check even within the same zone — e.g. moving a CB to LB)
+        if (newPos !== currentPos) {
+            // Individual position caps (LWF, RWF, LMF, RMF, LB, RB, AMF)
+            if (SUB_POS_MAX[newPos] !== undefined && (counts[newPos] || 0) >= SUB_POS_MAX[newPos]) {
+                return `⚠️ Maximum ${SUB_POS_MAX[newPos]} ${newPos} allowed!`;
+            }
+
+            // Forward central cap: CF + SS ≤ 3
+            if (newPos === 'CF' || newPos === 'SS') {
+                const centralFwdCount = (counts['CF'] || 0) + (counts['SS'] || 0);
+                if (centralFwdCount >= 3) {
+                    return `⚠️ Maximum 3 central forwards (CF + SS) allowed!`;
+                }
+            }
+
+            // Midfielder central cap: CMF + DMF ≤ 5
+            if (newPos === 'CMF' || newPos === 'DMF') {
+                const centralMidCount = (counts['CMF'] || 0) + (counts['DMF'] || 0);
+                if (centralMidCount >= 5) {
+                    return `⚠️ Maximum 5 central midfielders (CMF + DMF) allowed!`;
+                }
+            }
+        }
+
+        return null; // No violation
+    }, [lineup, getPositionZone, ZONE_MAX, ZONE_LABELS, SUB_POS_MAX]);
+
     const onDrop = useCallback((e) => {
         const slotIndexStr = e.dataTransfer.getData("slotIndex");
         if (!slotIndexStr) return;
 
         const slotIndex = parseInt(slotIndexStr);
+        // GK (index 0) cannot be dragged
+        if (slotIndex === 0) return;
+
         const pitch = e.currentTarget.getBoundingClientRect();
         const newTop = Math.max(10, Math.min(90, ((e.clientY - pitch.top) / pitch.height) * 100));
         const newLeft = Math.max(10, Math.min(90, ((e.clientX - pitch.left) / pitch.width) * 100));
+        const newPos = getZonePosition(newTop, newLeft);
+
+        // --- Real-time zone + sub-position capacity enforcement ---
+        const violation = validatePositionDrop(newPos, slotIndex);
+        if (violation) {
+            notify('warning', violation);
+            return; // reject the drop
+        }
 
         setFormation('custom');
         const updatedLineup = [...lineup];
         updatedLineup[slotIndex] = {
             ...updatedLineup[slotIndex],
             top: newTop,
-            left: newLeft
+            left: newLeft,
+            position: newPos
         };
         setLineup(updatedLineup);
-    }, [lineup]);
+    }, [lineup, getZonePosition, getPositionZone, ZONE_MAX, ZONE_LABELS, notify]);
 
+    // ============================================
+    // STYLING HELPERS
+    // ============================================
     const getPositionColor = (pos) => {
         const p = (pos || '').toUpperCase();
         if (['CF', 'SS', 'LWF', 'RWF'].includes(p)) return { color: '#ff4d6d', bg: 'rgba(255, 77, 109, 0.15)', border: 'rgba(255, 77, 109, 0.4)', label: 'FWD' };
@@ -575,7 +845,42 @@ export default function SquadBuilder({ currentUser, onBack }) {
     // RENDER: SAVED SQUADS LIST VIEW
     // ============================================
     const renderSquadList = () => (
-        <div>
+        <div style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
+            {/* Page Title — only shown in list view */}
+            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'rgba(0,242,254,0.08)',
+                    border: '1px solid rgba(0,242,254,0.25)',
+                    borderRadius: '999px',
+                    padding: '6px 18px',
+                    fontSize: '0.8em',
+                    fontWeight: '800',
+                    color: '#00f2fe',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    marginBottom: '12px'
+                }}>
+                    🏟️ TACTICAL MASTERPIECE STUDIO
+                </div>
+                <h1 style={{
+                    fontSize: 'clamp(2.2em, 4vw, 3.2em)',
+                    fontWeight: '900',
+                    margin: '0 0 8px 0',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #d8e8f8 50%, #00f2fe 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    letterSpacing: '-0.5px'
+                }}>
+                    Your Tactical Roster
+                </h1>
+                <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
+                    Manage, edit, and optimize your saved custom matchday squads
+                </p>
+            </div>
+
             {mySquads && mySquads.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
                     {mySquads.map(sq => {
@@ -601,15 +906,18 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     justifyContent: 'space-between',
                                     transition: 'all 0.3s ease',
                                     position: 'relative',
-                                    overflow: 'hidden'
+                                    overflow: 'hidden',
+                                    animation: 'sbSlideIn 0.4s ease-out'
                                 }}
                                 onMouseEnter={e => {
                                     e.currentTarget.style.transform = 'translateY(-4px)';
                                     e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.4)';
+                                    e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.5), 0 0 24px rgba(0, 242, 254, 0.15)';
                                 }}
                                 onMouseLeave={e => {
                                     e.currentTarget.style.transform = 'translateY(0)';
                                     e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.boxShadow = '0 12px 36px rgba(0,0,0,0.4)';
                                 }}
                             >
                                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #00f2fe, #a78bfa)' }} />
@@ -779,14 +1087,18 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
         const { card, top, left, position } = slot;
         const posColor = getPositionColor(position);
+        const isGK = slotIndex === 0;
 
         if (!card) {
-            // Empty Slot
+            // Empty Slot — pulsing invitation
             return (
                 <div
-                    key={slotIndex}
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData("slotIndex", slotIndex.toString())}
+                    key={`slot-${slotIndex}`}
+                    draggable={!isGK}
+                    onDragStart={(e) => {
+                        if (isGK) { e.preventDefault(); return; }
+                        e.dataTransfer.setData("slotIndex", slotIndex.toString());
+                    }}
                     onClick={() => {
                         setCurrentSlot(slotIndex);
                         setModalOpen(true);
@@ -796,52 +1108,53 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         top: `${top}%`,
                         left: `${left}%`,
                         transform: 'translate(-50%, -50%)',
-                        width: '82px',
-                        height: '104px',
+                        width: '50px',
+                        height: '62px',
                         border: `1.5px dashed ${posColor.border}`,
-                        background: 'rgba(8, 14, 24, 0.75)',
-                        borderRadius: '14px',
+                        background: 'rgba(8, 14, 24, 0.8)',
+                        borderRadius: '10px',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        gap: '4px',
                         backdropFilter: 'blur(8px)',
-                        boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+                        animation: 'sbPulseSlot 2.5s ease-in-out infinite',
                         transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                         zIndex: 10
                     }}
                     onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.08)';
+                        e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
                         e.currentTarget.style.borderColor = posColor.color;
-                        e.currentTarget.style.boxShadow = `0 8px 24px ${posColor.color}40`;
+                        e.currentTarget.style.background = 'rgba(8, 14, 24, 0.95)';
                     }}
                     onMouseLeave={e => {
                         e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
                         e.currentTarget.style.borderColor = posColor.border;
-                        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.4)';
+                        e.currentTarget.style.background = 'rgba(8, 14, 24, 0.8)';
                     }}
                 >
                     <span style={{
-                        fontSize: '0.72em',
+                        fontSize: '0.55em',
                         fontWeight: '900',
                         color: posColor.color,
                         background: posColor.bg,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        marginBottom: '6px'
+                        padding: '1px 5px',
+                        borderRadius: '3px',
+                        letterSpacing: '0.5px'
                     }}>
                         {position}
                     </span>
-                    <span style={{ fontSize: '1.4em', color: posColor.color, opacity: 0.8, lineHeight: 1 }}>+</span>
-                    <span style={{ fontSize: '0.62em', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.9em', color: posColor.color, opacity: 0.7, lineHeight: 1 }}>+</span>
+                    <span style={{ fontSize: '0.45em', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>
                         {posColor.label}
                     </span>
                 </div>
             );
         }
 
-        // Filled Slot
+        // Filled Slot — premium micro-card
         const cardType = card.cardtype || card.CardType || 'Standard';
         const tier = getCardTierColor(cardType);
         const cardPos = (safeGet(card, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
@@ -851,9 +1164,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
         return (
             <div
-                key={slotIndex}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("slotIndex", slotIndex.toString())}
+                key={`slot-${slotIndex}`}
+                draggable={!isGK}
+                onDragStart={(e) => {
+                    if (isGK) { e.preventDefault(); return; }
+                    e.dataTransfer.setData("slotIndex", slotIndex.toString());
+                }}
                 onClick={() => {
                     setCurrentSlot(slotIndex);
                     setModalOpen(true);
@@ -863,30 +1179,32 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     top: `${top}%`,
                     left: `${left}%`,
                     transform: 'translate(-50%, -50%)',
-                    width: '84px',
-                    height: '108px',
+                    width: '54px',
+                    height: '68px',
                     background: tier.bg,
-                    border: penalty > 0 ? '2px solid #ff4d4d' : `2px solid ${tier.border}`,
-                    borderRadius: '14px',
-                    cursor: 'grab',
+                    border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.7)' : `2px solid ${tier.border}`,
+                    borderRadius: '10px',
+                    cursor: isGK ? 'pointer' : 'grab',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '8px 6px',
-                    boxShadow: penalty > 0 ? '0 0 16px rgba(255, 77, 77, 0.4)' : tier.shadow,
+                    padding: '4px 3px',
+                    boxShadow: penalty > 0
+                        ? '0 0 14px rgba(255, 77, 77, 0.35), 0 4px 12px rgba(0,0,0,0.5)'
+                        : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.5)`,
                     backdropFilter: 'blur(10px)',
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxSizing: 'border-box',
                     zIndex: 20
                 }}
                 onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
-                    e.currentTarget.style.zIndex = 30;
+                    e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.12)';
+                    e.currentTarget.style.zIndex = '30';
                 }}
                 onMouseLeave={e => {
                     e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
-                    e.currentTarget.style.zIndex = 20;
+                    e.currentTarget.style.zIndex = '20';
                 }}
             >
                 {/* Remove Cross Button */}
@@ -897,21 +1215,23 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     }}
                     style={{
                         position: 'absolute',
-                        top: '-7px',
-                        right: '-7px',
-                        width: '20px',
-                        height: '20px',
+                        top: '-6px',
+                        right: '-6px',
+                        width: '15px',
+                        height: '15px',
                         borderRadius: '50%',
                         background: '#ef4444',
                         color: '#fff',
-                        border: '2px solid #000',
+                        border: '2px solid #0a0f1d',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '0.7em',
+                        fontSize: '0.5em',
                         fontWeight: '900',
-                        zIndex: 5
+                        zIndex: 5,
+                        lineHeight: 1,
+                        padding: 0
                     }}
                     title="Remove Player"
                 >
@@ -921,18 +1241,18 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 {/* Top: Position & Penalty */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span style={{
-                        fontSize: '0.62em',
+                        fontSize: '0.48em',
                         fontWeight: '900',
                         color: posColor.color,
                         background: 'rgba(0,0,0,0.5)',
-                        padding: '1px 5px',
-                        borderRadius: '4px'
+                        padding: '1px 3px',
+                        borderRadius: '3px'
                     }}>
                         {position}
                     </span>
                     {penalty > 0 && (
                         <span style={{
-                            fontSize: '0.6em',
+                            fontSize: '0.45em',
                             fontWeight: '800',
                             color: '#ff4d4d',
                             background: 'rgba(255,77,77,0.2)',
@@ -946,11 +1266,11 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
                 {/* Center: Big OVR */}
                 <div style={{
-                    fontSize: '1.85em',
+                    fontSize: '1.2em',
                     fontWeight: '900',
                     lineHeight: 1,
                     color: penalty > 0 ? '#ff6b6b' : tier.accent,
-                    textShadow: `0 0 14px ${penalty > 0 ? '#ff4d4d' : tier.accent}80`
+                    textShadow: `0 0 12px ${penalty > 0 ? '#ff4d4d' : tier.accent}80`
                 }}>
                     {effectiveRating}
                 </div>
@@ -959,15 +1279,15 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 <div style={{
                     width: '100%',
                     textAlign: 'center',
-                    fontSize: '0.7em',
+                    fontSize: '0.48em',
                     fontWeight: '800',
                     color: '#fff',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    background: 'rgba(0,0,0,0.4)',
-                    borderRadius: '4px',
-                    padding: '2px 4px'
+                    background: 'rgba(0,0,0,0.45)',
+                    borderRadius: '3px',
+                    padding: '2px 3px'
                 }}>
                     {playerName}
                 </div>
@@ -979,73 +1299,72 @@ export default function SquadBuilder({ currentUser, onBack }) {
     // RENDER: PITCH & BUILDER SCREEN
     // ============================================
     const renderBuilder = () => (
-        <div>
+        <div style={{ animation: 'sbSlideIn 0.35s ease-out' }}>
             {/* Editing In-Place Banner */}
             {editingSquadId && (
                 <div style={{
-                    background: 'linear-gradient(90deg, rgba(0, 242, 254, 0.12), rgba(0, 255, 135, 0.12))',
-                    border: '1px solid rgba(0, 255, 135, 0.35)',
-                    borderRadius: '12px',
-                    padding: '10px 18px',
-                    marginBottom: '16px',
+                    background: 'linear-gradient(90deg, rgba(0, 242, 254, 0.1), rgba(0, 255, 135, 0.1))',
+                    border: '1px solid rgba(0, 255, 135, 0.3)',
+                    borderRadius: '10px',
+                    padding: '8px 16px',
+                    marginBottom: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     flexWrap: 'wrap',
-                    gap: '10px',
-                    fontSize: '0.88em',
+                    gap: '8px',
+                    fontSize: '0.82em',
                     color: '#fff'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>🔄</span>
-                        <span>Editing existing squad: <strong style={{ color: '#00FF87' }}>"{squadName}"</strong> (Saving will replace and update this squad in place)</span>
+                        <span>Editing: <strong style={{ color: '#00FF87' }}>"{squadName}"</strong> — save will replace in place</span>
                     </div>
                     <button
                         onClick={startNewSquad}
                         style={{
-                            background: 'rgba(255,255,255,0.08)',
-                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.12)',
                             color: '#94a3b8',
                             borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '0.8em',
+                            padding: '3px 10px',
+                            fontSize: '0.85em',
                             cursor: 'pointer'
                         }}
                     >
-                        ➕ Switch to New Squad
+                        ➕ New
                     </button>
                 </div>
             )}
 
-            {/* Top Control Bar (Builder Deck) */}
+            {/* Compact Control Bar */}
             <div style={{
-                background: 'rgba(10, 16, 28, 0.85)',
+                background: 'rgba(10, 16, 28, 0.9)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '20px',
-                padding: '20px 24px',
-                marginBottom: '28px',
+                borderRadius: '16px',
+                padding: '12px 18px',
+                marginBottom: '16px',
                 display: 'flex',
-                gap: '16px',
+                gap: '12px',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 backdropFilter: 'blur(20px)',
-                boxShadow: '0 12px 36px rgba(0,0,0,0.4)'
+                boxShadow: '0 8px 28px rgba(0,0,0,0.4)'
             }}>
                 {/* Squad Name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '200px', flex: 1 }}>
-                    <span style={{ fontSize: '1.1em' }}>✏️</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '160px', flex: 1 }}>
                     <input
                         value={squadName}
                         onChange={(e) => setSquadName(e.target.value)}
-                        placeholder="Squad Name (e.g. Invincibles XI)"
+                        placeholder="Squad Name"
                         style={{
                             background: 'rgba(15, 23, 42, 0.7)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '8px',
                             color: '#fff',
-                            padding: '10px 14px',
-                            fontSize: '0.95em',
+                            padding: '8px 12px',
+                            fontSize: '0.88em',
                             fontWeight: '700',
                             width: '100%',
                             outline: 'none',
@@ -1055,25 +1374,26 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 </div>
 
                 {/* Manager Select */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.8em', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Manager:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.72em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>MGR:</span>
                     <select
                         value={selectedManager}
                         onChange={(e) => setSelectedManager(e.target.value)}
                         style={{
                             background: 'rgba(15, 23, 42, 0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '8px',
                             color: '#fff',
-                            padding: '10px 14px',
-                            fontSize: '0.9em',
+                            padding: '8px 10px',
+                            fontSize: '0.82em',
                             fontWeight: '700',
                             outline: 'none',
                             cursor: 'pointer',
-                            fontFamily: "'Outfit', sans-serif"
+                            fontFamily: "'Outfit', sans-serif",
+                            maxWidth: '200px'
                         }}
                     >
-                        <option value="">Select Tactical Manager</option>
+                        <option value="">Select Manager</option>
                         {managers && managers.map(m => (
                             <option key={m.ManagerID} value={m.ManagerID}>
                                 {m.ManagerName} ({m.PlayStyle})
@@ -1083,18 +1403,18 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 </div>
 
                 {/* Formation Select */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.8em', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Formation:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.72em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>FRM:</span>
                     <select
                         value={formation}
                         onChange={(e) => handleFormationChange(e.target.value)}
                         style={{
                             background: 'rgba(15, 23, 42, 0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '8px',
                             color: '#fff',
-                            padding: '10px 14px',
-                            fontSize: '0.9em',
+                            padding: '8px 10px',
+                            fontSize: '0.82em',
                             fontWeight: '700',
                             outline: 'none',
                             cursor: 'pointer',
@@ -1104,33 +1424,33 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         {Object.keys(FORMATIONS).map(f => (
                             <option key={f} value={f}>{f}</option>
                         ))}
-                        <option value="custom">Custom (Drag & Drop)</option>
+                        <option value="custom">Custom (Drag)</option>
                     </select>
                 </div>
 
-                {/* Team Strength & Starters Counter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                {/* Strength + Starters + Save */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
-                        background: 'rgba(0, 242, 254, 0.1)',
-                        border: '1px solid rgba(0, 242, 254, 0.3)',
-                        borderRadius: '10px',
-                        padding: '8px 16px',
+                        background: 'rgba(0, 242, 254, 0.08)',
+                        border: '1px solid rgba(0, 242, 254, 0.25)',
+                        borderRadius: '8px',
+                        padding: '5px 12px',
                         textAlign: 'center'
                     }}>
-                        <div style={{ fontSize: '0.68em', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>TEAM STRENGTH</div>
-                        <div style={{ fontSize: '1.25em', fontWeight: '900', color: '#00f2fe' }}>💪 {totalStrength}</div>
+                        <div style={{ fontSize: '0.6em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>STR</div>
+                        <div style={{ fontSize: '1.05em', fontWeight: '900', color: '#00f2fe' }}>💪 {totalStrength}</div>
                     </div>
 
                     <div style={{
-                        background: playersInSquad === 11 ? 'rgba(0, 255, 135, 0.1)' : 'rgba(255, 209, 102, 0.1)',
-                        border: `1px solid ${playersInSquad === 11 ? 'rgba(0, 255, 135, 0.3)' : 'rgba(255, 209, 102, 0.3)'}`,
-                        borderRadius: '10px',
-                        padding: '8px 16px',
+                        background: playersInSquad === 11 ? 'rgba(0, 255, 135, 0.08)' : 'rgba(255, 209, 102, 0.08)',
+                        border: `1px solid ${playersInSquad === 11 ? 'rgba(0, 255, 135, 0.25)' : 'rgba(255, 209, 102, 0.25)'}`,
+                        borderRadius: '8px',
+                        padding: '5px 12px',
                         textAlign: 'center'
                     }}>
-                        <div style={{ fontSize: '0.68em', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>STARTERS</div>
-                        <div style={{ fontSize: '1.25em', fontWeight: '900', color: playersInSquad === 11 ? '#00FF87' : '#ffd166' }}>
-                            👥 {playersInSquad}/11
+                        <div style={{ fontSize: '0.6em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>XI</div>
+                        <div style={{ fontSize: '1.05em', fontWeight: '900', color: playersInSquad === 11 ? '#00FF87' : '#ffd166' }}>
+                            {playersInSquad}/11
                         </div>
                     </div>
 
@@ -1139,80 +1459,65 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         onClick={handleSaveSquad}
                         disabled={playersInSquad === 0 || loading}
                         style={{
-                            padding: '12px 24px',
-                            background: playersInSquad === 0 || loading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #00FF87 0%, #00a855 100%)',
+                            padding: '10px 18px',
+                            background: playersInSquad === 0 || loading ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #00FF87 0%, #00a855 100%)',
                             color: playersInSquad === 0 || loading ? '#64748b' : '#000',
                             border: 'none',
-                            borderRadius: '10px',
+                            borderRadius: '8px',
                             fontWeight: '900',
-                            fontSize: '0.9em',
+                            fontSize: '0.82em',
                             cursor: playersInSquad === 0 || loading ? 'not-allowed' : 'pointer',
-                            boxShadow: playersInSquad === 0 || loading ? 'none' : '0 0 20px rgba(0,255,135,0.4)',
-                            transition: 'all 0.25s ease'
+                            boxShadow: playersInSquad === 0 || loading ? 'none' : '0 0 16px rgba(0,255,135,0.35)',
+                            transition: 'all 0.25s ease',
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        {loading ? '⏳ Saving...' : editingSquadId ? '💾 Update & Replace Squad' : '💾 Save New Squad'}
+                        {loading ? '⏳...' : editingSquadId ? '💾 Update' : '💾 Save'}
                     </button>
                 </div>
             </div>
 
-            {/* ===================== REALISTIC CYBER-STADIUM PITCH ===================== */}
-            <div style={{ position: 'relative', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
+            {/* ===================== SVG PITCH ===================== */}
+            <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
                 <div
                     style={{
                         width: '100%',
-                        height: '840px',
-                        margin: '0 auto',
-                        background: 'repeating-linear-gradient(180deg, #103b17 0px, #103b17 56px, #14461b 56px, #14461b 112px)',
-                        borderRadius: '24px',
-                        border: '3px solid rgba(255, 255, 255, 0.4)',
-                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 255, 135, 0.15)',
+                        paddingBottom: '78%', /* ~5:4 taller pitch for more vertical room */
                         position: 'relative',
+                        background: 'repeating-linear-gradient(90deg, #2b8423 0px, #2b8423 50px, #3ba630 50px, #3ba630 100px)',
+                        borderRadius: '16px',
+                        border: '3px solid rgba(255, 255, 255, 0.45)',
+                        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 166, 48, 0.25)',
                         overflow: 'hidden'
                     }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={onDrop}
                 >
-                    {/* Stadium Grass Ambient Lighting / Floodlights */}
-                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 10%, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
-                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 90%, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                    {/* Ambient Stadium Lighting & Turf Vibrancy */}
+                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%)', pointerEvents: 'none' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 15%, rgba(255,255,255,0.14) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.12) 0%, transparent 55%)', pointerEvents: 'none' }} />
 
-                    {/* Halfway Line */}
-                    <div style={{ position: 'absolute', top: '50%', left: '0', width: '100%', height: '2px', background: 'rgba(255,255,255,0.45)', transform: 'translateY(-50%)' }} />
-
-                    {/* Center Circle & Spot */}
-                    <div style={{ position: 'absolute', top: '50%', left: '50%', width: '130px', height: '130px', border: '2px solid rgba(255,255,255,0.45)', borderRadius: '50%', transform: 'translate(-50%,-50%)' }} />
-                    <div style={{ position: 'absolute', top: '50%', left: '50%', width: '8px', height: '8px', background: 'rgba(255,255,255,0.7)', borderRadius: '50%', transform: 'translate(-50%,-50%)' }} />
-
-                    {/* Top Goal Area (6-yard box) */}
-                    <div style={{ position: 'absolute', top: '0', left: '50%', width: '140px', height: '48px', border: '2px solid rgba(255,255,255,0.45)', borderTop: 'none', transform: 'translateX(-50%)' }} />
-
-                    {/* Top Penalty Area (18-yard box) */}
-                    <div style={{ position: 'absolute', top: '0', left: '50%', width: '320px', height: '130px', border: '2px solid rgba(255,255,255,0.45)', borderTop: 'none', transform: 'translateX(-50%)' }} />
-                    {/* Top Penalty Spot */}
-                    <div style={{ position: 'absolute', top: '96px', left: '50%', width: '6px', height: '6px', background: 'rgba(255,255,255,0.7)', borderRadius: '50%', transform: 'translateX(-50%)' }} />
-                    {/* Top Penalty Arc (D-box) */}
-                    <div style={{ position: 'absolute', top: '90px', left: '50%', width: '80px', height: '45px', border: '2px solid rgba(255,255,255,0.45)', borderTop: 'none', borderRadius: '0 0 50px 50px', transform: 'translateX(-50%)' }} />
-
-                    {/* Bottom Goal Area (6-yard box) */}
-                    <div style={{ position: 'absolute', bottom: '0', left: '50%', width: '140px', height: '48px', border: '2px solid rgba(255,255,255,0.45)', borderBottom: 'none', transform: 'translateX(-50%)' }} />
-
-                    {/* Bottom Penalty Area (18-yard box) */}
-                    <div style={{ position: 'absolute', bottom: '0', left: '50%', width: '320px', height: '130px', border: '2px solid rgba(255,255,255,0.45)', borderBottom: 'none', transform: 'translateX(-50%)' }} />
-                    {/* Bottom Penalty Spot */}
-                    <div style={{ position: 'absolute', bottom: '96px', left: '50%', width: '6px', height: '6px', background: 'rgba(255,255,255,0.7)', borderRadius: '50%', transform: 'translateX(-50%)' }} />
-                    {/* Bottom Penalty Arc (D-box) */}
-                    <div style={{ position: 'absolute', bottom: '90px', left: '50%', width: '80px', height: '45px', border: '2px solid rgba(255,255,255,0.45)', borderBottom: 'none', borderRadius: '50px 50px 0 0', transform: 'translateX(-50%)' }} />
-
-                    {/* Corner Arcs */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '20px', height: '20px', borderRight: '2px solid rgba(255,255,255,0.45)', borderBottom: '2px solid rgba(255,255,255,0.45)', borderRadius: '0 0 20px 0' }} />
-                    <div style={{ position: 'absolute', top: 0, right: 0, width: '20px', height: '20px', borderLeft: '2px solid rgba(255,255,255,0.45)', borderBottom: '2px solid rgba(255,255,255,0.45)', borderRadius: '0 0 0 20px' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, width: '20px', height: '20px', borderRight: '2px solid rgba(255,255,255,0.45)', borderTop: '2px solid rgba(255,255,255,0.45)', borderRadius: '0 20px 0 0' }} />
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px', borderLeft: '2px solid rgba(255,255,255,0.45)', borderTop: '2px solid rgba(255,255,255,0.45)', borderRadius: '20px 0 0 0' }} />
+                    {/* SVG Pitch Markings */}
+                    <SvgPitch />
 
                     {/* Render Formation Slots */}
                     {lineup.map((slot, index) => renderPlayerCard(index))}
                 </div>
+            </div>
+
+            {/* GK Lock Indicator */}
+            <div style={{
+                textAlign: 'center',
+                margin: '10px auto 0',
+                fontSize: '0.72em',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+            }}>
+                <span style={{ color: '#a78bfa' }}>🔒</span> GK position is fixed · Drag outfield players to customize positions
             </div>
         </div>
     );
@@ -1223,11 +1528,27 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const targetSlot = currentSlot !== null ? lineup[currentSlot] : null;
     const targetPos = targetSlot?.position || 'CF';
 
-    // Filter cards for modal
+    // Filter cards for modal — EXCLUDE already-used cards instead of showing them as locked
     const filteredCards = useMemo(() => {
         if (!myCards || myCards.length === 0) return [];
         return myCards.filter(card => {
             if (!card) return false;
+
+            // Exclude cards already placed in the squad
+            const cardId = safeGet(card, 'CardID', 'cardid');
+            const playerId = safeGet(card, 'PlayerID', 'playerid');
+
+            // Don't exclude the card in the current slot (so user can see/re-select it)
+            const currentSlotCard = currentSlot !== null ? lineup[currentSlot]?.card : null;
+            const currentSlotCardId = currentSlotCard ? safeGet(currentSlotCard, 'CardID', 'cardid') : null;
+
+            if (cardId && cardId.toString() !== currentSlotCardId?.toString()) {
+                if (allUsedCardIds.has(cardId.toString())) return false;
+            }
+            if (playerId && cardId?.toString() !== currentSlotCardId?.toString()) {
+                if (allUsedPlayerIds.has(playerId.toString())) return false;
+            }
+
             const name = (safeGet(card, 'PlayerName', 'playername') || '').toLowerCase();
             const pos = (safeGet(card, 'PositionCode', 'positioncode') || '').toUpperCase();
             const matchesQuery = !searchQuery || name.includes(searchQuery.toLowerCase());
@@ -1241,7 +1562,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             if (positionFilter === 'GK') return pos === 'GK';
             return true;
         });
-    }, [myCards, searchQuery, positionFilter, targetPos, safeGet]);
+    }, [myCards, searchQuery, positionFilter, targetPos, safeGet, allUsedCardIds, allUsedPlayerIds, currentSlot, lineup]);
 
     const renderModal = () => (
         <div style={{
@@ -1256,96 +1577,103 @@ export default function SquadBuilder({ currentUser, onBack }) {
             padding: '20px'
         }}>
             <div style={{
-                background: '#0a0f1d',
+                background: 'linear-gradient(180deg, #0c1222 0%, #0a0f1d 100%)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '24px',
+                borderRadius: '20px',
                 width: '100%',
-                maxWidth: '620px',
-                maxHeight: '85vh',
+                maxWidth: '580px',
+                maxHeight: '80vh',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
-                overflow: 'hidden'
+                boxShadow: '0 24px 64px rgba(0,0,0,0.8), 0 0 40px rgba(0, 242, 254, 0.08)',
+                overflow: 'hidden',
+                animation: 'sbModalIn 0.3s ease-out'
             }}>
                 {/* Modal Header */}
                 <div style={{
-                    padding: '24px',
+                    padding: '18px 22px',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    background: 'rgba(0, 242, 254, 0.03)'
                 }}>
                     <div>
-                        <div style={{ fontSize: '0.75em', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        <div style={{ fontSize: '0.68em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             STARTING XI SELECTION
                         </div>
-                        <h3 style={{ margin: '4px 0 0 0', fontSize: '1.4em', fontWeight: '900', color: '#fff' }}>
-                            Select Player for <span style={{ color: getPositionColor(targetPos).color }}>{targetPos}</span>
+                        <h3 style={{ margin: '3px 0 0 0', fontSize: '1.25em', fontWeight: '900', color: '#fff' }}>
+                            Select for <span style={{ color: getPositionColor(targetPos).color }}>{targetPos}</span>
                         </h3>
                     </div>
                     <button
                         onClick={() => { setModalOpen(false); setSearchQuery(''); }}
                         style={{
-                            width: '32px',
-                            height: '32px',
+                            width: '30px',
+                            height: '30px',
                             borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.08)',
-                            color: '#fff',
-                            border: 'none',
+                            background: 'rgba(255,255,255,0.06)',
+                            color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '1em',
-                            fontWeight: '900'
+                            fontSize: '0.9em',
+                            fontWeight: '900',
+                            transition: 'all 0.2s'
                         }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,77,0.2)'; e.currentTarget.style.color = '#ff4d4d'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
                     >
                         ✕
                     </button>
                 </div>
 
                 {/* Modal Search & Filter Toolbar */}
-                <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ padding: '14px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search players by name..."
+                        placeholder="🔍 Search players by name..."
                         style={{
                             width: '100%',
                             background: 'rgba(15, 23, 42, 0.8)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '10px',
-                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            padding: '9px 12px',
                             color: '#fff',
-                            fontSize: '0.9em',
+                            fontSize: '0.88em',
                             outline: 'none',
-                            marginBottom: '12px',
-                            boxSizing: 'border-box'
+                            marginBottom: '10px',
+                            boxSizing: 'border-box',
+                            fontFamily: "'Outfit', sans-serif"
                         }}
                     />
 
                     {/* Position Filter Pills */}
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                         {[
-                            { id: 'all', label: 'All Cards' },
-                            { id: 'exact', label: `Exact (${targetPos})` },
-                            { id: 'FWD', label: 'Forwards' },
-                            { id: 'MID', label: 'Midfielders' },
-                            { id: 'DEF', label: 'Defenders' },
-                            { id: 'GK', label: 'Goalkeepers' }
+                            { id: 'all', label: 'All' },
+                            { id: 'exact', label: targetPos },
+                            { id: 'FWD', label: 'FWD' },
+                            { id: 'MID', label: 'MID' },
+                            { id: 'DEF', label: 'DEF' },
+                            { id: 'GK', label: 'GK' }
                         ].map(f => (
                             <button
                                 key={f.id}
                                 onClick={() => setPositionFilter(f.id)}
                                 style={{
-                                    background: positionFilter === f.id ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.04)',
-                                    color: positionFilter === f.id ? '#00f2fe' : '#94a3b8',
-                                    border: `1px solid ${positionFilter === f.id ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                    background: positionFilter === f.id ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.03)',
+                                    color: positionFilter === f.id ? '#00f2fe' : '#64748b',
+                                    border: `1px solid ${positionFilter === f.id ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255,255,255,0.06)'}`,
                                     borderRadius: '6px',
-                                    padding: '4px 10px',
-                                    fontSize: '0.75em',
+                                    padding: '3px 10px',
+                                    fontSize: '0.72em',
                                     fontWeight: '800',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
                                 }}
                             >
                                 {f.label}
@@ -1355,11 +1683,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 </div>
 
                 {/* Cards List */}
-                <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ padding: '12px 22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {filteredCards.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                            <div style={{ fontSize: '2em', marginBottom: '8px' }}>🔍</div>
-                            No matching players found for this criteria.
+                        <div style={{ textAlign: 'center', padding: '36px 20px', color: '#475569' }}>
+                            <div style={{ fontSize: '2em', marginBottom: '8px', opacity: 0.5 }}>🔍</div>
+                            <div style={{ fontWeight: '700' }}>No available players found</div>
+                            <div style={{ fontSize: '0.82em', marginTop: '4px' }}>All matching cards are already in your XI</div>
                         </div>
                     ) : (
                         filteredCards.map(c => {
@@ -1367,17 +1696,9 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             const cardPos = (safeGet(c, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
                             const rating = parseInt(safeGet(c, 'CurrentOverallRating', 'currentoverallrating') || 0);
                             const cardId = safeGet(c, 'CardID', 'cardid');
-                            const playerId = safeGet(c, 'PlayerID', 'playerid');
                             const clubName = safeGet(c, 'ClubName', 'clubname') || 'Free Agent';
                             const cardType = c.cardtype || c.CardType || 'Standard';
                             const tier = getCardTierColor(cardType);
-
-                            const isCardUsed = cardId ? usedCardMap.has(cardId.toString()) : false;
-                            const isPlayerUsed = playerId ? usedPlayerMap.has(playerId.toString()) : false;
-                            const isAlreadyUsed = isCardUsed || isPlayerUsed;
-                            const deployedSlot = isCardUsed 
-                                ? usedCardMap.get(cardId.toString()) 
-                                : (isPlayerUsed ? usedPlayerMap.get(playerId.toString()) : null);
 
                             const penalty = targetPos ? getPositionPenalty(cardPos, targetPos) : 0;
                             const effectiveRating = Math.max(40, rating - penalty);
@@ -1386,119 +1707,91 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             return (
                                 <div
                                     key={cardId}
-                                    onClick={isAlreadyUsed ? undefined : () => handleAddPlayer(c)}
+                                    onClick={() => handleAddPlayer(c)}
                                     style={{
-                                        background: isAlreadyUsed ? 'rgba(255,255,255,0.015)' : 'rgba(255,255,255,0.03)',
-                                        border: isAlreadyUsed 
-                                            ? '1px dashed rgba(255, 255, 255, 0.12)' 
-                                            : isExact 
-                                            ? '1px solid rgba(0, 255, 135, 0.3)' 
-                                            : '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '12px',
-                                        padding: '12px 16px',
+                                        background: 'rgba(255,255,255,0.025)',
+                                        border: isExact
+                                            ? '1px solid rgba(0, 255, 135, 0.25)'
+                                            : '1px solid rgba(255,255,255,0.06)',
+                                        borderLeft: `3px solid ${tier.accent}`,
+                                        borderRadius: '10px',
+                                        padding: '10px 14px',
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        cursor: isAlreadyUsed ? 'not-allowed' : 'pointer',
-                                        opacity: isAlreadyUsed ? 0.5 : 1,
-                                        filter: isAlreadyUsed ? 'grayscale(0.65)' : 'none',
+                                        cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        position: 'relative'
+                                        animation: 'sbSlideIn 0.3s ease-out'
                                     }}
                                     onMouseEnter={e => {
-                                        if (!isAlreadyUsed) {
-                                            e.currentTarget.style.background = 'rgba(0, 242, 254, 0.08)';
-                                            e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.4)';
-                                        }
+                                        e.currentTarget.style.background = 'rgba(0, 242, 254, 0.06)';
+                                        e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+                                        e.currentTarget.style.borderLeftColor = tier.accent;
                                     }}
                                     onMouseLeave={e => {
-                                        if (!isAlreadyUsed) {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                            e.currentTarget.style.borderColor = isExact ? 'rgba(0, 255, 135, 0.3)' : 'rgba(255,255,255,0.08)';
-                                        }
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.025)';
+                                        e.currentTarget.style.borderColor = isExact ? 'rgba(0, 255, 135, 0.25)' : 'rgba(255,255,255,0.06)';
+                                        e.currentTarget.style.borderLeftColor = tier.accent;
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                                         {/* Card Type Pill */}
                                         <span style={{
-                                            fontSize: '0.65em',
+                                            fontSize: '0.6em',
                                             fontWeight: '800',
                                             color: tier.accent,
                                             border: `1px solid ${tier.border}`,
-                                            padding: '2px 6px',
-                                            borderRadius: '4px',
-                                            textTransform: 'uppercase'
+                                            padding: '2px 5px',
+                                            borderRadius: '3px',
+                                            textTransform: 'uppercase',
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0
                                         }}>
                                             {cardType}
                                         </span>
 
-                                        {isAlreadyUsed && (
-                                            <span style={{
-                                                fontSize: '0.65em',
-                                                fontWeight: '900',
-                                                color: '#ffd166',
-                                                background: 'rgba(255, 209, 102, 0.15)',
-                                                border: '1px solid rgba(255, 209, 102, 0.35)',
-                                                padding: '2px 8px',
-                                                borderRadius: '4px',
-                                                letterSpacing: '0.5px'
-                                            }}>
-                                                🔒 IN SQUAD ({deployedSlot})
-                                            </span>
-                                        )}
-
-                                        <div>
-                                            <div style={{ fontWeight: '800', color: '#fff', fontSize: '1em' }}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontWeight: '800', color: '#fff', fontSize: '0.92em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {playerName}
                                             </div>
-                                            <div style={{ fontSize: '0.78em', color: '#94a3b8', marginTop: '2px' }}>
-                                                Natural: <strong style={{ color: '#fff' }}>{cardPos}</strong> • {clubName}
+                                            <div style={{ fontSize: '0.72em', color: '#64748b', marginTop: '1px' }}>
+                                                <strong style={{ color: '#94a3b8' }}>{cardPos}</strong> · {clubName}
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Ratings & Synergy */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{
-                                                fontSize: '1.25em',
+                                                fontSize: '1.15em',
                                                 fontWeight: '900',
                                                 color: penalty > 0 ? '#ff6b6b' : '#00FF87'
                                             }}>
-                                                {effectiveRating} <span style={{ fontSize: '0.65em', color: '#94a3b8' }}>OVR</span>
+                                                {effectiveRating}
                                             </div>
-                                            <div style={{ fontSize: '0.72em', fontWeight: '800', color: penalty > 0 ? '#ff6b6b' : '#00FF87' }}>
-                                                {penalty > 0 ? `-${penalty} Pos Penalty` : '✨ 100% Synergy'}
+                                            <div style={{ fontSize: '0.62em', fontWeight: '800', color: penalty > 0 ? '#ff6b6b' : '#00FF87' }}>
+                                                {penalty > 0 ? `-${penalty}` : '✨ SYNC'}
                                             </div>
                                         </div>
 
-                                        {isAlreadyUsed ? (
-                                            <div style={{
-                                                padding: '8px 12px',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                color: '#94a3b8',
-                                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                                borderRadius: '8px',
-                                                fontWeight: '800',
-                                                fontSize: '0.75em',
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                🔒 In XI ({deployedSlot})
-                                            </div>
-                                        ) : (
-                                            <button style={{
-                                                padding: '8px 14px',
-                                                background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
-                                                color: '#000',
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                fontWeight: '900',
-                                                fontSize: '0.8em',
-                                                cursor: 'pointer'
-                                            }}>
-                                                Select
-                                            </button>
-                                        )}
+                                        <button style={{
+                                            padding: '6px 12px',
+                                            background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                                            color: '#000',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            fontWeight: '900',
+                                            fontSize: '0.72em',
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'opacity 0.15s'
+                                        }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                        >
+                                            Select
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -1516,175 +1809,161 @@ export default function SquadBuilder({ currentUser, onBack }) {
         <div style={{
             maxWidth: '1280px',
             margin: '0 auto',
-            padding: '20px 20px 80px',
+            padding: '16px 20px 60px',
             fontFamily: "'Outfit', 'Space Grotesk', system-ui, sans-serif",
             color: '#e2e8f0',
             position: 'relative'
         }}>
-            {/* Unified Top Navigation Header (Single Clean Back Button) */}
+            <AnimationStyles />
+
+            {/* Unified Top Navigation Header */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '32px',
+                marginBottom: '24px',
                 flexWrap: 'wrap',
-                gap: '16px'
+                gap: '12px'
             }}>
                 <button
-                    onClick={onBack}
+                    onClick={() => {
+                        if (view === 'builder') {
+                            if (window.history.length > 1 && window.location.pathname.toLowerCase().includes('/squad-builder/')) {
+                                window.history.back();
+                            } else {
+                                setView('list');
+                                window.history.replaceState({ squadView: 'list' }, '', '/squad-builder');
+                            }
+                        } else {
+                            onBack();
+                        }
+                    }}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#e2e8f0',
+                        gap: '6px',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#94a3b8',
                         borderRadius: '999px',
-                        padding: '10px 22px',
-                        fontSize: '0.9em',
+                        padding: '8px 18px',
+                        fontSize: '0.85em',
                         fontWeight: '700',
                         cursor: 'pointer',
                         transition: 'all 0.25s ease'
                     }}
-                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(0,242,254,0.12)'; e.currentTarget.style.borderColor = '#00f2fe'; e.currentTarget.style.color = '#00f2fe'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#e2e8f0'; }}
+                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(0,242,254,0.1)'; e.currentTarget.style.borderColor = 'rgba(0,242,254,0.4)'; e.currentTarget.style.color = '#00f2fe'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
                 >
-                    ← Return to Home Hub
+                    {view === 'builder' ? '← Tactical Roster' : '← Home'}
                 </button>
 
                 {/* Tab Pill Buttons */}
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button
-                        onClick={() => setView('list')}
+                        onClick={() => {
+                            if (view === 'builder') {
+                                if (window.history.length > 1 && window.location.pathname.toLowerCase().includes('/squad-builder/')) {
+                                    window.history.back();
+                                } else {
+                                    setView('list');
+                                    window.history.replaceState({ squadView: 'list' }, '', '/squad-builder');
+                                }
+                            } else {
+                                setView('list');
+                            }
+                        }}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            background: view === 'list' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.04)',
-                            color: view === 'list' ? '#00f2fe' : '#94a3b8',
-                            border: `1px solid ${view === 'list' ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                            padding: '10px 20px',
-                            borderRadius: '12px',
+                            gap: '5px',
+                            background: view === 'list' ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255,255,255,0.03)',
+                            color: view === 'list' ? '#00f2fe' : '#64748b',
+                            border: `1px solid ${view === 'list' ? 'rgba(0, 242, 254, 0.35)' : 'rgba(255,255,255,0.08)'}`,
+                            padding: '8px 16px',
+                            borderRadius: '10px',
                             fontWeight: '800',
-                            fontSize: '0.9em',
+                            fontSize: '0.82em',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
                     >
-                        📋 My Saved Squads ({mySquads.length})
+                        📋 Squads ({mySquads.length})
                     </button>
                     <button
                         onClick={startNewSquad}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            background: view === 'builder' ? 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)' : 'rgba(255,255,255,0.04)',
-                            color: view === 'builder' ? '#000' : '#e2e8f0',
-                            border: view === 'builder' ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                            padding: '10px 20px',
-                            borderRadius: '12px',
+                            gap: '5px',
+                            background: view === 'builder' ? 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)' : 'rgba(255,255,255,0.03)',
+                            color: view === 'builder' ? '#000' : '#94a3b8',
+                            border: view === 'builder' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                            padding: '8px 16px',
+                            borderRadius: '10px',
                             fontWeight: '800',
-                            fontSize: '0.9em',
+                            fontSize: '0.82em',
                             cursor: 'pointer',
-                            boxShadow: view === 'builder' ? '0 0 20px rgba(0, 242, 254, 0.35)' : 'none',
+                            boxShadow: view === 'builder' ? '0 0 16px rgba(0, 242, 254, 0.3)' : 'none',
                             transition: 'all 0.2s'
                         }}
                     >
-                        ➕ New Starting XI
+                        ➕ New XI
                     </button>
                 </div>
-            </div>
-
-            {/* Page Title */}
-            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-                <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    background: 'rgba(0,242,254,0.08)',
-                    border: '1px solid rgba(0,242,254,0.25)',
-                    borderRadius: '999px',
-                    padding: '6px 18px',
-                    fontSize: '0.8em',
-                    fontWeight: '800',
-                    color: '#00f2fe',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    marginBottom: '12px'
-                }}>
-                    🏟️ TACTICAL MASTERPIECE STUDIO
-                </div>
-                <h1 style={{
-                    fontSize: 'clamp(2.2em, 4vw, 3.2em)',
-                    fontWeight: '900',
-                    margin: '0 0 8px 0',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #d8e8f8 50%, #00f2fe 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.5px'
-                }}>
-                    {view === 'list' ? 'Your Tactical Roster' : editingSquadId ? 'Edit Tactical Squad' : 'Build Custom Starting XI'}
-                </h1>
-                <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
-                    {view === 'list'
-                        ? 'Manage, edit, and optimize your saved custom matchday squads'
-                        : 'Deploy 11 starters onto the pitch, assign manager playstyles, and eliminate position penalties'}
-                </p>
             </div>
 
             {/* In-App Floating Toast Notification Popup */}
             {notification && (
                 <div style={{
                     position: 'fixed',
-                    top: '28px',
+                    top: '24px',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     zIndex: 9999,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '14px 24px',
-                    borderRadius: '16px',
+                    gap: '10px',
+                    padding: '12px 20px',
+                    borderRadius: '14px',
                     backdropFilter: 'blur(20px)',
                     background: notification.type === 'success'
                         ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(2, 44, 34, 0.95) 100%)'
                         : notification.type === 'error'
-                        ? 'linear-gradient(135deg, rgba(127, 29, 29, 0.95) 0%, rgba(69, 10, 10, 0.95) 100%)'
-                        : notification.type === 'info'
-                        ? 'linear-gradient(135deg, rgba(30, 58, 138, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                        : 'linear-gradient(135deg, rgba(120, 53, 15, 0.95) 0%, rgba(69, 26, 3, 0.95) 100%)',
-                    border: `1.5px solid ${
-                        notification.type === 'success'
+                            ? 'linear-gradient(135deg, rgba(127, 29, 29, 0.95) 0%, rgba(69, 10, 10, 0.95) 100%)'
+                            : notification.type === 'info'
+                                ? 'linear-gradient(135deg, rgba(30, 58, 138, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                                : 'linear-gradient(135deg, rgba(120, 53, 15, 0.95) 0%, rgba(69, 26, 3, 0.95) 100%)',
+                    border: `1.5px solid ${notification.type === 'success'
                             ? '#00FF87'
                             : notification.type === 'error'
-                            ? '#ef4444'
-                            : notification.type === 'info'
-                            ? '#00f2fe'
-                            : '#ffd166'
-                    }`,
-                    boxShadow: `0 16px 40px rgba(0,0,0,0.6), 0 0 28px ${
-                        notification.type === 'success'
-                            ? 'rgba(0, 255, 135, 0.4)'
+                                ? '#ef4444'
+                                : notification.type === 'info'
+                                    ? '#00f2fe'
+                                    : '#ffd166'
+                        }`,
+                    boxShadow: `0 12px 32px rgba(0,0,0,0.5), 0 0 20px ${notification.type === 'success'
+                            ? 'rgba(0, 255, 135, 0.3)'
                             : notification.type === 'error'
-                            ? 'rgba(239, 68, 68, 0.4)'
-                            : notification.type === 'info'
-                            ? 'rgba(0, 242, 254, 0.4)'
-                            : 'rgba(255, 209, 102, 0.4)'
-                    }`,
+                                ? 'rgba(239, 68, 68, 0.3)'
+                                : notification.type === 'info'
+                                    ? 'rgba(0, 242, 254, 0.3)'
+                                    : 'rgba(255, 209, 102, 0.3)'
+                        }`,
                     color: '#fff',
-                    fontSize: '0.95em',
+                    fontSize: '0.88em',
                     fontWeight: '700',
-                    maxWidth: '90vw'
+                    maxWidth: '85vw',
+                    animation: 'sbToastIn 0.35s ease-out'
                 }}>
-                    <span style={{ fontSize: '1.25em' }}>
+                    <span style={{ fontSize: '1.15em' }}>
                         {notification.type === 'success'
                             ? '✅'
                             : notification.type === 'error'
-                            ? '❌'
-                            : notification.type === 'info'
-                            ? 'ℹ️'
-                            : '⚠️'}
+                                ? '❌'
+                                : notification.type === 'info'
+                                    ? 'ℹ️'
+                                    : '⚠️'}
                     </span>
                     <span>{notification.message}</span>
                     <button
@@ -1692,12 +1971,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         style={{
                             background: 'none',
                             border: 'none',
-                            color: 'rgba(255,255,255,0.7)',
+                            color: 'rgba(255,255,255,0.6)',
                             cursor: 'pointer',
-                            fontSize: '1em',
+                            fontSize: '0.9em',
                             fontWeight: '900',
-                            padding: '0 0 0 10px',
-                            marginLeft: '8px'
+                            padding: '0 0 0 8px',
+                            marginLeft: '4px'
                         }}
                     >
                         ✕

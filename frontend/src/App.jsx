@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import AdminPanel from './AdminPanel'
 import PlayerCardView from './PlayerCardView';
@@ -25,7 +25,14 @@ function App() {
     const [view, setView] = useState('login')
     const [formData, setFormData] = useState({ username: '', email: '', password: '', role: 'USER' })
     const [message, setMessage] = useState("")
-    const [user, setUser] = useState(null)
+    const [user, setUser] = useState(() => {
+        try {
+            const saved = localStorage.getItem('user');
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            return null;
+        }
+    });
 
     // --- AUTH MODAL STATE ---
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -121,6 +128,18 @@ function App() {
             console.error("Error fetching most liked builds:", err);
         }
     };
+
+    // Automatically fetch statistics when statMode changes (e.g. from routing, back/forward, direct link)
+    useEffect(() => {
+        if (!statMode) return;
+        if (statMode === 'top-rated') fetchStats();
+        else if (statMode === 'top-scorers') fetchTopScorers();
+        else if (statMode === 'injury-prone') fetchInjuryStats();
+        else if (statMode === 'consistent') fetchConsistencyStats();
+        else if (statMode === 'recent-forms') fetchRecentForms();
+        else if (statMode === 'market-value') fetchMarketStats();
+        else if (statMode === 'liked-builds') fetchMostLikedBuilds();
+    }, [statMode]);
 
     // Load the non-sensitive UI data (name, role) on page refresh
     useEffect(() => {
@@ -286,41 +305,147 @@ function App() {
         }
     }, [user, cardFilter, cardSort]);
 
-    // --- CLEAN MOUNT (START AT HOME DASHBOARD) ---
-    useEffect(() => {
-        sessionStorage.removeItem('activeCardId');
-        if (window.location.hash) {
-            window.location.hash = '';
+    // ============================================
+    // CENTRAL ROUTER & BROWSER HISTORY ENGINE
+    // ============================================
+    const navigate = useCallback((path, replace = false) => {
+        if (!path) return;
+        const currentPath = window.location.pathname;
+        if (currentPath !== path) {
+            if (replace) {
+                window.history.replaceState({ path }, '', path);
+            } else {
+                window.history.pushState({ path }, '', path);
+            }
         }
     }, []);
 
-    // --- BROWSER HISTORY & BACK BUTTON POPSTATE INTEGRATION ---
-    const pushStateNav = () => {
-        try {
-            window.history.pushState({ modal: true }, '');
-        } catch (e) {
-            console.warn("History push failed:", e);
-        }
-    };
+    const applyRoute = useCallback(async (pathname) => {
+        const path = (pathname || window.location.pathname || '/').toLowerCase();
 
+        // 1. Squad Builder (/squad-builder, /squad-builder/pitch, /squad-builder/edit/:id)
+        if (path === '/squad-builder' || path.startsWith('/squad-builder/')) {
+            const savedUser = localStorage.getItem('user');
+            if (!savedUser) {
+                setAuthModalPrompt("Please sign in to build and save custom tactical squads.");
+                setShowAuthModal(true);
+                setShowSquadBuilder(false);
+                setUserTab('cards');
+                window.history.replaceState({ path: '/' }, '', '/');
+                return;
+            }
+            setSelectedCard(null);
+            setSelectedManager(null);
+            setTrainingCard(null);
+            setStatMode(null);
+            setShowSquadBuilder(true);
+            return;
+        }
+
+        // 2. Player Card View (/card/:id or /card/:id/compare/:otherId)
+        if (path.startsWith('/card/')) {
+            const cardId = path.split('/card/')[1]?.split('/')[0];
+            if (cardId) {
+                setShowSquadBuilder(false);
+                setSelectedManager(null);
+                setTrainingCard(null);
+                setStatMode(null);
+                try {
+                    const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardId}`);
+                    setSelectedCard(res.data);
+                } catch (err) {
+                    console.error("Error loading card route:", err);
+                }
+            }
+            return;
+        }
+
+        // 3. Manager Detail View (/manager/:id)
+        if (path.startsWith('/manager/')) {
+            const mgrId = path.split('/manager/')[1]?.split('/')[0];
+            if (mgrId) {
+                setShowSquadBuilder(false);
+                setSelectedCard(null);
+                setTrainingCard(null);
+                setStatMode(null);
+                try {
+                    const res = await axios.get('http://localhost:5001/api/managers/list');
+                    const found = res.data.find(m => String(m.managerid) === String(mgrId));
+                    if (found) {
+                        setSelectedManager(found);
+                    }
+                } catch (err) {
+                    console.error("Error loading manager route:", err);
+                }
+            }
+            return;
+        }
+
+        // 4. Card Trainer (/train/:id)
+        if (path.startsWith('/train/')) {
+            const cardId = path.split('/train/')[1]?.split('/')[0];
+            if (cardId) {
+                setShowSquadBuilder(false);
+                setSelectedManager(null);
+                setStatMode(null);
+                try {
+                    const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardId}`);
+                    setTrainingCard(res.data);
+                } catch (err) {
+                    console.error("Error loading training route:", err);
+                }
+            }
+            return;
+        }
+
+        // 5. Tactical Managers tab (/managers)
+        if (path === '/managers') {
+            setShowSquadBuilder(false);
+            setSelectedCard(null);
+            setSelectedManager(null);
+            setTrainingCard(null);
+            setStatMode(null);
+            setUserTab('managers');
+            return;
+        }
+
+        // 6. Admin Panel (/admin or /admin/:tab)
+        if (path.startsWith('/admin')) {
+            setShowSquadBuilder(false);
+            setSelectedCard(null);
+            setSelectedManager(null);
+            setTrainingCard(null);
+            setStatMode(null);
+            return;
+        }
+
+        // 8. Default / Home / Cards Gallery (/ or /cards)
+        setShowSquadBuilder(false);
+        setSelectedCard(null);
+        setSelectedManager(null);
+        setTrainingCard(null);
+        setStatMode(null);
+        setUserTab('cards');
+    }, []);
+
+    // PopState listener for Browser Back / Forward buttons
     useEffect(() => {
         const handlePopState = () => {
-            if (trainingCard) {
-                setTrainingCard(null);
-            } else if (selectedCard) {
-                setSelectedCard(null);
-            } else if (selectedManager) {
-                setSelectedManager(null);
-            } else if (statMode) {
-                setStatMode(null);
-            } else if (showSquadBuilder) {
-                setShowSquadBuilder(false);
-            }
+            applyRoute(window.location.pathname);
         };
-
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [trainingCard, selectedCard, selectedManager, statMode, showSquadBuilder]);
+    }, [applyRoute]);
+
+    // Initial mount routing
+    useEffect(() => {
+        const initialPath = window.location.pathname;
+        if (initialPath && initialPath !== '/') {
+            applyRoute(initialPath);
+        } else {
+            window.history.replaceState({ path: '/' }, '', '/');
+        }
+    }, [applyRoute]);
 
     const handleCardClick = async (cardId) => {
         if (!cardId || cardId === 'null' || cardId === 'undefined') {
@@ -330,10 +455,38 @@ function App() {
         try {
             const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardId}`);
             setSelectedCard(res.data);
-            pushStateNav();
+            navigate(`/card/${cardId}`);
         } catch (err) {
             console.error("Error loading card details", err);
         }
+    };
+
+    const handleManagerClick = (mgr) => {
+        if (!mgr || !mgr.managerid) return;
+        setSelectedManager(mgr);
+        navigate(`/manager/${mgr.managerid}`);
+    };
+
+    const handleOpenSquadBuilder = () => {
+        if (!user) {
+            setAuthModalPrompt("Please sign in to build and save custom tactical squads.");
+            setShowAuthModal(true);
+            return;
+        }
+        setShowSquadBuilder(true);
+        navigate('/squad-builder');
+    };
+
+    const handleTabChange = (tab) => {
+        setUserTab(tab);
+        setStatMode(null);
+        if (tab === 'cards') navigate('/cards');
+        else if (tab === 'managers') navigate('/managers');
+    };
+
+    const handleStatSelect = (mode) => {
+        setStatMode(mode);
+        navigate(`/stats/${mode}`);
     };
 
     const handleGoHome = () => {
@@ -343,10 +496,7 @@ function App() {
         setShowSquadBuilder(false);
         setStatMode(null);
         setUserTab('cards');
-        sessionStorage.removeItem('activeCardId');
-        if (window.location.hash) {
-            window.location.hash = '';
-        }
+        navigate('/');
     };
 
 
@@ -799,12 +949,6 @@ function App() {
     }
     .player-card:hover::before { left: 200%; }
 
-    .record-btn {
-        width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);
-        cursor: pointer; font-weight: 600; text-align: left; transition: all 0.2s ease;
-        display: flex; align-items: center; gap: 10px;
-    }
-    .record-btn:hover { transform: translateX(5px); background: rgba(255,255,255,0.08) !important; }
 
     .modern-table { width: 100%; border-collapse: collapse; text-align: left; }
     .modern-table th { padding: 18px 15px; color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.8em; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -833,18 +977,6 @@ function App() {
     .animate-fadeinup { animation: fadeInUp 0.6s ease both; }
     .animate-fadein   { animation: fadeIn 0.4s ease both; }
   `;
-
-    // ==========================================
-    // RENDER: WELCOME / DASHBOARD SCREENS
-    // ==========================================
-    // ==========================================
-    // RENDER: WELCOME / DASHBOARD SCREENS
-    // ==========================================
-    if (showSquadBuilder && !user) {
-        setShowSquadBuilder(false);
-        setAuthModalPrompt("Please sign in to build and save custom tactical squads.");
-        setShowAuthModal(true);
-    }
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%', position: 'relative' }}>
@@ -882,25 +1014,49 @@ function App() {
             {/* --- MAIN CONTENT AREA (FULL WIDTH PADDING) --- */}
             <div style={{ flex: 1, padding: '40px 5vw', width: '100%' }}>
                 {showSquadBuilder ? (
-                    <SquadBuilder currentUser={user} onBack={() => setShowSquadBuilder(false)} />
+                    <SquadBuilder
+                        currentUser={user}
+                        onBack={() => {
+                            if (window.history.length > 1) window.history.back();
+                            else handleGoHome();
+                        }}
+                    />
                 ) : trainingCard ? (
                     <CardTrainer
                         card={trainingCard}
-                        onBack={() => setTrainingCard(null)}
+                        onBack={() => {
+                            if (window.history.length > 1) window.history.back();
+                            else handleGoHome();
+                        }}
                         onComplete={() => {
                             setTrainingCard(null);
                             axios.get('http://localhost:5001/api/players/list-cards').then(res => setAllCards(res.data));
+                            if (window.history.length > 1) window.history.back();
+                            else handleGoHome();
                         }}
                     />
                 ) : selectedCard ? (
                     <PlayerCardView
                         data={selectedCard}
-                        onBack={() => setSelectedCard(null)}
+                        onBack={() => {
+                            if (window.history.length > 1) window.history.back();
+                            else handleGoHome();
+                        }}
                         onSelectCard={handleCardClick}
-                        onTrain={(cardData) => { setTrainingCard(cardData); pushStateNav(); }}
+                        onTrain={(cardData) => {
+                            setTrainingCard(cardData);
+                            const id = cardData.cardid || cardData.CardID;
+                            navigate(`/train/${id}`);
+                        }}
                     />
                 ) : selectedManager ? (
-                    <ManagerDetailView data={selectedManager} onBack={() => setSelectedManager(null)} />
+                    <ManagerDetailView
+                        data={selectedManager}
+                        onBack={() => {
+                            if (window.history.length > 1) window.history.back();
+                            else handleGoHome();
+                        }}
+                    />
                 ) : (
                     <>
                         {user?.role === 'ADMIN' && (
@@ -928,17 +1084,10 @@ function App() {
                                     </p>
 
                                     <div className="hero-ctas">
-                                        <button className="glowing-btn" style={{ fontSize: '1em', padding: '16px 36px', borderRadius: '14px' }} onClick={() => setUserTab('cards')}>
+                                        <button className="glowing-btn" style={{ fontSize: '1em', padding: '16px 36px', borderRadius: '14px' }} onClick={() => handleTabChange('cards')}>
                                             🃏 Browse All Cards
                                         </button>
-                                        <button className="glowing-btn-ghost" onClick={() => {
-                                            if (!user) {
-                                                setAuthModalPrompt("Please sign in to build and save custom tactical squads.");
-                                                setShowAuthModal(true);
-                                                return;
-                                            }
-                                            setShowSquadBuilder(true);
-                                        }}>
+                                        <button className="glowing-btn-ghost" onClick={handleOpenSquadBuilder}>
                                             ⚡ Build Your Squad
                                         </button>
                                     </div>
@@ -966,9 +1115,8 @@ function App() {
 
                                 {/* ===================== PILL NAVIGATION ===================== */}
                                 <div style={{ display: 'flex', gap: '12px', margin: '48px 0 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', flexWrap: 'wrap' }}>
-                                    <button className={`nav-pill ${userTab === 'cards' ? 'active' : 'inactive'}`} onClick={() => setUserTab('cards')}>Player Database</button>
-                                    <button className={`nav-pill ${userTab === 'managers' ? 'active' : 'inactive'}`} onClick={() => setUserTab('managers')}>Manager Registry</button>
-                                    <button className={`nav-pill ${userTab === 'records' ? 'active' : 'inactive'}`} onClick={() => { setUserTab('records'); setStatMode(null); }}>Statistical Records</button>
+                                    <button className={`nav-pill ${userTab === 'cards' ? 'active' : 'inactive'}`} onClick={() => handleTabChange('cards')}>Player Database</button>
+                                    <button className={`nav-pill ${userTab === 'managers' ? 'active' : 'inactive'}`} onClick={() => handleTabChange('managers')}>Manager Registry</button>
                                 </div>
 
                                 {/* ===================== TAB CONTENT: CARDS ===================== */}
@@ -1195,7 +1343,7 @@ function App() {
                                                     const boostsList = parseBoosts(mgr.boosts_display);
 
                                                     return (
-                                                        <div key={mgr.managerid} onClick={() => setSelectedManager(mgr)} className="glass-panel player-card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', background: '#121620', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
+                                                        <div key={mgr.managerid} onClick={() => handleManagerClick(mgr)} className="glass-panel player-card" style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', background: '#121620', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', transition: 'all 0.3s ease' }}>
                                                             {/* Header Row */}
                                                             <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
                                                                 {/* Manager Portrait with overlay badges */}
@@ -1280,213 +1428,6 @@ function App() {
                                                 })}
                                                 {allManagers.length === 0 && <p style={{ color: '#94a3b8', gridColumn: '1/-1' }}>No tactical managers found in the SQL registry.</p>}
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* TAB CONTENT: RECORDS */}
-                                {userTab === 'records' && (
-                                    <div style={{ display: 'flex', gap: '30px', animation: 'fadeIn 0.4s ease', alignItems: 'flex-start', width: '100%' }}>
-
-                                        {/* RECORDS SIDEBAR */}
-                                        <div className="glass-panel" style={{ width: '280px', padding: '20px', flexShrink: 0, position: 'sticky', top: '100px' }}>
-                                            <h4 style={{ color: '#94a3b8', margin: '0 0 20px 0', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px' }}>Data Categories</h4>
-
-                                            <button className="record-btn" onClick={() => { setStatMode('top-rated'); fetchStats(); }} style={{ background: statMode === 'top-rated' ? 'rgba(0, 242, 254, 0.1)' : 'transparent', color: statMode === 'top-rated' ? '#00f2fe' : '#e2e8f0', borderColor: statMode === 'top-rated' ? '#00f2fe' : 'rgba(255,255,255,0.05)' }}>
-                                                ⭐ Top 10 Rated
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('top-scorers'); fetchTopScorers(); }} style={{ background: statMode === 'top-scorers' ? 'rgba(74, 222, 128, 0.1)' : 'transparent', color: statMode === 'top-scorers' ? '#4ade80' : '#e2e8f0', borderColor: statMode === 'top-scorers' ? '#4ade80' : 'rgba(255,255,255,0.05)' }}>
-                                                ⚽ Goalscorers (GPG)
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('injury-prone'); fetchInjuryStats(); }} style={{ background: statMode === 'injury-prone' ? 'rgba(248, 113, 113, 0.1)' : 'transparent', color: statMode === 'injury-prone' ? '#f87171' : '#e2e8f0', borderColor: statMode === 'injury-prone' ? '#f87171' : 'rgba(255,255,255,0.05)' }}>
-                                                🏥 Medical Reports
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('consistent'); fetchConsistencyStats(); }} style={{ background: statMode === 'consistent' ? 'rgba(96, 165, 250, 0.1)' : 'transparent', color: statMode === 'consistent' ? '#60a5fa' : '#e2e8f0', borderColor: statMode === 'consistent' ? '#60a5fa' : 'rgba(255,255,255,0.05)' }}>
-                                                📈 Consistency Kings
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('recent-forms'); fetchRecentForms(); }} style={{ background: statMode === 'recent-forms' ? 'rgba(250, 204, 21, 0.1)' : 'transparent', color: statMode === 'recent-forms' ? '#facc15' : '#e2e8f0', borderColor: statMode === 'recent-forms' ? '#facc15' : 'rgba(255,255,255,0.05)' }}>
-                                                🔥 Live Hot Form
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('market-value'); fetchMarketStats(); }} style={{ background: statMode === 'market-value' ? 'rgba(232, 121, 249, 0.1)' : 'transparent', color: statMode === 'market-value' ? '#e879f9' : '#e2e8f0', borderColor: statMode === 'market-value' ? '#e879f9' : 'rgba(255,255,255,0.05)' }}>
-                                                💎 Market Value
-                                            </button>
-                                            <button className="record-btn" onClick={() => { setStatMode('liked-builds'); fetchMostLikedBuilds(); }} style={{ background: statMode === 'liked-builds' ? 'rgba(167, 139, 250, 0.1)' : 'transparent', color: statMode === 'liked-builds' ? '#a78bfa' : '#e2e8f0', borderColor: statMode === 'liked-builds' ? '#a78bfa' : 'rgba(255,255,255,0.05)' }}>
-                                                🏆 Favored Builds
-                                            </button>
-                                        </div>
-
-                                        {/* RECORDS TABLE DISPLAY */}
-                                        <div className="glass-panel" style={{ flex: 1, padding: '40px', minHeight: '600px', width: '100%' }}>
-                                            {statMode && (
-                                                <button
-                                                    onClick={() => setStatMode(null)}
-                                                    style={{
-                                                        padding: '8px 18px',
-                                                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                                        color: 'white',
-                                                        border: '1px solid rgba(239, 68, 68, 0.6)',
-                                                        cursor: 'pointer',
-                                                        borderRadius: '8px',
-                                                        fontWeight: '800',
-                                                        fontSize: '0.8em',
-                                                        fontFamily: "'Outfit', sans-serif",
-                                                        letterSpacing: '0.5px',
-                                                        boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
-                                                        textTransform: 'uppercase',
-                                                        marginBottom: '20px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '6px'
-                                                    }}
-                                                >
-                                                    ← BACK TO HUB
-                                                </button>
-                                            )}
-                                            {!statMode ? (
-                                                <div style={{ textAlign: 'center', marginTop: '150px', color: '#94a3b8' }}>
-                                                    <div style={{ fontSize: '4em', marginBottom: '20px' }}>📊</div>
-                                                    <h3 style={{ color: '#fff', fontSize: '1.5em' }}>Analytics Hub</h3>
-                                                    <p>Select a data category from the sidebar to generate a report.</p>
-                                                </div>
-                                            ) : statMode === 'top-rated' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#00f2fe', margin: '0 0 20px 0', fontSize: '1.8em' }}>⭐ Global Top 10 Rated</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Player Name</th><th>OVR</th><th style={{ textAlign: 'center' }}>Avg. Rating</th><th style={{ textAlign: 'center' }}>Reviews</th></tr></thead>
-                                                            <tbody>
-                                                                {topRated.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ fontWeight: 'bold', color: '#94a3b8' }}>#{index + 1}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ color: '#fff' }}><span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '4px' }}>{item.baseoverallrating}</span></td>
-                                                                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#00f2fe' }}>{item.communityrating}</td>
-                                                                        <td style={{ textAlign: 'center', color: '#94a3b8' }}>{item.reviewcount}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'top-scorers' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#4ade80', margin: '0 0 20px 0', fontSize: '1.8em' }}>⚽ Golden Boot: Efficiency (GPG)</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Player</th><th style={{ textAlign: 'center' }}>Efficiency</th><th style={{ textAlign: 'center' }}>Goals</th><th style={{ textAlign: 'center' }}>Matches</th></tr></thead>
-                                                            <tbody>
-                                                                {topScorers.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ fontWeight: 'bold', color: index === 0 ? '#ffd700' : '#94a3b8' }}>{index === 0 ? '👑' : `#${index + 1}`}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ textAlign: 'center' }}><span style={{ background: 'rgba(74, 222, 128, 0.2)', color: '#4ade80', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold' }}>{item.max_gpg} GPG</span></td>
-                                                                        <td style={{ textAlign: 'center', color: '#fff' }}>{item.total_goals}</td>
-                                                                        <td style={{ textAlign: 'center', color: '#94a3b8' }}>{item.total_matches}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'injury-prone' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#f87171', margin: '0 0 20px 0', fontSize: '1.8em' }}>🏥 Medical Report: High Risk</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Player</th><th style={{ textAlign: 'center' }}>Total Injuries</th><th style={{ textAlign: 'center' }}>Reliability Status</th></tr></thead>
-                                                            <tbody>
-                                                                {injuryProne.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ fontWeight: 'bold', color: '#94a3b8' }}>#{index + 1}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ textAlign: 'center', color: '#f87171', fontWeight: 'bold' }}>{item.injury_count} Records</td>
-                                                                        <td style={{ textAlign: 'center' }}><span style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '0.85em', fontWeight: 'bold', background: item.injury_count > 5 ? 'rgba(248, 113, 113, 0.2)' : 'rgba(250, 204, 21, 0.2)', color: item.injury_count > 5 ? '#f87171' : '#facc15' }}>{item.injury_count > 5 ? 'CRITICAL RISK' : 'FRAGILE'}</span></td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'consistent' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#60a5fa', margin: '0 0 20px 0', fontSize: '1.8em' }}>📈 Form Consistency Kings</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Player</th><th style={{ textAlign: 'center' }}>Peak "A" Form Count</th></tr></thead>
-                                                            <tbody>
-                                                                {consistentPlayers.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ fontWeight: 'bold', color: '#94a3b8' }}>#{index + 1}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ textAlign: 'center' }}><span style={{ background: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold' }}>{item.a_form_count} Weeks</span></td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'recent-forms' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#facc15', margin: '0 0 20px 0', fontSize: '1.8em' }}>🔥 Live Hot Form Updates</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Last Updated</th><th>Player</th><th style={{ textAlign: 'center' }}>Condition</th></tr></thead>
-                                                            <tbody>
-                                                                {recentForms.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ color: '#94a3b8' }}>{new Date(item.last_updated).toLocaleDateString()}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ textAlign: 'center' }}><span style={{ background: item.formname === 'A' ? '#4ade80' : '#38bdf8', color: '#000', padding: '4px 16px', borderRadius: '6px', fontWeight: '900' }}>{item.formname}</span></td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'market-value' ? (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#e879f9', margin: '0 0 20px 0', fontSize: '1.8em' }}>💎 Top 10 Market Value</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Player</th><th style={{ textAlign: 'right' }}>Avg. Value</th><th style={{ textAlign: 'center' }}>Base OVR</th></tr></thead>
-                                                            <tbody>
-                                                                {topMarketValues.map((item, index) => (
-                                                                    <tr key={item.cardid} onClick={() => handleCardClick(item.cardid)} style={{ cursor: 'pointer' }}>
-                                                                        <td style={{ fontWeight: 'bold', color: '#94a3b8' }}>#{index + 1}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername}</td>
-                                                                        <td style={{ textAlign: 'right', color: '#e879f9', fontWeight: 'bold' }}>€ {Number(item.avg_market_value).toLocaleString()}</td>
-                                                                        <td style={{ textAlign: 'center', color: '#fff' }}>{item.baseoverallrating}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            ) : statMode === 'liked-builds' && (
-                                                <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                                                    <h2 style={{ color: '#a78bfa', margin: '0 0 20px 0', fontSize: '1.8em' }}>🏆 Community Favorite Builds</h2>
-                                                    <div style={{ overflowX: 'auto' }}>
-                                                        <table className="modern-table">
-                                                            <thead><tr><th>Rank</th><th>Build Name</th><th>Architect</th><th>Target</th><th style={{ textAlign: 'center' }}>OVR</th><th style={{ textAlign: 'center' }}>Appreciation</th></tr></thead>
-                                                            <tbody>
-                                                                {mostLikedBuilds.map((item, index) => (
-                                                                    <tr key={item.buildid}>
-                                                                        <td style={{ fontWeight: 'bold', color: '#94a3b8' }}>#{index + 1}</td>
-                                                                        <td style={{ color: '#a78bfa', fontWeight: 'bold' }}>{item.buildname}</td>
-                                                                        <td style={{ color: '#94a3b8' }}>{item.author}</td>
-                                                                        <td style={{ color: '#fff', fontWeight: 'bold' }}>{item.playername} <span style={{ fontSize: '0.8em', color: '#64748b' }}>({item.positioncode})</span></td>
-                                                                        <td style={{ textAlign: 'center', color: '#fff' }}>{item.baseoverallrating}</td>
-                                                                        <td style={{ textAlign: 'center' }}><span style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', padding: '4px 12px', borderRadius: '6px', fontWeight: 'bold' }}>👍 {item.total_likes}</span></td>
-                                                                    </tr>
-                                                                ))}
-                                                                {mostLikedBuilds.length === 0 && (
-                                                                    <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No community builds have been favored yet.</td></tr>
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 )}
