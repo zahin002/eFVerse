@@ -1,0 +1,48 @@
+CREATE OR REPLACE FUNCTION enforce_logical_base_stats()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_base_ovr INT;
+    v_role VARCHAR(20);
+    v_calculated_raw_ovr INT;
+BEGIN
+
+    SELECT c.BaseOverallRating, UPPER(pos.RoleGroup)
+    INTO v_base_ovr, v_role
+    FROM Card c
+    JOIN Positions pos ON c.PositionCode = pos.PositionCode
+    WHERE c.CardID = NEW.CardID;
+
+  
+    IF v_role = 'FORWARD' OR v_role = 'WINGER' THEN
+        v_calculated_raw_ovr := (NEW.Finishing * 0.35) + (NEW.OffensiveAwareness * 0.25) + (NEW.Speed * 0.20) + (NEW.Dribbling * 0.20);
+        
+    ELSIF v_role = 'MIDFIELDER' THEN
+        v_calculated_raw_ovr := (NEW.Passing * 0.35) + (NEW.BallControl * 0.25) + (NEW.Dribbling * 0.20) + (NEW.Stamina * 0.20);
+        
+    ELSIF v_role = 'DEFENDER' THEN
+        v_calculated_raw_ovr := (NEW.DefensiveAwareness * 0.35) + (NEW.Tackling * 0.35) + (NEW.PhysicalContact * 0.15) + (NEW.Aggression * 0.15);
+        
+    ELSIF v_role = 'GOALKEEPER' THEN
+        v_calculated_raw_ovr := (NEW.GkAwareness * 0.20) + (NEW.GkCatching * 0.20) + (NEW.GkParrying * 0.20) + (NEW.GkReflexes * 0.20) + (NEW.GkReach * 0.20);
+        
+    ELSE
+      
+        v_calculated_raw_ovr := (NEW.OffensiveAwareness + NEW.Passing + NEW.DefensiveAwareness + NEW.Speed) / 4;
+    END IF;
+
+  
+    IF v_calculated_raw_ovr > (v_base_ovr + 3) THEN
+        RAISE EXCEPTION '❌ Illogical Stats Detected: These stats generate a Raw OVR of % for a Card with a Base OVR of %. Please lower the stats.', v_calculated_raw_ovr, v_base_ovr;
+    END IF;
+
+  
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER trg_check_logical_stats
+BEFORE INSERT OR UPDATE ON PlayerStats
+FOR EACH ROW
+EXECUTE FUNCTION enforce_logical_base_stats();
