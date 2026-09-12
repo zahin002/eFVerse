@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { FcSearch } from "react-icons/fc";
+
 import axios from 'axios';
 
 axios.defaults.withCredentials = true;
@@ -27,15 +29,37 @@ const STAT_LABELS = {
 };
 
 const CARD_TYPES = [
-    { label: 'Standard', value: 'Standard', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)' },
-    { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,200,0,0.12)', border: 'rgba(255,200,0,0.3)' },
-    { label: 'POTW', value: 'POTW', color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
+    { label: 'Standard',  value: 'Standard',  color: '#00f2fe', bg: 'rgba(0,242,254,0.12)', border: 'rgba(0,242,254,0.3)' },
+    { label: 'Highlight', value: 'Highlight', color: '#e2e8f0', bg: 'rgba(226,232,240,0.12)', border: 'rgba(226,232,240,0.3)' },
+    
+    { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
+    { label: 'Epic',      value: 'Epic',      color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+    
+    { label: 'POTW',      value: 'POTW',      color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
+    { label: 'Trending',  value: 'Trending',  color: '#ccff00', bg: 'rgba(204,255,0,0.12)', border: 'rgba(204,255,0,0.3)' },
 ];
 
 const getCardColors = (cardtype) => {
-    if (cardtype === 'Legendary') return { color: '#FFD700', bg: 'linear-gradient(160deg,#1a1200,#2c1f00)', border: 'rgba(255,200,0,0.35)', glow: 'rgba(255,180,0,0.25)' };
-    if (cardtype === 'POTW')      return { color: '#00FF87', bg: 'linear-gradient(160deg,#001a0f,#002818)', border: 'rgba(0,255,135,0.3)',  glow: 'rgba(0,255,135,0.2)'  };
-    return                               { color: '#00f2fe', bg: 'linear-gradient(160deg,#080d16,#0d1629)', border: 'rgba(0,180,254,0.2)',  glow: 'rgba(0,140,200,0.15)' };
+    switch (cardtype) {
+        // Gold & Purple-Amber Pair
+        case 'Legendary':
+            return { color: '#FFD700', bg: 'linear-gradient(160deg,#1a1200,#2c1f00)', border: 'rgba(255,215,0,0.35)', glow: 'rgba(255,180,0,0.25)' };
+        case 'Epic':
+            return { color: '#fbbf24', bg: 'linear-gradient(160deg,#2e1065,#3b0764)', border: 'rgba(251,191,36,0.4)', glow: 'rgba(168,85,247,0.3)' };
+
+        // Neon Green & Electric Lime Pair
+        case 'POTW':
+            return { color: '#00FF87', bg: 'linear-gradient(160deg,#001a0f,#002818)', border: 'rgba(0,255,135,0.3)', glow: 'rgba(0,255,135,0.2)' };
+        case 'Trending':
+            return { color: '#ccff00', bg: 'linear-gradient(160deg,#1a2e05,#264208)', border: 'rgba(204,255,0,0.35)', glow: 'rgba(204,255,0,0.25)' };
+
+        // Cyan & Platinum Silver Pair
+        case 'Highlight':
+            return { color: '#e2e8f0', bg: 'linear-gradient(160deg,#0f172a,#1e293b)', border: 'rgba(226,232,240,0.35)', glow: 'rgba(226,232,240,0.2)' };
+        case 'Standard':
+        default:
+            return { color: '#00f2fe', bg: 'linear-gradient(160deg,#080d16,#0d1629)', border: 'rgba(0,180,254,0.2)', glow: 'rgba(0,140,200,0.15)' };
+    }
 };
 
 const css = `
@@ -275,7 +299,7 @@ export default function SmartSearch({ onCardClick }) {
                                 border: '1px solid rgba(0,242,254,0.2)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: '1em'
-                            }}>🔍</div>
+                            }}><FcSearch /></div>
                             <div>
                                 <div style={{ fontWeight: '800', fontSize: '0.95em', color: '#fff' }}>Smart Filter</div>
                                 <div style={{ fontSize: '0.7em', color: '#64748b', fontWeight: '500' }}>
@@ -288,7 +312,7 @@ export default function SmartSearch({ onCardClick }) {
                         <div style={{ position: 'relative', marginBottom: '12px' }}>
                             <input
                                 className="ss-input"
-                                placeholder="🔍 Search player name..."
+                                placeholder=" Search player name..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -318,7 +342,7 @@ export default function SmartSearch({ onCardClick }) {
                             <select className="ss-select"
                                 value={filters.leagueId || ''}
                                 onChange={e => setFilters({ ...filters, leagueId: e.target.value || null, clubId: null })}>
-                                <option value="">⚽ Any League</option>
+                                <option value=""> Any League</option>
                                 {helpers.leagues.map(l => <option key={l.leagueid} value={l.leagueid}>{l.leaguename}</option>)}
                             </select>
                         </div>
@@ -329,7 +353,7 @@ export default function SmartSearch({ onCardClick }) {
                                 value={filters.clubId || ''}
                                 disabled={!filters.leagueId}
                                 onChange={e => setFilters({ ...filters, clubId: e.target.value || null })}>
-                                <option value="">{filters.leagueId ? '🏟 Any Club' : '🏟 Select league first'}</option>
+                                <option value="">{filters.leagueId ? ' Any Club' : ' Select league first'}</option>
                                 {filteredClubs.map(c => <option key={c.clubid} value={c.clubid}>{c.clubname}</option>)}
                             </select>
                         </div>
@@ -362,7 +386,7 @@ export default function SmartSearch({ onCardClick }) {
                             <select className="ss-select"
                                 value={filters.posCode || ''}
                                 onChange={e => setFilters({ ...filters, posCode: e.target.value || null })}>
-                                <option value="">🎯 Any Position</option>
+                                <option value=""> Any Position</option>
                                 {helpers.positions.map(p => <option key={p.positioncode} value={p.positioncode}>{p.positioncode}</option>)}
                             </select>
                         </div>
@@ -428,7 +452,7 @@ export default function SmartSearch({ onCardClick }) {
                         {/* Action Buttons */}
                         <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
                             <button className="ss-search-btn" onClick={handleSearch} disabled={isLoading}>
-                                {isLoading ? '⏳ Searching...' : '⚡ Search'}
+                                {isLoading ? ' Searching...' : ' Search'}
                             </button>
                             <button className="ss-clear-btn" onClick={handleReset}>Reset</button>
                         </div>
@@ -464,10 +488,10 @@ export default function SmartSearch({ onCardClick }) {
                                 background: 'rgba(255,255,255,0.02)',
                                 borderRadius: '18px', border: '1px dashed rgba(255,255,255,0.08)'
                             }}>
-                                <div style={{ fontSize: '2.8em', marginBottom: '14px', opacity: 0.6 }}>🔍</div>
+                                <div style={{ fontSize: '2.8em', marginBottom: '14px', opacity: 0.6 }}><FcSearch/></div>
                                 <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: '800', fontSize: '1.05em' }}>Search for eFVerse Players</h4>
                                 <p style={{ margin: '0 auto', fontSize: '0.88em', color: '#475569', maxWidth: '320px' }}>
-                                    Enter a player name or apply filters on the left, then hit <strong style={{ color: '#00f2fe' }}>⚡ Search</strong> to find matching cards.
+                                    Enter a player name or apply filters on the left, then hit <strong style={{ color: '#00f2fe' }}> Search</strong> to find matching cards.
                                 </p>
                             </div>
                         )}

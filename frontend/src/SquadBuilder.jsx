@@ -2193,7 +2193,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 justifyContent: 'center',
                 gap: '6px'
             }}>
-                <span style={{ color: '#a78bfa' }}>🔒</span> GK position is fixed · Drag outfield players to customize positions
+                <span style={{ color: '#a78bfa' }}></span> GK position is fixed · Drag outfield players to customize positions
             </div>
         </div>
     );

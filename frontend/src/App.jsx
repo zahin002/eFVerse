@@ -7,6 +7,7 @@ import ManagerDetailView from './ManagerDetailView';
 import SquadBuilder from './SquadBuilder';
 import CardTrainer from './CardTrainer';
 import { getManagerPhotoUrl } from './badgeAssetEngine';
+import { FaLongArrowAltRight } from "react-icons/fa";
 
 axios.defaults.withCredentials = true;
 
@@ -1080,21 +1081,21 @@ function App() {
                                     <div style={{ position: 'absolute', top: '10%', left: '5%', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(0,242,254,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 4s ease-in-out infinite', pointerEvents: 'none' }} />
                                     <div style={{ position: 'absolute', bottom: '10%', right: '8%', width: '220px', height: '220px', background: 'radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 5s ease-in-out infinite 1s', pointerEvents: 'none' }} />
 
-                                    <div className="hero-badge">⚡ eFootball Intelligence Platform — 2026</div>
+                                    <div className="hero-badge"> eFootball Squad Building Platform</div>
 
                                     <h1 className="hero-title">
-                                        The Ultimate<br />eFootball Card Universe
+                                        eFVerse
                                     </h1>
                                     <p className="hero-subtitle">
-                                        Explore player cards, build tactical squads, track progression builds — all in one powerful platform.
+                                        Explore player cards, build tactical squads, track progression builds 
                                     </p>
 
                                     <div className="hero-ctas">
                                         <button className="glowing-btn" style={{ fontSize: '1em', padding: '16px 36px', borderRadius: '14px' }} onClick={() => handleTabChange('cards')}>
-                                            🃏 Browse All Cards
+                                             Browse All Cards
                                         </button>
                                         <button className="glowing-btn-ghost" onClick={handleOpenSquadBuilder}>
-                                            ⚡ Build Your Squad
+                                             Build Your Squad
                                         </button>
                                     </div>
 
@@ -1102,20 +1103,20 @@ function App() {
                                     <div className="stat-ticker">
                                         <div className="stat-ticker-item">
                                             <div className="stat-ticker-value" style={{ color: '#00f2fe' }}>{allCards.length}</div>
-                                            <div className="stat-ticker-label">🃏 Total Cards</div>
+                                            <div className="stat-ticker-label"> Total Cards</div>
                                         </div>
                                         <div className="stat-ticker-item">
                                             <div className="stat-ticker-value" style={{ color: '#ffd700' }}>{allCards.filter(c => c.cardtype === 'Legendary').length}</div>
-                                            <div className="stat-ticker-label">👑 Legendary</div>
+                                            <div className="stat-ticker-label"> Legendary</div>
                                         </div>
                                         <div className="stat-ticker-item">
                                             <div className="stat-ticker-value" style={{ color: '#00ff87' }}>{allCards.filter(c => c.cardtype === 'POTW').length}</div>
-                                            <div className="stat-ticker-label">⚡ POTW</div>
+                                            <div className="stat-ticker-label"> POTW</div>
                                         </div>
-                                        <div className="stat-ticker-item">
+                                        {/* <div className="stat-ticker-item">
                                             <div className="stat-ticker-value" style={{ color: '#a78bfa' }}>{allCards.length > 0 ? Math.max(...allCards.map(c => parseInt(c.baseoverallrating) || 0)) : '—'}</div>
-                                            <div className="stat-ticker-label">🏆 Top OVR</div>
-                                        </div>
+                                            <div className="stat-ticker-label"> Top OVR</div>
+                                        </div> */}
                                     </div>
                                 </div>
 
@@ -1158,14 +1159,14 @@ function App() {
                                                     background: 'rgba(10, 16, 28, 0.7)'
                                                 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <span style={{ fontSize: '1.3em' }}>🎴</span>
+                                                       
                                                         <div>
                                                             <div style={{ fontSize: '0.95em', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>
                                                                 PLAYER CARD CATALOG
                                                             </div>
-                                                            <div style={{ fontSize: '0.78em', color: '#94a3b8' }}>
+                                                            {/* <div style={{ fontSize: '0.78em', color: '#94a3b8' }}>
                                                                 Showing {allCards.filter(c => c.cardid).length} configured player cards
-                                                            </div>
+                                                            </div> */}
                                                         </div>
                                                     </div>
 
@@ -1179,9 +1180,9 @@ function App() {
                                                                 style={{ width: 'auto', padding: '9px 16px', fontSize: '0.85em', borderRadius: '10px' }}
                                                             >
                                                                 <option value="all">All Card Types</option>
-                                                                <option value="Legendary">👑 Legendary Stars</option>
-                                                                <option value="POTW">⚡ Player of the Week</option>
-                                                                <option value="Standard">⚽ Standard Cards</option>
+                                                                <option value="Legendary"> Legendary Stars</option>
+                                                                <option value="POTW"> Player of the Week</option>
+                                                                <option value="Standard"> Standard Cards</option>
                                                                 <option value="cards_only">Configured Cards Only</option>
                                                                 <option value="no_cards">Unconfigured Players</option>
                                                             </select>
@@ -1210,7 +1211,7 @@ function App() {
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.1s' }}>
                                                         <div className="section-header">
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #FFD700, #B8860B)' }} />
-                                                            <h3 style={{ color: '#FFD700' }}>👑 Legendary Stars</h3>
+                                                            <h3 style={{ color: '#FFD700' }}> Legendary Stars</h3>
                                                             <span className="section-header-count">{allCards.filter(c => c.cardtype === 'Legendary').length} cards</span>
                                                         </div>
                                                         <div className="card-scroll-row">
@@ -1223,7 +1224,7 @@ function App() {
                                                                         <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
                                                                         <div className="card-tile-footer" style={{ borderTop: '1px solid rgba(255,200,0,0.15)', color: '#FFD700' }}>
                                                                             <span>View Stats</span>
-                                                                            <span>→</span>
+                                                                            <span><FaLongArrowAltRight /></span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1237,7 +1238,7 @@ function App() {
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.2s' }}>
                                                         <div className="section-header">
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00FF87, #00A855)' }} />
-                                                            <h3 style={{ color: '#00FF87' }}>⚡ Player of the Week</h3>
+                                                            <h3 style={{ color: '#00FF87' }}> Player of the Week</h3>
                                                             <span className="section-header-count">{allCards.filter(c => c.cardtype === 'POTW').length} cards</span>
                                                         </div>
                                                         <div className="card-scroll-row">
@@ -1264,7 +1265,7 @@ function App() {
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.3s' }}>
                                                         <div className="section-header" style={{ marginBottom: '16px' }}>
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00f2fe, #4facfe)' }} />
-                                                            <h3 style={{ color: '#00f2fe' }}>⚽ Standard Player Cards</h3>
+                                                            <h3 style={{ color: '#00f2fe' }}> Standard Player Cards</h3>
                                                             <span className="section-header-count">{allCards.filter(c => c.cardtype === 'Standard' || (!c.cardtype && c.cardid)).length} cards</span>
                                                         </div>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: '16px' }}>
@@ -1277,7 +1278,7 @@ function App() {
                                                                         <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
                                                                         <div className="card-tile-footer" style={{ borderTop: '1px solid rgba(0,242,254,0.15)', color: '#00f2fe' }}>
                                                                             <span>View Stats</span>
-                                                                            <span>→</span>
+                                                                            <span> <FaLongArrowAltRight /></span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1287,7 +1288,7 @@ function App() {
                                                 )}
 
                                                 {/* ── UNCONFIGURED PLAYERS (WHEN FILTERED) ── */}
-                                                {allCards.filter(c => !c.cardid).length > 0 && (
+                                                {/* {allCards.filter(c => !c.cardid).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.3s' }}>
                                                         <div className="section-header" style={{ marginBottom: '16px' }}>
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #94a3b8, #64748b)' }} />
@@ -1307,13 +1308,13 @@ function App() {
                                                             ))}
                                                         </div>
                                                     </div>
-                                                )}
+                                                )} */}
 
                                                 {/* ── SMART SEARCH (BELOW THE FOLD) ── */}
                                                 <div className="animate-fadeinup" style={{ animationDelay: '0.4s' }}>
                                                     <div className="section-header" style={{ marginBottom: '16px' }}>
                                                         <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #a78bfa, #7c3aed)' }} />
-                                                        <h3 style={{ color: '#a78bfa' }}>🔍 Smart Search Intelligence</h3>
+                                                        <h3 style={{ color: '#a78bfa' }}> Smart Search Intelligence</h3>
                                                     </div>
                                                     <div className="glass-panel" style={{ padding: '28px' }}>
                                                         <SmartSearch onCardClick={handleCardClick} />
@@ -1494,7 +1495,7 @@ function App() {
                                     borderRadius: '8px', color: '#00f2fe', fontWeight: '600',
                                     fontSize: '0.8em', textAlign: 'center', lineHeight: '1.4'
                                 }}>
-                                    🔒 {authModalPrompt}
+                                     {authModalPrompt}
                                 </div>
                             )}
 

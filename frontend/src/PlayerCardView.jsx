@@ -176,7 +176,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             console.error("Error reacting to build:", err);
             setDialog({
                 type: 'info',
-                title: '🔑 Sign In Required',
+                title: ' Sign In Required',
                 message: 'Please sign in to react to progression builds.',
                 confirmText: 'OK'
             });
@@ -226,7 +226,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         if (!currentUser) {
             setDialog({
                 type: 'info',
-                title: '🔑 Sign In Required',
+                title: ' Sign In Required',
                 message: 'Please sign in to save builds.',
                 confirmText: 'OK'
             });

@@ -10,6 +10,7 @@ axios.defaults.withCredentials = true;
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('player'); 
   const [mgmtTab, setMgmtTab] = useState('database'); 
+  
   const [message, setMessage] = useState('');
   const [dialog, setDialog] = useState(null);
 
@@ -91,6 +92,13 @@ export default function AdminPanel() {
   const [suggestions, setSuggestions] = useState([]); 
   const [mgmtFilters, setMgmtFilters] = useState({ leagueId: '', clubId: '', nationId: '', cardType: '', posCode: '' });
   const [mgmtResults, setMgmtResults] = useState([]);
+
+  // --- MANAGERS TAB FILTERS ---
+  // Same idea as the Players "Database Filter" above, but for the Managers list.
+  // Instead of "cardType" (which only makes sense for player cards) we filter by "playstyle".
+  const [managerSearch, setManagerSearch] = useState('');
+  const [managerFilters, setManagerFilters] = useState({ leagueId: '', clubId: '', nationId: '', playstyle: '' });
+  const [managerFilterClubs, setManagerFilterClubs] = useState([]); // clubs list scoped to managerFilters.leagueId
 
 
   const [editingCard, setEditingCard] = useState(null);
@@ -216,50 +224,52 @@ export default function AdminPanel() {
   };
 
   const handleOpenEditCard = async (cardItem) => {
-      try {
-          const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardItem.cardid}`);
-          const c = res.data;
-          const p = c.player || {};
-          const m = p.modelMetrics || {};
-          setEditingCard(c);
-          setEditModalSubTab('card');
-          setEditForm({
-              cardtype: c.cardtype || 'Standard',
-              positioncode: c.positioncode || c.primaryposition || 'AMF',
-              baseoverallrating: c.baseoverallrating || 80,
-              currentoverallrating: c.currentoverallrating || 80,
-              maxoverallrating: c.maxoverallrating || 90,
-              maxlevel: c.maxlevel || 32,
-              progressionpoints: c.progressionpoints || 62,
-              primarypositions: Array.isArray(c.primarypositions) ? c.primarypositions.join(', ') : '',
-              secondarypositions: Array.isArray(c.secondarypositions) ? c.secondarypositions.join(', ') : '',
-              booster1: c.booster1 || 'Off the ball +4',
-              booster2: c.booster2 || 'Technique +3',
-              tierbadge: c.tierbadge || 'S+',
-              livecondition: c.livecondition || 'B',
-              skills: Array.isArray(c.skills) ? c.skills.join(', ') : 'Double Touch, First Time Shot, One Touch Pass',
-              comskills: Array.isArray(c.comskills) ? c.comskills.join(', ') : 'Mazing Run, Long Ball Expert',
-              height: p.height || 180,
-              weight: p.weight || 75,
-              preferredfoot: p.preferredfoot || 'Right',
-              playstyle: p.playstyle || 'Goal Poacher',
-              armlength: m.armlength || 12,
-              shoulderwidth: m.shoulderwidth || 5,
-              necklength: m.necklength || 4,
-              chestmeasurement: m.chestmeasurement || 6,
-              necksize: m.necksize || 7,
-              shoulderheight: m.shoulderheight || 11,
-              leglength: m.leglength || 14,
-              thighsize: m.thighsize || 5,
-              waistsize: m.waistsize || 9,
-              armsize: m.armsize || 5,
-              calfsize: m.calfsize || 3
-          });
-      } catch (err) {
-          console.error("Error opening edit card:", err);
-          setMessage("❌ Error opening Edit Card window.");
-      }
-  };
+    try {
+        const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardItem.cardid}`);
+        const c = res.data;
+        const p = c.player || {};
+        const m = p.modelMetrics || {};
+        
+        setEditingCard(c);
+        setEditModalSubTab('card');
+        setEditForm({
+            cardtype: c.cardtype || 'Standard',
+            positioncode: c.positioncode || c.primaryposition || 'AMF',
+            baseoverallrating: c.baseoverallrating || 80,
+            currentoverallrating: c.currentoverallrating || 80,
+            maxoverallrating: c.maxoverallrating || 90,
+            maxlevel: c.maxlevel || 32,
+            progressionpoints: c.progressionpoints || 62,
+            primarypositions: Array.isArray(c.primarypositions) ? c.primarypositions.join(', ') : '',
+            secondarypositions: Array.isArray(c.secondarypositions) ? c.secondarypositions.join(', ') : '',
+            booster1: c.booster1 || 'Off the ball +4',
+            booster2: c.booster2 || 'Technique +3',
+            tierbadge: c.tierbadge || 'S+',
+            livecondition: c.livecondition || 'B',
+            // FIXED: Fall back to '' so placeholders show when array is empty or undefined
+            skills: Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || ''),
+            comskills: Array.isArray(c.comskills) ? c.comskills.join(', ') : (c.comskills || ''),
+            height: p.height || 180,
+            weight: p.weight || 75,
+            preferredfoot: p.preferredfoot || 'Right',
+            playstyle: p.playstyle || 'Goal Poacher',
+            armlength: m.armlength || 12,
+            shoulderwidth: m.shoulderwidth || 5,
+            necklength: m.necklength || 4,
+            chestmeasurement: m.chestmeasurement || 6,
+            necksize: m.necksize || 7,
+            shoulderheight: m.shoulderheight || 11,
+            leglength: m.leglength || 14,
+            thighsize: m.thighsize || 5,
+            waistsize: m.waistsize || 9,
+            armsize: m.armsize || 5,
+            calfsize: m.calfsize || 3
+        });
+    } catch (err) {
+        console.error("Error opening edit card:", err);
+        setMessage("❌ Error opening Edit Card window.");
+    }
+};
 
   const handleSaveEditCard = async (e) => {
       e.preventDefault();
@@ -321,6 +331,12 @@ export default function AdminPanel() {
     if (mgmtFilters.leagueId) axios.get(`http://localhost:5001/api/players/clubs-by-league?leagueId=${mgmtFilters.leagueId}`).then(res => setMgmtClubs(res.data));
     else setMgmtClubs([]);
   }, [mgmtFilters.leagueId]);
+
+  // Load clubs for the Managers filter's "Select Club" dropdown, same pattern as the Players filter above.
+  useEffect(() => {
+    if (managerFilters.leagueId) axios.get(`http://localhost:5001/api/players/clubs-by-league?leagueId=${managerFilters.leagueId}`).then(res => setManagerFilterClubs(res.data));
+    else setManagerFilterClubs([]);
+  }, [managerFilters.leagueId]);
 
   const fetchHelpers = () => axios.get('http://localhost:5001/api/players/helpers').then(res => setHelpers(res.data));
   const fetchPlayers = () => axios.get('http://localhost:5001/api/players/list-players').then(res => setPlayersList(res.data));
@@ -572,6 +588,18 @@ const handleCardSelectForStats = async (e) => {
     }
 };
 
+  // Filters the already-fetched managersList in the browser (no extra API call needed,
+  // since /api/managers/list returns every manager up front). Mirrors handleMgmtSearch,
+  // but works locally because there's no dedicated "manager search" backend route.
+  const filteredManagers = managersList.filter(m => {
+      const nameMatches = !managerSearch.trim() || (m.managername || '').toLowerCase().includes(managerSearch.trim().toLowerCase());
+      const playstyleMatches = !managerFilters.playstyle || m.playstyle === managerFilters.playstyle;
+      const nationMatches = !managerFilters.nationId || String(m.nationalityid) === String(managerFilters.nationId);
+      const leagueMatches = !managerFilters.leagueId || String(m.leagueid) === String(managerFilters.leagueId);
+      const clubMatches = !managerFilters.clubId || String(m.clubid) === String(managerFilters.clubId);
+      return nameMatches && playstyleMatches && nationMatches && leagueMatches && clubMatches;
+  });
+
   const inputStyle = { padding: '10px', borderRadius: '4px', border: '1px solid #444', background: '#2a2a2a', color: 'white', width: '100%' };
 
   return (
@@ -695,7 +723,12 @@ const handleCardSelectForStats = async (e) => {
                     {playersList.map(p => <option key={p.playerid} value={p.playerid}>{p.playername}</option>)}
                 </select>
                 <select value={cardForm.cardtype} onChange={e=>setCardForm({...cardForm, cardtype: e.target.value})} style={inputStyle}>
-                    <option value="Standard">Standard</option><option value="Legendary">Legendary</option><option value="POTW">POTW</option>
+                    <option value="Standard">Standard</option>
+                                    <option value="Legendary">Legendary</option>
+                                    <option value="POTW">POTW</option>
+                                    <option value="Highlight">Highlight</option>
+                                    <option value="Epic">Epic</option>
+                                    <option value="Trending">Trending</option>
                 </select>
                 <select value={cardForm.positioncode} onChange={e=>setCardForm({...cardForm, positioncode: e.target.value})} style={inputStyle} required>
                     <option value="">Position...</option>
@@ -704,7 +737,7 @@ const handleCardSelectForStats = async (e) => {
                 <div style={{display:'flex', gap:'10px'}}>
                     <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Base OVR</label> <input type="number" value={cardForm.baseoverallrating} onChange={e=> setCardForm({...cardForm, baseoverallrating: parseInt(e.target.value), currentoverallrating: Math.max(parseInt(e.target.value), cardForm.currentoverallrating)})} style={inputStyle} /></div>
                     <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Current OVR</label> <input type="number" value={cardForm.currentoverallrating} onChange={e=>setCardForm({...cardForm, currentoverallrating: parseInt(e.target.value)})} style={inputStyle} /></div>
-                    <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Max OVR</label> <input type="number" value={cardForm.maxoverallrating} onChange={e=>setCardForm({...cardForm, maxoverallrating: parseInt(e.target.value)})} style={inputStyle} /></div>
+                    {/* <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Max OVR</label> <input type="number" value={cardForm.maxoverallrating} onChange={e=>setCardForm({...cardForm, maxoverallrating: parseInt(e.target.value)})} style={inputStyle} /></div> */}
                 </div>
                 <button className="click-btn" type="submit" style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>Create Entity</button>
             </form>
@@ -784,7 +817,7 @@ const handleCardSelectForStats = async (e) => {
                 <select onChange={handleCardSelectForStats} style={inputStyle} required>
     <option value="">Select Card (Auto-Calculate)...</option>
     {/* 👇 CHANGED: Added .filter(c => c.cardid) so players without cards don't show up here */}
-    {cardsList.filter(c => c.cardid).map(c => <option key={c.cardid} value={c.cardid}>{c.playername || c.player?.playername} ({c.baseoverallrating})</option>)}
+    {cardsList.filter(c => c.cardid).map(c => <option key={c.cardid} value={c.cardid}>{c.playername || c.player?.playername} (OVR-{c.baseoverallrating})</option>)}
 </select>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
                     {Object.keys(statsForm).map((key) => key !== 'cardid' && (
@@ -800,7 +833,7 @@ const handleCardSelectForStats = async (e) => {
 
           {activeTab === 'status' && (
             <form onSubmit={handleStatusSubmit} style={{ display: 'grid', gap: '20px' }}>
-                <h3 style={{ margin: 0, color: '#00f2fe' }}>Update Player Status & Market Value</h3>
+                <h3 style={{ margin: 0, color: '#00f2fe' }}>Update Player Status</h3>
                 <p style={{fontSize:'0.8em', color:'#aaa'}}>
                     This action updates the Player's Form and Injury status. 
                     <b> Market Value is automatically recalculated</b> based on these factors.
@@ -903,8 +936,9 @@ const handleCardSelectForStats = async (e) => {
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
         <h4 style={{ margin: 0, textTransform: 'uppercase', fontSize: '0.8em', color: '#888' }}>Management</h4>
         <div style={{ background: '#6a6969', borderRadius: '4px', display: 'flex', padding: '2px' }}>
-            <button onClick={() => setMgmtTab('database')} style={{ background: mgmtTab === 'database' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>DATABASE</button>
-            <button onClick={() => { setMgmtTab('managers'); fetchManagers(); }} style={{ background: mgmtTab === 'managers' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>MANAGERS ({managersList.length})</button>
+            <button onClick={() => setMgmtTab('database')} style={{ background: mgmtTab === 'database' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>PLAYERS</button>
+            <button onClick={() => { setMgmtTab('managers'); fetchManagers(); }} style={{ background: mgmtTab === 'managers' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>MANAGERS</button>
+          {/* ({managersList.length}) */}
         </div>
     </div>
 
@@ -935,6 +969,43 @@ const handleCardSelectForStats = async (e) => {
         </div>
     )}
 
+    {/* MANAGERS FILTER PANEL — same layout as the Players filter above, but "Any Card Type" */}
+    {/* is replaced with "Any Playstyle" since managers don't have card types.                */}
+    {/* Filtering happens instantly client-side (see filteredManagers), so there's no need    */}
+    {/* to hit an "Apply" button — but one is included anyway to match the Players UI/UX.     */}
+    {mgmtTab === 'managers' && (
+        <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '20px' }}>
+            <input placeholder="Search Name..." value={managerSearch} onChange={e => setManagerSearch(e.target.value)} style={{ ...inputStyle, background: '#222' }} />
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <select value={managerFilters.nationId} onChange={e => setManagerFilters({...managerFilters, nationId: e.target.value})} style={inputStyle}>
+                    <option value="">Any Nationality</option>
+                    {helpers.nations.map(n => <option key={n.nationalityid} value={n.nationalityid}>{n.countryname}</option>)}
+                </select>
+                {/* Playstyle takes the place of "Any Card Type" for managers */}
+                <select value={managerFilters.playstyle} onChange={e => setManagerFilters({...managerFilters, playstyle: e.target.value})} style={inputStyle}>
+                    <option value="">Any Playstyle</option>
+                    <option value="Possession Game">Possession Game</option>
+                    <option value="Quick Counter">Quick Counter</option>
+                    <option value="Long Ball Counter">Long Ball Counter</option>
+                    <option value="Out Wide">Out Wide</option>
+                    <option value="Long Ball">Long Ball</option>
+                </select>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <select value={managerFilters.leagueId} onChange={e => setManagerFilters({...managerFilters, leagueId: e.target.value, clubId: ''})} style={inputStyle}>
+                    <option value="">Any League</option>
+                    {helpers.leagues.map(l => <option key={l.leagueid} value={l.leagueid}>{l.leaguename}</option>)}
+                </select>
+                <select value={managerFilters.clubId} onChange={e => setManagerFilters({...managerFilters, clubId: e.target.value})} style={inputStyle} disabled={!managerFilters.leagueId}>
+                    <option value="">Select Club</option>
+                    {managerFilterClubs.map(c => <option key={c.clubid} value={c.clubid}>{c.clubname}</option>)}
+                </select>
+            </div>
+            {/* No-op button: filtering is already live via filteredManagers as you type/select above. */}
+            <button onClick={() => {}} style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>Apply Database Filter</button>
+        </div>
+    )}
+
     <ul style={{ listStyle: 'none', padding: 0 }}>
         {mgmtTab === 'database' && mgmtResults.map(item => (
             <li
@@ -955,14 +1026,14 @@ const handleCardSelectForStats = async (e) => {
                             <button onClick={() => handleDeleteCard(item.cardid)} style={{ flex: 1, background: '#444', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8em' }}>Delete Card</button>
                         </>
                     )}
-                    <button onClick={() => handleDeletePlayer(item.playerid || item.player?.playerid, item.player?.playername || item.playername)} style={{ flex: 1, background: '#dc3545', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8em' }}>Delete Player (All)</button>
+                    <button onClick={() => handleDeletePlayer(item.playerid || item.player?.playerid, item.player?.playername || item.playername)} style={{ flex: 1, background: '#fc001992', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8em' }}>Delete Player (All)</button>
                 </div>
             </li>
         ))}
 
         {mgmtTab === 'managers' && (
-            managersList.length > 0 ? (
-                managersList.map(item => (
+            filteredManagers.length > 0 ? (
+                filteredManagers.map(item => (
                     <li
                         key={item.managerid}
                         className="hover-card"
@@ -987,7 +1058,7 @@ const handleCardSelectForStats = async (e) => {
                             <button onClick={() => handleOpenEditManager(item)} style={{ flex: 1, background: '#00f2fe', color: '#000', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8em' }}>
                                  Edit Manager
                             </button>
-                            <button onClick={() => handleDeleteManager(item.managerid, item.managername)} style={{ flex: 1, background: '#f50b22', color: 'white', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8em' }}>
+                            <button onClick={() => handleDeleteManager(item.managerid, item.managername)} style={{ flex: 1, background: '#fc001992', color: 'white', border: 'none', padding: '7px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8em' }}>
                                  Delete Manager
                             </button>
                         </div>
@@ -995,7 +1066,9 @@ const handleCardSelectForStats = async (e) => {
                 ))
             ) : (
                 <div style={{ color: '#888', textAlign: 'center', padding: '30px 10px', fontStyle: 'italic' }}>
-                    No managers found in database.
+                    {managersList.length === 0
+                        ? 'No managers found in database.'
+                        : 'No managers match the current search/filters.'}
                 </div>
             )
         )}
@@ -1164,8 +1237,8 @@ const handleCardSelectForStats = async (e) => {
 
                             {/* COM SKILLS LIST */}
                             <div>
-                                <label style={{ fontSize: '0.75em', color: '#a855f7',  textTransform: 'uppercase' }}>
-                                     COM Playing Styles / Skills 
+                                <label style={{ fontSize: '0.75em', color: '#a855f7', textTransform: 'uppercase' }}>
+                                    COM Playing Styles / Skills 
                                 </label>
                                 <input 
                                     type="text" 
