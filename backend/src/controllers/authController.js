@@ -3,10 +3,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db');
 
 const getErrorMessage = (error) => {
-    if (error?.message) {
-        return error.message;
-    }
-
+    if (error?.message) return error.message;
     if (Array.isArray(error?.errors) && error.errors.length > 0) {
         return error.errors
             .map((nestedError) => {
@@ -17,21 +14,15 @@ const getErrorMessage = (error) => {
             })
             .join(', ');
     }
-
-    if (error?.code) {
-        return error.code;
-    }
-
+    if (error?.code) return error.code;
     return 'Unknown server error';
 };
 
 const sendServerError = (res, label, error) => {
     console.error(`❌ ${label}:`, error);
-
     const message = process.env.NODE_ENV === 'production'
         ? 'Internal Server Error'
         : getErrorMessage(error);
-
     res.status(500).json({ error: message });
 };
 
@@ -59,14 +50,13 @@ const getUserProfile = async (req, res) => {
 };
 
 const register = async (req, res) => {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
         return res.status(400).json({ error: "Username, email, and password are required" });
     }
 
     let client;
-
     try {
         client = await pool.connect();
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -78,20 +68,17 @@ const register = async (req, res) => {
             VALUES ($1, $2, $3, $4) 
             RETURNING *
         `;
-        const values = [username, email, hashedPassword, role || 'USER'];
+        // Hardcoded to force regular users on public registration
+        const values = [username, email, hashedPassword, 'USER'];
         
         const result = await client.query(sql, values);
-
         await client.query('COMMIT');
 
         console.log("✅ User Registered:", result.rows[0]);
         res.json({ message: "User registered successfully!", user: result.rows[0] });
 
     } catch (err) {
-        if (client) {
-            await client.query('ROLLBACK');
-        }
-        
+        if (client) await client.query('ROLLBACK');
         console.error("❌ Register Error:", err.message);
 
         if (err.code === '23505') {
@@ -100,9 +87,7 @@ const register = async (req, res) => {
         sendServerError(res, 'Register Error', err);
 
     } finally {
-        if (client) {
-            client.release();
-        }
+        if (client) client.release();
     }
 };
 
@@ -114,6 +99,43 @@ const login = async (req, res) => {
     }
 
     try {
+        // 🔐 1. ENV ADMIN CHECK
+        const isEnvAdmin = 
+            process.env.ADMIN_USERNAME && 
+            process.env.ADMIN_PASSWORD && 
+            username === process.env.ADMIN_USERNAME && 
+            password === process.env.ADMIN_PASSWORD;
+
+        if (isEnvAdmin) {
+            const adminUser = {
+                userid: 0,
+                username: process.env.ADMIN_USERNAME,
+                email: 'admin@system.local',
+                role: 'ADMIN'
+            };
+
+            const token = jwt.sign(
+                { userId: adminUser.userid, role: adminUser.role }, 
+                process.env.JWT_SECRET,                   
+                { expiresIn: '24h' }                     
+            );
+
+            res.cookie('token', token, {
+                httpOnly: true, 
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'lax', 
+                path: '/',       
+                maxAge: 24 * 60 * 60 * 1000 
+            });
+
+            console.log("✅ Admin Login Successful via ENV credentials");
+            return res.json({
+                message: "Admin Login Successful!",
+                user: adminUser
+            });
+        }
+
+        // 👤 2. DATABASE USER LOOKUP
         const sql = `SELECT * FROM "User" WHERE username = $1`;
         const result = await pool.query(sql, [username]);
 
@@ -122,7 +144,6 @@ const login = async (req, res) => {
         }
 
         const user = result.rows[0];
-
         const match = await bcrypt.compare(password, user.passwordhash);
 
         if (match) {
@@ -134,7 +155,6 @@ const login = async (req, res) => {
                 { expiresIn: '24h' }                     
             );
 
-            
             res.cookie('token', token, {
                 httpOnly: true, 
                 secure: process.env.NODE_ENV === 'production', 
@@ -143,7 +163,6 @@ const login = async (req, res) => {
                 maxAge: 24 * 60 * 60 * 1000 
             });
 
-         
             res.json({
                 message: "Login Successful!",
                 user: {
@@ -162,10 +181,8 @@ const login = async (req, res) => {
     }
 };
 
-
 const googleAuth = async (req, res) => {
     const { email, name } = req.body;
-
     const userEmail = email || (name ? `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com` : null);
 
     if (!userEmail) {
@@ -188,10 +205,8 @@ const googleAuth = async (req, res) => {
             `;
             const insertRes = await pool.query(insertSql, [username, userEmail, hashedPassword]);
             user = insertRes.rows[0];
-            console.log("✅ Google Sign-In: Created new user", user.username);
         } else {
             user = result.rows[0];
-            console.log("✅ Google Sign-In: Existing user logged in", user.username);
         }
 
         const token = jwt.sign(
@@ -226,6 +241,5 @@ const logout = (req, res) => {
     res.clearCookie('token', { path: '/' }); 
     res.json({ message: "Logged out successfully!" });
 };
-
 
 module.exports = { register, login, googleAuth, getUserProfile, logout, health };
