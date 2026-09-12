@@ -163,10 +163,69 @@ const login = async (req, res) => {
 };
 
 
+const googleAuth = async (req, res) => {
+    const { email, name } = req.body;
+
+    const userEmail = email || (name ? `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com` : null);
+
+    if (!userEmail) {
+        return res.status(400).json({ error: "Google email is required" });
+    }
+
+    try {
+        const sql = `SELECT * FROM "User" WHERE email = $1 OR username = $2`;
+        let result = await pool.query(sql, [userEmail, name || userEmail.split('@')[0]]);
+
+        let user;
+        if (result.rows.length === 0) {
+            const username = name || userEmail.split('@')[0];
+            const hashedPassword = await bcrypt.hash('GOOGLE_OAUTH_' + Date.now(), 10);
+            
+            const insertSql = `
+                INSERT INTO "User" (username, email, passwordhash, role)
+                VALUES ($1, $2, $3, 'USER')
+                RETURNING *
+            `;
+            const insertRes = await pool.query(insertSql, [username, userEmail, hashedPassword]);
+            user = insertRes.rows[0];
+            console.log("✅ Google Sign-In: Created new user", user.username);
+        } else {
+            user = result.rows[0];
+            console.log("✅ Google Sign-In: Existing user logged in", user.username);
+        }
+
+        const token = jwt.sign(
+            { userId: user.userid, role: user.role }, 
+            process.env.JWT_SECRET,                   
+            { expiresIn: '24h' }                     
+        );
+
+        res.cookie('token', token, {
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'lax', 
+            path: '/',       
+            maxAge: 24 * 60 * 60 * 1000 
+        });
+
+        res.json({
+            message: "Google Sign-In Successful!",
+            user: {
+                userid: user.userid,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (err) {
+        sendServerError(res, 'Google Auth Error', err);
+    }
+};
+
 const logout = (req, res) => {
     res.clearCookie('token', { path: '/' }); 
     res.json({ message: "Logged out successfully!" });
 };
 
 
-module.exports = { register, login, getUserProfile, logout, health };
+module.exports = { register, login, googleAuth, getUserProfile, logout, health };

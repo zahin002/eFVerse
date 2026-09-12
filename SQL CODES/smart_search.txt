@@ -1,0 +1,77 @@
+CREATE OR REPLACE FUNCTION smart_search_pro(
+   
+    p_name TEXT DEFAULT NULL,
+    p_league_id INT DEFAULT NULL,
+    p_club_id INT DEFAULT NULL,
+    p_nation_id INT DEFAULT NULL,
+    p_card_type TEXT DEFAULT NULL,
+    p_pos_code VARCHAR DEFAULT NULL,
+  
+    p_off_aware INT DEFAULT NULL, p_finishing INT DEFAULT NULL, 
+    p_ball_ctrl INT DEFAULT NULL, p_dribbling INT DEFAULT NULL, 
+    p_passing INT DEFAULT NULL, p_kick_pwr INT DEFAULT NULL, 
+    p_speed INT DEFAULT NULL, p_accel INT DEFAULT NULL, 
+    p_stamina INT DEFAULT NULL, p_balance INT DEFAULT NULL, 
+    p_phys_cont INT DEFAULT NULL, p_jump INT DEFAULT NULL, 
+    p_def_aware INT DEFAULT NULL, p_tackling INT DEFAULT NULL, 
+    p_aggression INT DEFAULT NULL, p_gk_aware INT DEFAULT NULL, 
+    p_gk_catch INT DEFAULT NULL, p_gk_parry INT DEFAULT NULL, 
+    p_gk_reflex INT DEFAULT NULL, p_gk_reach INT DEFAULT NULL
+)
+RETURNS TABLE (
+    CardID INT, PlayerID INT, PlayerName VARCHAR, PositionCode VARCHAR, CardType TEXT, 
+    LeagueName VARCHAR, ClubName VARCHAR, CountryName VARCHAR,
+    BaseRating INT, Finishing INT, Speed INT
+) 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.CardID, p.PlayerID, p.PlayerName, c.PositionCode, c.CardType, 
+        l.LeagueName, cl.ClubName, n.CountryName,
+        c.BaseOverallRating, s.Finishing, s.Speed
+    FROM Card c
+    JOIN Player p ON c.PlayerID = p.PlayerID
+    LEFT JOIN League l ON p.LeagueID = l.LeagueID
+    LEFT JOIN Club cl ON p.ClubID = cl.ClubID
+    LEFT JOIN Nationality n ON p.NationalityID = n.NationalityID
+    LEFT JOIN PlayerStats s ON c.CardID = s.CardID
+    WHERE 
+        
+        (p_name IS NULL OR p_name = '' OR p.PlayerName ILIKE '%' || p_name || '%')
+        
+        
+        AND (p_league_id IS NULL OR p.LeagueID = p_league_id)
+        AND (p_club_id IS NULL OR p.ClubID = p_club_id)
+        AND (p_nation_id IS NULL OR p.NationalityID = p_nation_id)
+        
+      
+        AND (p_card_type IS NULL OR p_card_type = '' OR c.CardType = p_card_type)
+        AND (p_pos_code IS NULL OR p_pos_code = '' OR c.PositionCode = p_pos_code)
+
+      
+        AND (p_off_aware IS NULL OR s.OffensiveAwareness BETWEEN (p_off_aware - 10) AND p_off_aware)
+        AND (p_finishing IS NULL OR s.Finishing BETWEEN (p_finishing - 10) AND p_finishing)
+        AND (p_ball_ctrl IS NULL OR s.BallControl BETWEEN (p_ball_ctrl - 10) AND p_ball_ctrl)
+        AND (p_dribbling IS NULL OR s.Dribbling BETWEEN (p_dribbling - 10) AND p_dribbling)
+        AND (p_passing IS NULL OR s.Passing BETWEEN (p_passing - 10) AND p_passing)
+        AND (p_kick_pwr IS NULL OR s.KickingPower BETWEEN (p_kick_pwr - 10) AND p_kick_pwr)
+        AND (p_speed IS NULL OR s.Speed BETWEEN (p_speed - 10) AND p_speed)
+        AND (p_accel IS NULL OR s.Acceleration BETWEEN (p_accel - 10) AND p_accel)
+        AND (p_stamina IS NULL OR s.Stamina BETWEEN (p_stamina - 10) AND p_stamina)
+        AND (p_balance IS NULL OR s.Balance BETWEEN (p_balance - 10) AND p_balance)
+        AND (p_phys_cont IS NULL OR s.PhysicalContact BETWEEN (p_phys_cont - 10) AND p_phys_cont)
+        AND (p_jump IS NULL OR s.Jump BETWEEN (p_jump - 10) AND p_jump)
+        AND (p_def_aware IS NULL OR s.DefensiveAwareness BETWEEN (p_def_aware - 10) AND p_def_aware)
+        AND (p_tackling IS NULL OR s.Tackling BETWEEN (p_tackling - 10) AND p_tackling)
+        AND (p_aggression IS NULL OR s.Aggression BETWEEN (p_aggression - 10) AND p_aggression)
+        AND (p_gk_aware IS NULL OR s.GkAwareness BETWEEN (p_gk_aware - 10) AND p_gk_aware)
+        AND (p_gk_catch IS NULL OR s.GkCatching BETWEEN (p_gk_catch - 10) AND p_gk_catch)
+        AND (p_gk_parry IS NULL OR s.GkParrying BETWEEN (p_gk_parry - 10) AND p_gk_parry)
+        AND (p_gk_reflex IS NULL OR s.GkReflexes BETWEEN (p_gk_reflex - 10) AND p_gk_reflex)
+        AND (p_gk_reach IS NULL OR s.GkReach BETWEEN (p_gk_reach - 10) AND p_gk_reach);
+END;
+$$;
+
+

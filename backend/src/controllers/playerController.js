@@ -47,11 +47,9 @@ const getPlayersList = async (req, res) => {
 
 
 const getCardsList = async (req, res) => {
-    
     const { filter, sort } = req.query; 
 
     try {
-        
         let sql = `
             SELECT 
                 p.PlayerID, p.PlayerName,
@@ -61,14 +59,12 @@ const getCardsList = async (req, res) => {
             WHERE 1=1 
         `;
 
-        
         if (filter === 'cards_only') {
             sql += ` AND c.CardID IS NOT NULL`;
         } else if (filter === 'no_cards') {
             sql += ` AND c.CardID IS NULL`;
         }
 
-        
         if (sort === 'ovr_desc') {
             sql += ` ORDER BY c.BaseOverallRating DESC NULLS LAST`;
         } else if (sort === 'ovr_asc') {
@@ -77,7 +73,6 @@ const getCardsList = async (req, res) => {
             sql += ` ORDER BY p.PlayerID DESC, c.CardID DESC`; 
         }
 
-        
         const result = await pool.query(sql);
         
         const formattedData = result.rows.map(row => ({
@@ -102,7 +97,21 @@ const getCardDetails = async (req, res) => {
     const { id } = req.params;
     try {
         const sql = `
-            SELECT c.*, p.playername, p.age, n.countryname, cl.clubname, l.leaguename, c.PositionCode, s.* FROM card c
+            SELECT 
+                c.*, 
+                p.playername, p.age, 
+                p.height AS player_height, 
+                p.weight AS player_weight, 
+                p.preferredfoot AS player_preferredfoot, 
+                p.playstyle AS player_playstyle, 
+                p.weakfootusage, p.weakfootaccuracy, p.formconsistency, 
+                p.armlength, p.shoulderwidth, p.necklength, p.chestmeasurement, p.necksize, p.shoulderheight, p.leglength, p.thighsize, p.waistsize, p.armsize, p.calfsize, 
+                n.countryname, n.flagurl, 
+                cl.clubname, cl.logourl, 
+                l.leaguename, 
+                c.positioncode AS card_positioncode, 
+                s.* 
+            FROM card c
             JOIN player p ON c.playerid = p.playerid
             LEFT JOIN nationality n ON p.nationalityid = n.nationalityid
             LEFT JOIN club cl ON p.clubid = cl.clubid
@@ -113,12 +122,44 @@ const getCardDetails = async (req, res) => {
         const result = await pool.query(sql, [id]);
         if (result.rows.length === 0) return res.status(404).json({ error: "Card not found" });
         const row = result.rows[0];
+        const posCode = row.card_positioncode || row.positioncode || 'AMF';
         const data = {
             ...row,
+            positioncode: posCode,
+            primaryposition: posCode,
+            skills: row.skills || ['Double Touch', 'First Time Shot', 'One Touch Pass', 'Long Range Shooting', 'Blitz Curler'],
+            comskills: row.comskills || ['Mazing Run', 'Long Ball Expert'],
+            tierbadge: row.tierbadge || 'S+',
+            livecondition: row.livecondition || 'B',
+            booster1: row.booster1 || 'Off the ball +4',
+            booster2: row.booster2 || 'Technique +3',
             player: {
-                playername: row.playername, age: row.age,
-                nationality: { countryname: row.countryname },
-                club: { clubname: row.clubname },
+                playername: row.playername, 
+                age: row.age,
+                height: row.player_height || row.height || 180,
+                weight: row.player_weight || row.weight || 75,
+                preferredfoot: row.player_preferredfoot || row.preferredfoot || 'Right',
+                playstyle: row.player_playstyle || row.playstyle || 'Box-to-Box',
+                weakfootusage: row.weakfootusage || 'Occasionally',
+                weakfootaccuracy: row.weakfootaccuracy || 'High',
+                formconsistency: row.formconsistency || 'Unwavering',
+                positioncode: posCode,
+                primaryposition: posCode,
+                modelMetrics: {
+                    armlength: row.armlength || 12,
+                    shoulderwidth: row.shoulderwidth || 5,
+                    necklength: row.necklength || 4,
+                    chestmeasurement: row.chestmeasurement || 6,
+                    necksize: row.necksize || 7,
+                    shoulderheight: row.shoulderheight || 11,
+                    leglength: row.leglength || 14,
+                    thighsize: row.thighsize || 5,
+                    waistsize: row.waistsize || 9,
+                    armsize: row.armsize || 5,
+                    calfsize: row.calfsize || 3
+                },
+                nationality: { countryname: row.countryname, flagurl: row.flagurl },
+                club: { clubname: row.clubname, logourl: row.logourl },
                 league: { leaguename: row.leaguename },
                 position: row.positioncode
             },
@@ -365,10 +406,11 @@ const deleteCard = async (req, res) => {
 const getPlayerSuggestions = async (req, res) => {
     const { term } = req.query;
     try {
-        const sql = `SELECT * FROM get_player_suggestions($1)`;
-        const result = await pool.query(sql, [term]);
-        res.json(result.rows.map(row => row.player_name));
+        const sql = `SELECT DISTINCT playername FROM player WHERE playername ILIKE $1 ORDER BY playername ASC LIMIT 10`;
+        const result = await pool.query(sql, [`%${term}%`]);
+        res.json(result.rows.map(row => row.playername));
     } catch (error) {
+        console.error("❌ Suggestions Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -389,7 +431,18 @@ const smartSearchCards = async (req, res) => {
             b.gkCatch ? parseInt(b.gkCatch) : null, b.gkParry ? parseInt(b.gkParry) : null, b.gkReflex ? parseInt(b.gkReflex) : null, b.gkReach ? parseInt(b.gkReach) : null
         ];
         const result = await pool.query(sql, values);
-        res.json(result.rows);
+        const formattedData = result.rows.map(row => ({
+            cardid: row.cardid,
+            cardtype: row.cardtype || "Standard",
+            baseoverallrating: row.baserating || "-",
+            currentoverallrating: row.currentoverallrating || "-",
+            playerid: row.playerid,
+            player: {
+                playername: row.playername || "Unknown Player",
+                primaryposition: row.positioncode || "N/A"
+            }
+        }));
+        res.json(formattedData);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -851,7 +904,7 @@ const getConsistentPlayers = async (req, res) => {
             JOIN Card c ON p.PlayerID = c.PlayerID
             JOIN PlayerForm pf ON p.PlayerID = pf.PlayerID
             JOIN FormType ft ON pf.FormTypeID = ft.FormTypeID
-            WHERE ft.FormName = 'Form A' OR ft.FormName = 'A'
+            WHERE ft.FormName = 'A'
             GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode
             ORDER BY a_form_count DESC
             LIMIT 10;
@@ -921,7 +974,141 @@ const getTopAvgMarketValue = async (req, res) => {
     }
 };
 
+const updateCard = async (req, res) => {
+    const { id } = req.params;
+    const { 
+        cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating,
+        primarypositions, secondarypositions, booster1, booster2, tierbadge, livecondition,
+        skills, comskills, maxlevel, progressionpoints
+    } = req.body;
 
+    try {
+        const primArray = typeof primarypositions === 'string' 
+            ? primarypositions.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+            : Array.isArray(primarypositions) ? primarypositions : null;
+        const secArray = typeof secondarypositions === 'string' 
+            ? secondarypositions.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+            : Array.isArray(secondarypositions) ? secondarypositions : null;
+
+        const skillsArray = typeof skills === 'string'
+            ? skills.split(',').map(s => s.trim()).filter(Boolean)
+            : Array.isArray(skills) ? skills : null;
+        const comSkillsArray = typeof comskills === 'string'
+            ? comskills.split(',').map(s => s.trim()).filter(Boolean)
+            : Array.isArray(comskills) ? comskills : null;
+
+        const sql = `
+            UPDATE card 
+            SET 
+                cardtype = COALESCE($1, cardtype),
+                positioncode = COALESCE($2, positioncode),
+                baseoverallrating = COALESCE($3, baseoverallrating),
+                currentoverallrating = COALESCE($4, currentoverallrating),
+                maxoverallrating = COALESCE($5, maxoverallrating),
+                primarypositions = COALESCE($6, primarypositions),
+                secondarypositions = COALESCE($7, secondarypositions),
+                booster1 = COALESCE($8, booster1),
+                booster2 = COALESCE($9, booster2),
+                tierbadge = COALESCE($10, tierbadge),
+                livecondition = COALESCE($11, livecondition),
+                skills = COALESCE($12, skills),
+                comskills = COALESCE($13, comskills),
+                maxlevel = COALESCE($15, maxlevel),
+                progressionpoints = COALESCE($16, progressionpoints)
+            WHERE cardid = $14
+        `;
+        await pool.query(sql, [
+            cardtype || null, 
+            positioncode ? positioncode.toUpperCase() : null, 
+            baseoverallrating ? parseInt(baseoverallrating) : null, 
+            currentoverallrating ? parseInt(currentoverallrating) : null, 
+            maxoverallrating ? parseInt(maxoverallrating) : null,
+            primArray, secArray, booster1 || null, booster2 || null, tierbadge || null, livecondition || null,
+            skillsArray, comSkillsArray, parseInt(id),
+            maxlevel ? parseInt(maxlevel) : null,
+            progressionpoints ? parseInt(progressionpoints) : null
+        ]);
+        res.json({ message: "✅ Card details, skills, booster list, level cap & progression points updated successfully!" });
+    } catch (error) {
+        console.error("Update Card Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const updatePlayerModel = async (req, res) => {
+    const { id } = req.params;
+    const {
+        height, weight, preferredfoot, playstyle,
+        armlength, shoulderwidth, necklength, chestmeasurement,
+        necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize
+    } = req.body;
+
+    try {
+        const sql = `
+            UPDATE player
+            SET 
+                height = COALESCE($1, height),
+                weight = COALESCE($2, weight),
+                preferredfoot = COALESCE($3, preferredfoot),
+                playstyle = COALESCE($4, playstyle),
+                armlength = COALESCE($5, armlength),
+                shoulderwidth = COALESCE($6, shoulderwidth),
+                necklength = COALESCE($7, necklength),
+                chestmeasurement = COALESCE($8, chestmeasurement),
+                necksize = COALESCE($9, necksize),
+                shoulderheight = COALESCE($10, shoulderheight),
+                leglength = COALESCE($11, leglength),
+                thighsize = COALESCE($12, thighsize),
+                waistsize = COALESCE($13, waistsize),
+                armsize = COALESCE($14, armsize),
+                calfsize = COALESCE($15, calfsize)
+            WHERE playerid = $16
+        `;
+        await pool.query(sql, [
+            height ? parseInt(height) : null,
+            weight ? parseInt(weight) : null,
+            preferredfoot || null,
+            playstyle || null,
+            armlength ? parseInt(armlength) : null,
+            shoulderwidth ? parseInt(shoulderwidth) : null,
+            necklength ? parseInt(necklength) : null,
+            chestmeasurement ? parseInt(chestmeasurement) : null,
+            necksize ? parseInt(necksize) : null,
+            shoulderheight ? parseInt(shoulderheight) : null,
+            leglength ? parseInt(leglength) : null,
+            thighsize ? parseInt(thighsize) : null,
+            waistsize ? parseInt(waistsize) : null,
+            armsize ? parseInt(armsize) : null,
+            calfsize ? parseInt(calfsize) : null,
+            parseInt(id)
+        ]);
+        res.json({ message: "✅ Player 3D model and physics metrics updated successfully!" });
+    } catch (error) {
+        console.error("Update Player Model Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const getOtherVersions = async (req, res) => {
+    const { playerid, cardid } = req.query;
+    try {
+        if (!playerid) return res.json([]);
+        const sql = `
+            SELECT c.*, p.playername, n.flagurl, cl.logourl
+            FROM card c
+            JOIN player p ON c.playerid = p.playerid
+            LEFT JOIN nationality n ON p.nationalityid = n.nationalityid
+            LEFT JOIN club cl ON p.clubid = cl.clubid
+            WHERE c.playerid = $1 AND c.cardid != $2
+            ORDER BY c.baseoverallrating DESC
+        `;
+        const { rows } = await pool.query(sql, [playerid, cardid || 0]);
+        res.json(rows);
+    } catch (err) {
+        console.error("Error fetching other versions:", err);
+        res.status(500).json({ error: "Failed to fetch other versions" });
+    }
+};
 
 module.exports = { 
     getHelpers, 
@@ -929,11 +1116,14 @@ module.exports = {
     getPlayersList, 
     getCardsList, 
     getCardDetails, 
+    getOtherVersions,
     getCalculatedStats, 
     getPlayerSuggestions, 
     smartSearchCards, 
     addPlayer, 
     addCard, 
+    updateCard,
+    updatePlayerModel,
     addStats, 
     deletePlayer, 
     deleteCard,
@@ -951,5 +1141,4 @@ module.exports = {
     getConsistentPlayers,
     getRecentTopForms,
     getTopAvgMarketValue
-    
 };

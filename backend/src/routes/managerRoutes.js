@@ -10,6 +10,7 @@ router.get('/boosts/:id', managerController.getManagerBoosts);
 
 
 router.post('/add', verifyToken, managerController.addManager);
+router.put('/update/:id', verifyToken, managerController.updateManager);
 router.post('/boosts', verifyToken, managerController.assignManagerBoosts);
 router.delete('/delete/:id', verifyToken, managerController.deleteManager);
 

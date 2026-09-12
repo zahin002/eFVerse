@@ -1,4 +1,5 @@
 {
+  "name": "efverse",
   "scripts": {
     "backend": "npm --prefix backend start",
     "backend:dev": "npm --prefix backend run dev",

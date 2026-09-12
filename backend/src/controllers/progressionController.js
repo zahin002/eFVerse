@@ -208,11 +208,11 @@ const getSavedBuildsList = async (req, res) => {
     const { cardId } = req.params;
     const userId = req.user ? (req.user.userid || req.user.userId) : null;
 
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!userId) return res.json([]);
 
     try {
         const sql = `
-            SELECT b.BuildID, b.BuildName, b.CreatedAt, bs.*
+            SELECT b.BuildID, b.BuildName, b.IsPublic, b.CreatedAt, bs.*
             FROM Build b
             JOIN BuildStats bs ON b.BuildID = bs.BuildID
             WHERE b.CardID = $1 AND b.UserID = $2
@@ -259,11 +259,12 @@ const getCommunityBuilds = async (req, res) => {
 };
 
 const reactToBuild = async (req, res) => {
-    const { buildId, reaction } = req.body; 
+    const { buildId, reaction, reactionType } = req.body; 
+    const actualReaction = reaction || reactionType;
     const userId = req.user ? (req.user.userid || req.user.userId) : null;
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
-    if (!['LIKE', 'DISLIKE'].includes(reaction)) return res.status(400).json({ error: "Invalid reaction type." });
+    if (!['LIKE', 'DISLIKE'].includes(actualReaction)) return res.status(400).json({ error: "Invalid reaction type." });
 
     
     const client = await pool.connect();
@@ -280,19 +281,19 @@ const reactToBuild = async (req, res) => {
         let responseMessage = "";
 
         if (checkRes.rows.length > 0) {
-            if (checkRes.rows[0].reaction === reaction) {
+            if (checkRes.rows[0].reaction === actualReaction) {
               
                 await client.query(`DELETE FROM BuildReaction WHERE BuildID = $1 AND UserID = $2`, [buildId, userId]);
                 responseMessage = "Reaction removed.";
             } else {
             
-                await client.query(`UPDATE BuildReaction SET Reaction = $1 WHERE BuildID = $2 AND UserID = $3`, [reaction, buildId, userId]);
-                responseMessage = `Reaction changed to ${reaction}.`;
+                await client.query(`UPDATE BuildReaction SET Reaction = $1 WHERE BuildID = $2 AND UserID = $3`, [actualReaction, buildId, userId]);
+                responseMessage = `Reaction changed to ${actualReaction}.`;
             }
         } else {
           
-            await client.query(`INSERT INTO BuildReaction (BuildID, UserID, Reaction) VALUES ($1, $2, $3)`, [buildId, userId, reaction]);
-            responseMessage = `Build ${reaction}D.`;
+            await client.query(`INSERT INTO BuildReaction (BuildID, UserID, Reaction) VALUES ($1, $2, $3)`, [buildId, userId, actualReaction]);
+            responseMessage = `Build ${actualReaction}D.`;
         }
 
        
@@ -302,7 +303,7 @@ const reactToBuild = async (req, res) => {
     } catch (err) {
        
         await client.query('ROLLBACK');
-        console.error("Reaction Error:", err.message);
+        console.error("React to Build Error:", err.message);
         res.status(500).json({ error: err.message });
     } finally {
         
@@ -310,38 +311,77 @@ const reactToBuild = async (req, res) => {
     }
 };
 
+const deleteBuild = async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user ? (req.user.userid || req.user.userId) : null;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        await client.query('DELETE FROM BuildStats WHERE BuildID = $1', [parseInt(id)]);
+        await client.query('DELETE FROM BuildReaction WHERE BuildID = $1', [parseInt(id)]);
+        
+        const result = await client.query('DELETE FROM Build WHERE BuildID = $1 AND UserID = $2', [parseInt(id), userId]);
+        
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: "Build not found or permission denied." });
+        }
+        
+        await client.query('COMMIT');
+        res.json({ message: "✅ Build deleted successfully!" });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Delete Build Error:", err.message);
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+const toggleBuildPrivacy = async (req, res) => {
+    const { id } = req.params;
+    const { isPublic } = req.body;
+    const userId = req.user ? (req.user.userid || req.user.userId) : null;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        const result = await pool.query(
+            `UPDATE Build SET IsPublic = $1 WHERE BuildID = $2 AND UserID = $3 RETURNING *`,
+            [isPublic, parseInt(id), userId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Build not found or permission denied." });
+        }
+        res.json({ message: `✅ Build is now ${isPublic ? 'Public' : 'Private'}!` });
+    } catch (err) {
+        console.error("Toggle Build Privacy Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 const getMostLikedBuilds = async (req, res) => {
     try {
-        const query = `
-            SELECT * FROM (
-                SELECT 
-                    b.BuildID, 
-                    b.BuildName, 
-                    u.Username AS author,
-                    p.PlayerName,
-                    c.CardType,
-                    c.PositionCode,
-                    c.BaseOverallRating,
-                    b.CreatedAt,
-                  
-                    (SELECT COUNT(*)::int FROM BuildReaction br WHERE br.BuildID = b.BuildID AND br.Reaction = 'LIKE') AS total_likes
-                FROM Build b
-                JOIN "User" u ON b.UserID = u.UserID
-                JOIN Card c ON b.CardID = c.CardID
-                JOIN Player p ON c.PlayerID = p.PlayerID
-                WHERE b.IsPublic = TRUE
-            ) AS build_stats
-            WHERE total_likes > 0
-            ORDER BY total_likes DESC, CreatedAt DESC
-            LIMIT 20;
+        const sql = `
+            SELECT b.BuildID, b.BuildName, b.CardID, u.Username,
+                   COALESCE(SUM(CASE WHEN br.Reaction = 'LIKE' THEN 1 ELSE 0 END), 0) as likes
+            FROM Build b
+            JOIN "User" u ON b.UserID = u.UserID
+            LEFT JOIN BuildReaction br ON b.BuildID = br.BuildID
+            WHERE b.IsPublic = TRUE
+            GROUP BY b.BuildID, u.Username
+            ORDER BY likes DESC
+            LIMIT 5
         `;
-        
-        const { rows } = await pool.query(query);
-        res.json(rows);
-        
+        const result = await pool.query(sql);
+        res.json(result.rows);
     } catch (err) {
-        console.error("Error fetching most liked builds:", err);
-        res.status(500).json({ error: "Failed to fetch most liked builds" });
+        console.error("Most Liked Builds Error:", err.message);
+        res.status(500).json({ error: err.message });
     }
 };
 
@@ -394,5 +434,7 @@ module.exports = {
     reactToBuild, 
     getMostLikedBuilds,
     getManagersWithEffects,
-    getPositions
+    getPositions,
+    deleteBuild,
+    toggleBuildPrivacy
 };

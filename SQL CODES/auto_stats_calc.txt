@@ -1,0 +1,81 @@
+CREATE OR REPLACE FUNCTION calculate_suggested_stats(p_card_id INT)
+RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_base INT;
+    v_role VARCHAR; 
+    v_stats json;
+    
+    
+    calc_high INT; -- Key stats for the role
+    calc_med  INT; -- Secondary stats
+    calc_low  INT; -- Tertiary stats
+    calc_weak INT; -- Irrelevant stats
+    calc_null INT := 40; 
+BEGIN
+    SELECT c.BaseOverallRating, UPPER(pos.RoleGroup)
+    INTO v_base, v_role
+    FROM Card c
+    JOIN Positions pos ON c.PositionCode = pos.PositionCode
+    WHERE c.CardID = p_card_id;
+
+    IF v_base IS NULL THEN
+        RETURN json_build_object('error', 'Card or Position Role not found');
+    END IF;
+
+    
+    
+    calc_high := LEAST(99, v_base + 2);   
+    calc_med  := LEAST(99, v_base - 1);   
+    calc_low  := LEAST(99, v_base - 10);  
+    calc_weak := GREATEST(40, v_base - 25); 
+
+    
+    IF v_role = 'FORWARD' THEN
+        v_stats := json_build_object(
+            'offensiveawareness', calc_high, 'finishing', calc_high, 'ballcontrol', calc_med,
+            'dribbling', calc_med, 'passing', calc_low, 'kickingpower', calc_med,
+            'speed', calc_high, 'acceleration', calc_high, 'stamina', calc_low,
+            'balance', calc_med, 'physicalcontact', calc_low, 'jump', calc_low,
+            'defensiveawareness', calc_weak, 'tackling', calc_weak, 'aggression', calc_weak,
+            'gkawareness', calc_null, 'gkcatching', calc_null, 'gkparrying', calc_null, 'gkreflexes', calc_null, 'gkreach', calc_null
+        );
+        
+    ELSIF v_role = 'MIDFIELDER' THEN
+        v_stats := json_build_object(
+            'offensiveawareness', calc_low, 'finishing', calc_weak, 'ballcontrol', calc_high,
+            'dribbling', calc_high, 'passing', calc_high, 'kickingpower', calc_low,
+            'speed', calc_med, 'acceleration', calc_med, 'stamina', calc_high,
+            'balance', calc_med, 'physicalcontact', calc_low, 'jump', calc_low,
+            'defensiveawareness', calc_med, 'tackling', calc_med, 'aggression', calc_low,
+            'gkawareness', calc_null, 'gkcatching', calc_null, 'gkparrying', calc_null, 'gkreflexes', calc_null, 'gkreach', calc_null
+        );
+
+    ELSIF v_role = 'DEFENDER' THEN
+        v_stats := json_build_object(
+            'offensiveawareness', calc_weak, 'finishing', calc_weak, 'ballcontrol', calc_weak,
+            'dribbling', calc_weak, 'passing', calc_low, 'kickingpower', calc_weak,
+            'speed', calc_med, 'acceleration', calc_med, 'stamina', calc_med,
+            'balance', calc_low, 'physicalcontact', calc_high, 'jump', calc_high,
+            'defensiveawareness', calc_high, 'tackling', calc_high, 'aggression', calc_high,
+            'gkawareness', calc_null, 'gkcatching', calc_null, 'gkparrying', calc_null, 'gkreflexes', calc_null, 'gkreach', calc_null
+        );
+
+    ELSIF v_role = 'GOALKEEPER' THEN
+      
+        v_stats := json_build_object(
+            'offensiveawareness', 40, 'finishing', 40, 'ballcontrol', 40,
+            'dribbling', 40, 'passing', 50, 'kickingpower', 60,
+            'speed', 50, 'acceleration', 50, 'stamina', 50,
+            'balance', 40, 'physicalcontact', calc_med, 'jump', calc_med,
+            'defensiveawareness', 40, 'tackling', 40, 'aggression', 40,
+            'gkawareness', calc_med, 'gkcatching', calc_med, 'gkparrying', calc_med, 'gkreflexes', calc_med, 'gkreach', calc_med
+        );
+    ELSE
+        v_stats := json_build_object('error', 'RoleGroup ' || v_role || ' unknown');
+    END IF;
+
+    RETURN v_stats;
+END;
+$$;

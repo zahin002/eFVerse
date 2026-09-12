@@ -13,6 +13,7 @@ router.get('/compare/:cardId1/:cardId2', controller.comparePlayers);
 router.get('/calculate-stats/:id', controller.getCalculatedStats);
 router.get('/list-penalties', controller.getPenalties);
 router.get('/view-card/:id', controller.getCardDetails);
+router.get('/other-versions', controller.getOtherVersions);
 router.get('/history/:playerId', controller.getPlayerValueHistory);
 router.get('/similar/:cardId', controller.getSimilarPlayers);
 router.get('/top-rated', controller.getTopRatedCards);
@@ -29,6 +30,8 @@ router.post('/add-stats', verifyToken, controller.addStats);
 
 
 router.put('/update-status', verifyToken, controller.updatePlayerStatus);
+router.put('/update-card/:id', verifyToken, controller.updateCard);
+router.put('/update-player-model/:id', verifyToken, controller.updatePlayerModel);
 
 
 router.delete('/delete-player/:id', verifyToken, controller.deletePlayer);

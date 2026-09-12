@@ -11,6 +11,7 @@ export default function SmartSearch({ onCardClick }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
+    const [hasSearched, setHasSearched] = useState(false);
     
    
     const initialFilters = {
@@ -88,9 +89,11 @@ export default function SmartSearch({ onCardClick }) {
 
             const res = await axios.get(`http://localhost:5001/api/players/smart-search?${params}`);
             setSearchResults(res.data);
+            setHasSearched(true);
         } catch (err) { 
             console.error("Search Failed", err); 
             setSearchResults([]);
+            setHasSearched(true);
         }
     };
 
@@ -99,6 +102,7 @@ export default function SmartSearch({ onCardClick }) {
         setFilters(initialFilters);
         setSearchResults([]);
         setFilteredClubs([]);
+        setHasSearched(false);
     };
 
     const inputStyle = { padding: '10px', background: '#333', color: 'white', border: '1px solid #444', borderRadius: '5px', width: '100%', marginBottom: '10px' };
@@ -153,12 +157,46 @@ export default function SmartSearch({ onCardClick }) {
                         ))}
                     </select>
 
-                    <select value={filters.cardType || ''} style={inputStyle} onChange={e => setFilters({...filters, cardType: e.target.value || null})}>
-                        <option value="">Any Card Type</option>
-                        <option value="POTW">POTW</option>
-                        <option value="Legendary">Legendary</option>
-                        <option value="Standard">Standard</option>
-                    </select>
+                    {/* PLAYER TYPE TAG BADGES (MATCHING EFHUB DESIGNS) */}
+                    <div style={{ marginBottom: '15px', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: '0.8em', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <span>Player Type</span>
+                            {filters.cardType && (
+                                <span onClick={() => setFilters({ ...filters, cardType: null })} style={{ color: '#ff4d4d', cursor: 'pointer', fontSize: '0.85em' }}>Clear</span>
+                            )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                            {['Normal', 'Featured', 'Trending', 'Legend', 'Epic', 'Highlight', 'Bigtime', 'Showtime'].map(type => {
+                                const active = filters.cardType === type || 
+                                              (filters.cardType === 'Standard' && type === 'Normal') || 
+                                              (filters.cardType === 'POTW' && type === 'Trending') || 
+                                              (filters.cardType === 'Legendary' && type === 'Legend');
+                                return (
+                                    <button 
+                                        key={type}
+                                        type="button"
+                                        onClick={() => setFilters({ ...filters, cardType: active ? null : type })}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '8px',
+                                            border: active ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                                            fontSize: '0.85em',
+                                            fontWeight: '700',
+                                            fontFamily: "'Outfit', sans-serif",
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            background: active ? 'linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(56, 189, 248, 0.2) 100%)' : 'rgba(255, 255, 255, 0.04)',
+                                            color: active ? '#38bdf8' : '#cbd5e1',
+                                            boxShadow: active ? '0 0 12px rgba(56, 189, 248, 0.35)' : 'none',
+                                            transform: active ? 'scale(1.02)' : 'none'
+                                        }}
+                                    >
+                                        {type}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     <select value={filters.posCode || ''} style={inputStyle} onChange={e => setFilters({...filters, posCode: e.target.value || null})}>
                         <option value="">Any Position</option>
@@ -194,9 +232,17 @@ export default function SmartSearch({ onCardClick }) {
                 {/* --- RESULTS GRID --- */}
                 <div>
                     <h3 style={{ marginTop: 0 }}>Results ({searchResults.length})</h3>
-                    {searchResults.length === 0 ? (
-                        <div style={{ padding: '60px', textAlign: 'center', color: '#666', background: '#1a1a1a', borderRadius: '15px', border: '1px dashed #333' }}>
-                            No cards found matching these filters.
+                    {!hasSearched ? (
+                        <div style={{ padding: '80px 40px', textAlign: 'center', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '15px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <div style={{ fontSize: '2.5em', marginBottom: '12px' }}>🔍</div>
+                            <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: '800' }}>Search for eFVerse Players</h4>
+                            <p style={{ margin: 0, fontSize: '0.9em', color: '#64748b' }}>Enter a player name or apply smart filters, then click Search to display matching cards.</p>
+                        </div>
+                    ) : searchResults.length === 0 ? (
+                        <div style={{ padding: '80px 40px', textAlign: 'center', color: '#f87171', background: 'rgba(248, 113, 113, 0.02)', borderRadius: '15px', border: '1px dashed rgba(248, 113, 113, 0.2)' }}>
+                            <div style={{ fontSize: '2.5em', marginBottom: '12px' }}>⚠️</div>
+                            <h4 style={{ color: '#f87171', marginBottom: '8px', fontWeight: '800' }}>No Matches Found</h4>
+                            <p style={{ margin: 0, fontSize: '0.9em', color: '#64748b' }}>Try adjusting your filters or checking your spelling.</p>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>

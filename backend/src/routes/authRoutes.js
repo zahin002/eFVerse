@@ -9,6 +9,7 @@ router.get('/profile/:userId', verifyToken, authController.getUserProfile);
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/google', authController.googleAuth);
 
 
 router.post('/logout', verifyToken, authController.logout);

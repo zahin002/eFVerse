@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 500 650" width="500" height="650">
+  <defs>
+    <!-- Royal Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="30%" stop-color="#fbbf24"/>
+      <stop offset="70%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="blueSash" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <radialGradient id="crownRed" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </radialGradient>
+  </defs>
+
+  <g id="real-madrid-official-crest">
+    <!-- ROYAL CROWN ON TOP -->
+    <g transform="translate(0, -10)">
+      <!-- Crown Cushion Red Velvet -->
+      <path d="M 180 180 C 180 100 250 80 250 80 C 250 80 320 100 320 180 Z" fill="url(#crownRed)"/>
+      <path d="M 140 180 C 140 130 190 100 250 100 C 310 100 360 130 360 180 Z" fill="url(#crownRed)"/>
+      
+      <!-- Crown Gold Base Band -->
+      <path d="M 140 170 Q 250 200 360 170 L 365 195 Q 250 225 135 195 Z" fill="url(#goldGrad)" stroke="#78350f" stroke-width="3"/>
+      <!-- Jewels on Band -->
+      <circle cx="180" cy="188" r="6" fill="#10b981"/>
+      <circle cx="215" cy="192" r="7" fill="#ef4444"/>
+      <circle cx="250" cy="194" r="8" fill="#3b82f6"/>
+      <circle cx="285" cy="192" r="7" fill="#ef4444"/>
+      <circle cx="320" cy="188" r="6" fill="#10b981"/>
+
+      <!-- Crown Arches & Spikes -->
+      <path d="M 140 170 C 150 110 200 90 250 130" fill="none" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round"/>
+      <path d="M 360 170 C 350 110 300 90 250 130" fill="none" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round"/>
+      <path d="M 250 80 V 140" fill="none" stroke="url(#goldGrad)" stroke-width="14"/>
+
+      <!-- Top Orb & Royal Cross -->
+      <circle cx="250" cy="65" r="14" fill="url(#goldGrad)"/>
+      <path d="M 250 40 V 60 M 240 50 H 260" stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round"/>
+    </g>
+
+    <!-- CIRCULAR SHIELD CREST BODY -->
+    <g transform="translate(0, 40)">
+      <!-- Outer Gold Ring -->
+      <circle cx="250" cy="350" r="190" fill="#ffffff" stroke="url(#goldGrad)" stroke-width="20"/>
+      <!-- Inner Dark Blue Ring Border -->
+      <circle cx="250" cy="350" r="172" fill="none" stroke="#1e3a8a" stroke-width="12"/>
+
+      <!-- Inner White Circle Field -->
+      <circle cx="250" cy="350" r="164" fill="#ffffff"/>
+
+      <!-- Diagonal Blue Mulberry Sash (Left to Right) -->
+      <g clip-path="url(#circleClip)">
+        <clipPath id="circleClip">
+          <circle cx="250" cy="350" r="164"/>
+        </clipPath>
+        <path d="M 80 200 L 380 500 L 320 540 L 20 240 Z" fill="url(#blueSash)"/>
+      </g>
+
+      <!-- MONOGRAM: M C F -->
+      <!-- 'C' Outer Gold Loop -->
+      <path d="M 320 260 C 220 200 140 280 160 380 C 180 470 290 470 330 400" fill="none" stroke="url(#goldGrad)" stroke-width="24" stroke-linecap="round"/>
+
+      <!-- 'M' Main Central Gold Letters -->
+      <path d="M 160 410 L 160 290 L 250 400 L 340 290 L 340 410" fill="none" stroke="url(#goldGrad)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- 'F' Interlocking Gold Accent -->
+      <path d="M 250 270 V 430 M 250 330 H 310" stroke="url(#goldGrad)" stroke-width="20" stroke-linecap="round"/>
+
+      <!-- Inner Gold Ring Border -->
+      <circle cx="250" cy="350" r="164" fill="none" stroke="url(#goldGrad)" stroke-width="8"/>
+    </g>
+  </g>
+</svg>

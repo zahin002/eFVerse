@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR } from './progressionEngine';
 
 const authAxios = axios.create({
     baseURL: 'http://localhost:5001/api',
@@ -8,17 +9,20 @@ const authAxios = axios.create({
 
 // --- UI HELPERS ---
 const getStatColor = (value) => {
-    if (value >= 90) return { bg: '#00d2d3', text: '#000' }; 
+    if (value >= 90) return { bg: '#00f2fe', text: '#000' }; 
     if (value >= 80) return { bg: '#39ff14', text: '#000' }; 
-    if (value >= 70) return { bg: '#f1c40f', text: '#000' }; 
+    if (value >= 70) return { bg: '#f97316', text: '#000' }; 
+    if (value >= 60) return { bg: '#facc15', text: '#000' }; 
     return { bg: '#ff4d4d', text: '#fff' }; 
 };
 
+const INITIAL_ALLOCATIONS = {
+    shooting: 0, passing: 0, dribbling: 0, dexterity: 0,
+    lowerBody: 0, aerial: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0
+};
+
 export default function CardTrainer({ card, onBack, onComplete }) {
-    const [allocations, setAllocations] = useState({
-        shooting: 0, passing: 0, dribbling: 0, dexterity: 0,
-        lowerBody: 0, aerial: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0
-    });
+    const [allocations, setAllocations] = useState(INITIAL_ALLOCATIONS);
 
     const [buildName, setBuildName] = useState(""); 
     const [savedBuilds, setSavedBuilds] = useState([]); 
@@ -28,8 +32,11 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     const [managersList, setManagersList] = useState([]);
     const [selectedManager, setSelectedManager] = useState("");
     const [positionsList, setPositionsList] = useState([]);
-    const [progressionRules, setProgressionRules] = useState({}); // ✅ STATE FOR RULES
+    const [progressionRules, setProgressionRules] = useState({});
     const [loading, setLoading] = useState(true);
+
+    const isFixedCard = card?.cardtype === 'POTW' || card?.cardtype === 'Trending';
+    const totalMaxPoints = isFixedCard ? 0 : (card?.totalprogressionpoints || 64);
 
     const baseStats = card?.stats || {
         offensiveawareness: 60, finishing: 60, ballcontrol: 60, dribbling: 60, passing: 60,
@@ -40,64 +47,69 @@ export default function CardTrainer({ card, onBack, onComplete }) {
 
     const getRoleGroup = (pos) => {
         if (!pos || positionsList.length === 0) return 'MIDFIELDER';
-        const p = pos.toUpperCase().trim();
+        const rawPos = Array.isArray(pos) ? pos[0] : pos;
+        const p = (typeof rawPos === 'string' ? rawPos : '').toUpperCase().trim();
         const match = positionsList.find(item => 
-            (item.positioncode || item.PositionCode || '').toUpperCase() === p
+            ((item.positioncode || item.PositionCode || '').toUpperCase()) === p
         );
         return match ? (match.rolegroup || match.RoleGroup) : 'MIDFIELDER';
     };
 
-    const isGK = card.rolegroup?.toUpperCase() === 'GOALKEEPER' || 
-                 getRoleGroup(card.primaryposition || card.positioncode) === 'GOALKEEPER';
+    const isGK = card?.rolegroup?.toUpperCase() === 'GOALKEEPER' || 
+                 getRoleGroup(card?.primaryposition || card?.positioncode) === 'GOALKEEPER';
 
-    
     const transformRulesToObject = (rulesArray) => {
-    const rules = {};
-    rulesArray.forEach(item => {
-        let programName = item.programname || item.ProgramName;
-        
-        
-        const nameMap = {
-            'Lower Body Strength': 'lowerBody',
-            'Aerial Strength': 'aerial',
-            'Shooting': 'shooting',
-            'Passing': 'passing',
-            'Dribbling': 'dribbling',
-            'Dexterity': 'dexterity',
-            'Defending': 'defending',
-            'GK 1': 'gk1',
-            'GK 2': 'gk2',
-            'GK 3': 'gk3'
-        };
-        
-        programName = nameMap[programName] || programName.toLowerCase();
-        
-        if (!rules[programName]) {
-            rules[programName] = [];
-        }
-        const statName = item.statname || item.StatName;
-        rules[programName].push(statName);
-    });
-    return rules;
-};
+        const rules = {};
+        if (!Array.isArray(rulesArray)) return rules;
+        rulesArray.forEach(item => {
+            if (!item) return;
+            let programName = item.programname || item.ProgramName || '';
+            const nameMap = {
+                'Lower Body Strength': 'lowerBody',
+                'Aerial Strength': 'aerial',
+                'Shooting': 'shooting',
+                'Passing': 'passing',
+                'Dribbling': 'dribbling',
+                'Dexterity': 'dexterity',
+                'Defending': 'defending',
+                'GK 1': 'gk1',
+                'GK 2': 'gk2',
+                'GK 3': 'gk3'
+            };
+            
+            programName = nameMap[programName] || programName.toLowerCase();
+            if (!programName) return;
+            
+            if (!rules[programName]) {
+                rules[programName] = [];
+            }
+            const statName = item.statname || item.StatName || '';
+            if (statName) {
+                rules[programName].push(statName);
+            }
+        });
+        return rules;
+    };
 
     const fetchBuildLists = async () => {
         if (!card?.cardid) return;
         try {
-            const currentRes = await authAxios.get(`/progression/my-build/${card.cardid}?t=${Date.now()}`);
-            if (currentRes.data) {
-                setAllocations({
-                    shooting: currentRes.data.shooting || 0,
-                    passing: currentRes.data.passing || 0,
-                    dribbling: currentRes.data.dribbling || 0,
-                    dexterity: currentRes.data.dexterity || 0,
-                    lowerBody: currentRes.data.lowerbody || 0, 
-                    aerial: currentRes.data.aerial || 0,
-                    defending: currentRes.data.defending || 0,
-                    gk1: currentRes.data.gk1 || 0,
-                    gk2: currentRes.data.gk2 || 0,
-                    gk3: currentRes.data.gk3 || 0
-                });
+            if (!isFixedCard) {
+                const currentRes = await authAxios.get(`/progression/my-build/${card.cardid}?t=${Date.now()}`);
+                if (currentRes.data) {
+                    setAllocations({
+                        shooting: currentRes.data.shooting || 0,
+                        passing: currentRes.data.passing || 0,
+                        dribbling: currentRes.data.dribbling || 0,
+                        dexterity: currentRes.data.dexterity || 0,
+                        lowerBody: currentRes.data.lowerbody || currentRes.data.lowerBody || 0, 
+                        aerial: currentRes.data.aerial || 0,
+                        defending: currentRes.data.defending || 0,
+                        gk1: currentRes.data.gk1 || 0,
+                        gk2: currentRes.data.gk2 || 0,
+                        gk3: currentRes.data.gk3 || 0
+                    });
+                }
             }
 
             const listRes = await authAxios.get(`/progression/builds/${card.cardid}?t=${Date.now()}`);
@@ -112,14 +124,12 @@ export default function CardTrainer({ card, onBack, onComplete }) {
             const posRes = await authAxios.get('/progression/positions');
             setPositionsList(posRes.data || []);
 
-            // ✅ FETCH PROGRESSION RULES FROM DATABASE
             const rulesRes = await authAxios.get('/progression/rules');
             const transformedRules = transformRulesToObject(rulesRes.data);
             setProgressionRules(transformedRules);
 
         } catch (err) {
             console.log("Error loading data:", err);
-            
             setProgressionRules({});
         } finally {
             setLoading(false);
@@ -131,12 +141,13 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     }, [card]);
 
     const handleLoadBuild = (build) => {
+        if (isFixedCard) return;
         setAllocations({
             shooting: build.finishing || build.shooting || 0,
             passing: build.passing || 0,
             dribbling: build.dribbling || 0,
             dexterity: build.offensiveawareness || build.dexterity || 0,
-            lowerBody: build.speed || build.lowerbody || 0, 
+            lowerBody: build.speed || build.lowerbody || build.lowerBody || 0, 
             aerial: build.jump || build.aerial || 0,
             defending: build.defensiveawareness || build.defending || 0,
             gk1: build.gkawareness || build.gk1 || 0,
@@ -146,33 +157,30 @@ export default function CardTrainer({ card, onBack, onComplete }) {
         alert(`Loaded Concept Build: ${build.buildname}`);
     };
 
-    const calculateLiveOVR = () => {
-        const { shooting, passing, dribbling, dexterity, lowerBody, aerial, defending, gk1, gk2, gk3 } = allocations;
-        let rawBoost = 0;
-        const role = card.rolegroup?.toUpperCase() || getRoleGroup(card.primaryposition || card.positioncode);
+    const calculateLiveOVR = (customAllocations = allocations) => {
+        if (isFixedCard) {
+            return card.maxoverallrating || card.baseoverallrating || 95;
+        }
 
-        if (role === 'FORWARD') rawBoost = (shooting * 0.45) + (dexterity * 0.3) + (dribbling * 0.15) + (lowerBody * 0.1);
-        else if (role === 'WINGER') rawBoost = (dribbling * 0.35) + (lowerBody * 0.3) + (passing * 0.2) + (dexterity * 0.15);
-        else if (role === 'MIDFIELDER') rawBoost = (passing * 0.4) + (dribbling * 0.25) + (defending * 0.15) + (lowerBody * 0.2);
-        else if (role === 'DEFENDER') rawBoost = (defending * 0.55) + (aerial * 0.25) + (lowerBody * 0.1) + (dexterity * 0.1);
-        else if (role === 'GOALKEEPER') rawBoost = (gk1 * 0.4) + (gk2 * 0.3) + (gk3 * 0.3);
-
+        const position = card.primaryposition || card.positioncode || 'AMF';
+        const baseStats = card.stats || {};
+        const allocatedStats = calculateAllocatedStats(baseStats, customAllocations);
+        
         const baseOvr = card.baseoverallrating || 80;
         const maxOvr = card.maxoverallrating || 99;
-        let organicBoost = rawBoost * 2.8;
+
+        const calculatedOvr = calculatePositionOVR(allocatedStats, position, baseOvr, maxOvr);
 
         let managerOvrBonus = 0;
         if (selectedManager) {
             const mgr = managersList.find(m => m.managerid.toString() === selectedManager);
             if (mgr && mgr.effects && mgr.effects.length > 0) {
-                const totalStatsBoosted = mgr.effects.reduce((sum, eff) => sum + eff.boost, 0);
-                managerOvrBonus = totalStatsBoosted * 0.15; 
+                const totalStatsBoosted = mgr.effects.reduce((sum, eff) => sum + (eff.boost || eff.boostvalue || 0), 0);
+                managerOvrBonus = Math.round(totalStatsBoosted * 0.15); 
             }
         }
 
-        const projectedOVR = Math.round(baseOvr + organicBoost + managerOvrBonus);
-        const ultimateMax = maxOvr + (managerOvrBonus > 0 ? 1 : 0);
-        return Math.max(baseOvr, Math.min(projectedOVR, ultimateMax));
+        return Math.min(105, calculatedOvr + managerOvrBonus);
     };
 
     const calculateCost = (currentLevel) => {
@@ -187,10 +195,11 @@ export default function CardTrainer({ card, onBack, onComplete }) {
         return sum;
     }, 0);
 
-    const pointsLeft = (card.totalprogressionpoints || 64) - totalUsed;
+    const pointsLeft = isFixedCard ? 0 : Math.max(0, totalMaxPoints - totalUsed);
     const currentLiveOVR = calculateLiveOVR(); 
 
     const handleIncrement = (key) => {
+        if (isFixedCard) return;
         const nextLevel = allocations[key] + 1;
         if (pointsLeft >= calculateCost(nextLevel) && nextLevel <= 16) {
             setAllocations(prev => ({ ...prev, [key]: nextLevel }));
@@ -198,55 +207,37 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     };
 
     const handleDecrement = (key) => {
-        if (allocations[key] > 0) setAllocations(prev => ({ ...prev, [key]: prev[key] - 1 }));
+        if (isFixedCard) return;
+        if (allocations[key] > 0) {
+            setAllocations(prev => ({ ...prev, [key]: prev[key] - 1 }));
+        }
     };
 
+    // --- REVERSE-ENGINEERED GREEDY AUTO ALLOCATE SOLVER (argmax ΔOVR) ---
     const handleSmartAllocate = () => {
-        let currentAllocations = { shooting: 0, passing: 0, dribbling: 0, dexterity: 0, lowerBody: 0, aerial: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0 };
-        let pointsRemaining = card.totalprogressionpoints || 64;
+        if (isFixedCard) return;
 
-        const role = card.rolegroup?.toUpperCase() || getRoleGroup(card.primaryposition || card.positioncode);
-        let weights = {};
+        const position = card.primaryposition || card.positioncode || 'AMF';
+        const baseStats = card.stats || {};
+        const baseOvr = card.baseoverallrating || 80;
+        const maxOvr = card.maxoverallrating || 99;
 
-        if (role === 'FORWARD') weights = { shooting: 0.45, dexterity: 0.3, dribbling: 0.15, lowerBody: 0.1 };
-        else if (role === 'WINGER') weights = { dribbling: 0.35, lowerBody: 0.3, passing: 0.2, dexterity: 0.15 };
-        else if (role === 'MIDFIELDER') weights = { passing: 0.4, dribbling: 0.25, lowerBody: 0.2, defending: 0.15 };
-        else if (role === 'DEFENDER') weights = { defending: 0.55, aerial: 0.25, lowerBody: 0.1, dexterity: 0.1 };
-        else if (role === 'GOALKEEPER') weights = { gk1: 0.4, gk2: 0.3, gk3: 0.3 };
+        const optimizedAllocations = autoAllocatePoints(
+            baseStats,
+            position,
+            totalMaxPoints,
+            baseOvr,
+            maxOvr
+        );
 
-        let canAllocate = true;
-        
-        while (canAllocate && pointsRemaining > 0) {
-            canAllocate = false;
-            let bestKey = null;
-            let bestROI = -1;
-
-            for (const [key, weight] of Object.entries(weights)) {
-                const currentLevel = currentAllocations[key];
-                if (currentLevel < 16) {
-                    const cost = calculateCost(currentLevel + 1);
-                    if (pointsRemaining >= cost) {
-                        const roi = weight / cost; 
-                        if (roi > bestROI) {
-                            bestROI = roi;
-                            bestKey = key;
-                        }
-                    }
-                }
-            }
-
-            if (bestKey) {
-                const cost = calculateCost(currentAllocations[bestKey] + 1);
-                currentAllocations[bestKey] += 1;
-                pointsRemaining -= cost;
-                canAllocate = true;
-            }
-        }
-        
-        setAllocations(currentAllocations);
+        setAllocations(optimizedAllocations);
     };
 
     const handleSaveSnapshot = async () => {
+        if (isFixedCard) {
+            alert("POTW / Trending cards are pre-trained special editions and cannot save progression snapshots.");
+            return;
+        }
         if (!buildName.trim()) {
             alert("Please enter a name for this build.");
             return;
@@ -277,60 +268,61 @@ export default function CardTrainer({ card, onBack, onComplete }) {
         }
     };
 
-    
-    const getLiveStat = (statKey) => {
-    let baseVal = baseStats[statKey] || 40;
-    let boost = 0;
-    
-    
-    const normalizedStatKey = statKey.toLowerCase();
-    
-   
-    Object.entries(progressionRules).forEach(([sliderKey, affectedStats]) => {
-        if (affectedStats && Array.isArray(affectedStats)) {
-           
-            const lowerCaseStats = affectedStats.map(s => s.toLowerCase());
-            if (lowerCaseStats.includes(normalizedStatKey)) {
-                boost += allocations[sliderKey] || 0;
+    const calculateCurrentStat = (statName) => {
+        let baseVal = baseStats[statName.toLowerCase()] || 60;
+        let pointsBoost = 0;
+
+        Object.keys(allocations).forEach(programKey => {
+            const pointsAllocated = allocations[programKey];
+            if (pointsAllocated > 0) {
+                const boostedStatsList = progressionRules[programKey] || [];
+                const isMatch = boostedStatsList.some(s => s && typeof s === 'string' && s.toLowerCase() === statName.toLowerCase());
+                if (isMatch) {
+                    pointsBoost += pointsAllocated;
+                }
+            }
+        });
+
+        let managerBoost = 0;
+        if (selectedManager) {
+            const mgr = managersList.find(m => m.managerid.toString() === selectedManager);
+            if (mgr && mgr.effects) {
+                const match = mgr.effects.find(e => {
+                    const effStat = e.statName || e.statname || '';
+                    return effStat && typeof effStat === 'string' && effStat.toLowerCase() === statName.toLowerCase();
+                });
+                if (match) managerBoost = match.boost;
             }
         }
-    });
 
-    let mgrBoost = 0;
-    if (selectedManager) {
-        const mgr = managersList.find(m => m.managerid.toString() === selectedManager);
-        if (mgr && mgr.effects) {
-            const effect = mgr.effects.find(e => e.statName === statKey.toLowerCase());
-            if (effect) mgrBoost = effect.boost;
-        }
-    }
+        return {
+            base: baseVal,
+            boost: pointsBoost + managerBoost,
+            final: Math.min(99, baseVal + pointsBoost + managerBoost)
+        };
+    };
 
-    return { base: baseVal, boost: boost, mgrBoost: mgrBoost, final: Math.min(baseVal + boost + mgrBoost, 99) };
-};
-    const theme = { bg: '#11151c', panelBg: '#1a1f2b', border: '#2a3241', text: '#e0e0e0', accent: '#00d2d3' };
+    const theme = {
+        bg: '#0f0f13',
+        panelBg: '#181820',
+        text: '#ffffff',
+        accent: '#00f2fe',
+        border: 'rgba(255,255,255,0.08)'
+    };
 
-    const StatRow = ({ label, statKey }) => {
-        const data = getLiveStat(statKey);
+    const renderStatRow = (label, statKey) => {
+        const data = calculateCurrentStat(statKey);
         const colors = getStatColor(data.final);
-        const isBoosted = data.boost > 0 || data.mgrBoost > 0;
-
         return (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.border}` }}>
-                <span style={{ color: isBoosted ? theme.accent : theme.text, fontSize: '0.85em', fontWeight: '500' }}>{label}</span>
+            <div key={statKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${theme.border}` }}>
+                <span style={{ fontSize: '0.85em', color: '#ccc' }}>{label}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    
-                    {data.mgrBoost > 0 && (
-                        <span title="Manager Boost" style={{ background: '#a78bfa', color: '#000', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7em', fontWeight: 'bold' }}>
-                            👔 +{data.mgrBoost}
-                        </span>
-                    )}
-
+                    <span style={{ fontSize: '0.8em', color: '#666' }}>{data.base}</span>
                     {data.boost > 0 && (
-                        <span title="Training Boost" style={{ background: '#39ff14', color: '#000', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7em', fontWeight: 'bold' }}>
+                        <span style={{ fontSize: '0.8em', color: '#39ff14', fontWeight: 'bold' }}>
                             +{data.boost}
                         </span>
                     )}
-
                     <span style={{ background: colors.bg, color: colors.text, width: '28px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85em' }}>
                         {data.final}
                     </span>
@@ -342,42 +334,96 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     if (loading) return <div style={{background: theme.bg, color: 'white', minHeight: '100vh', padding: '50px', textAlign:'center'}}>Loading Interface...</div>;
 
     return (
-        <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-            <div style={{ display: 'flex', gap: '30px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', padding: '40px', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 
-                {/* --- LEFT PANEL: SLIDERS & CONTROLS --- */}
-                <div style={{ width: '320px', background: theme.panelBg, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}`, height: 'fit-content' }}>
+                {/* --- RED BACK BUTTON AT TOP-LEFT CORNER ABOVE PANELS --- */}
+                <div style={{ marginBottom: '25px' }}>
+                    <button 
+                        onClick={onBack} 
+                        style={{ 
+                            padding: '8px 18px', 
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
+                            color: 'white', 
+                            border: 'none', 
+                            cursor: 'pointer', 
+                            borderRadius: '6px',
+                            fontWeight: '800',
+                            fontSize: '0.85em',
+                            fontFamily: "'Outfit', sans-serif",
+                            letterSpacing: '0.5px',
+                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                            textTransform: 'uppercase',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: 'fit-content'
+                        }}
+                    >
+                        ← BACK
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '30px' }}>
+                    
+                    {/* --- LEFT PANEL: SLIDERS & CONTROLS --- */}
+                    <div style={{ width: '340px', background: theme.panelBg, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.border}`, height: 'fit-content' }}>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div style={{ background: '#333', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8em', fontWeight: 'bold' }}>{card.primaryposition || card.positioncode}</div>
-                        <div style={{ fontSize: '0.8em', color: '#888' }}>Points <span style={{color: 'white', fontWeight: 'bold'}}>{totalUsed}</span> / {card.totalprogressionpoints}</div>
+                        <div style={{ fontSize: '0.8em', color: '#888' }}>
+                            Points <span style={{color: pointsLeft === 0 ? '#38bdf8' : 'white', fontWeight: 'bold'}}>{totalUsed}</span> / {totalMaxPoints}
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        {Object.keys(allocations).map(key => {
-                          
-                            const isGKSlider = key.startsWith('gk');
-                            if (isGKSlider && !isGK) return null;
-                            if (!isGKSlider && isGK && ['shooting', 'defending', 'dexterity'].includes(key)) return null;
+                    {/* POTW / TRENDING CARD BANNER */}
+                    {isFixedCard && (
+                        <div style={{ background: 'linear-gradient(135deg, rgba(19, 78, 94, 0.4) 0%, rgba(113, 178, 128, 0.2) 100%)', border: '1px solid rgba(0, 255, 135, 0.4)', borderRadius: '10px', padding: '14px', color: '#00ff87', fontSize: '0.9em', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
+                            ⚡ {card.cardtype === 'Trending' ? 'Trending Card' : 'POTW Card'}
+                        </div>
+                    )}
 
-                            const canIncr = pointsLeft >= calculateCost(allocations[key] + 1) && allocations[key] < 16;
-                            
-                            return (
-                                <div key={key}>
-                                    <div style={{ fontSize: '0.7em', textTransform: 'uppercase', color: '#aaa', marginBottom: '5px', letterSpacing: '1px' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ flex: 1, height: '4px', background: '#333', borderRadius: '2px', position: 'relative' }}>
-                                            <div style={{ position: 'absolute', height: '100%', width: `${(allocations[key]/16)*100}%`, background: theme.accent, borderRadius: '2px' }} />
-                                            <div style={{ position: 'absolute', left: `${(allocations[key]/16)*100}%`, top: '-6px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', transform: 'translateX(-50%)', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
+                    {!isFixedCard && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {Object.keys(allocations).map(key => {
+                                const isGKSlider = key.startsWith('gk');
+                                if (isGKSlider && !isGK) return null;
+                                if (!isGKSlider && isGK && ['shooting', 'defending', 'dexterity'].includes(key)) return null;
+
+                                const canIncr = pointsLeft >= calculateCost(allocations[key] + 1) && allocations[key] < 16;
+                                const canDecr = allocations[key] > 0;
+                                
+                                return (
+                                    <div key={key}>
+                                        <div style={{ fontSize: '0.7em', textTransform: 'uppercase', color: '#aaa', marginBottom: '5px', letterSpacing: '1px' }}>
+                                            {key.replace(/([A-Z])/g, ' $1').trim()}
                                         </div>
-                                        <button onClick={() => handleDecrement(key)} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '1.2em' }}>-</button>
-                                        <span style={{ width: '20px', textAlign: 'center', fontWeight: 'bold' }}>{allocations[key]}</span>
-                                        <button onClick={() => handleIncrement(key)} disabled={!canIncr} style={{ background: 'none', border: 'none', color: canIncr ? 'white' : '#555', cursor: canIncr ? 'pointer' : 'default', fontSize: '1.2em' }}>+</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ flex: 1, height: '4px', background: '#333', borderRadius: '2px', position: 'relative' }}>
+                                                <div style={{ position: 'absolute', height: '100%', width: `${(allocations[key]/16)*100}%`, background: theme.accent, borderRadius: '2px' }} />
+                                                <div style={{ position: 'absolute', left: `${(allocations[key]/16)*100}%`, top: '-6px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', transform: 'translateX(-50%)', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
+                                            </div>
+                                            <button 
+                                                onClick={() => handleDecrement(key)} 
+                                                disabled={!canDecr}
+                                                style={{ background: 'none', border: 'none', color: canDecr ? '#ff4d4d' : '#444', cursor: canDecr ? 'pointer' : 'default', fontSize: '1.3em', fontWeight: 'bold', width: '24px' }}
+                                            >
+                                                -
+                                            </button>
+                                            <span style={{ width: '20px', textAlign: 'center', fontWeight: 'bold' }}>{allocations[key]}</span>
+                                            <button 
+                                                onClick={() => handleIncrement(key)} 
+                                                disabled={!canIncr} 
+                                                style={{ background: 'none', border: 'none', color: canIncr ? '#39ff14' : '#444', cursor: canIncr ? 'pointer' : 'default', fontSize: '1.3em', fontWeight: 'bold', width: '24px' }}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
                         <div style={{ fontSize: '0.7em', textTransform: 'uppercase', color: '#a78bfa', marginBottom: '10px', letterSpacing: '1px', fontWeight: 'bold' }}>👔 Manager Tactical Boost</div>
@@ -395,20 +441,22 @@ export default function CardTrainer({ card, onBack, onComplete }) {
                         </select>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '25px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
-                        <button 
-                            onClick={() => setAllocations({ shooting:0, passing:0, dribbling:0, dexterity:0, lowerBody:0, aerial:0, defending:0, gk1:0, gk2:0, gk3:0 })} 
-                            style={{ flex: 1, padding: '10px', background: '#252525', color: '#888', border: '1px solid #333', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8em', fontWeight: 'bold' }}
-                        >
-                            RESET
-                        </button>
-                        <button 
-                            onClick={handleSmartAllocate} 
-                            style={{ flex: 2, padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8em', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px' }}
-                        >
-                            ⚡ SMART ALLOCATE
-                        </button>
-                    </div>
+                    {!isFixedCard && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '25px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
+                            <button 
+                                onClick={() => setAllocations({ ...INITIAL_ALLOCATIONS })} 
+                                style={{ flex: 1, padding: '10px', background: '#252525', color: '#888', border: '1px solid #333', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8em', fontWeight: 'bold' }}
+                            >
+                                RESET
+                            </button>
+                            <button 
+                                onClick={handleSmartAllocate} 
+                                style={{ flex: 2, padding: '10px', background: 'linear-gradient(135deg, #28a745, #20c997)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8em', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px' }}
+                            >
+                                ⚡ SMART ALLOCATE
+                            </button>
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
@@ -442,69 +490,60 @@ export default function CardTrainer({ card, onBack, onComplete }) {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '20px', borderBottom: `1px solid ${theme.border}` }}>
-                        <input type="text" placeholder="Name your build" value={buildName} onChange={(e) => setBuildName(e.target.value)} style={{ width: '100%', padding: '12px', boxSizing: 'border-box', borderRadius: '6px', border: `1px solid ${theme.border}`, background: '#111', color: 'white' }} />
-                        <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85em', color: '#aaa', cursor: 'pointer'}}><input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} /> Share this build</label>
-                        <button onClick={handleSaveSnapshot} style={{ width: '100%', padding: '12px', background: '#00c6ff', color: 'black', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>SAVE CONCEPT</button>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                        <button onClick={onBack} style={{ flex: 1, padding: '12px', background: '#333', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Back</button>
-                    </div>
+                    {!isFixedCard && (
+                        <div style={{ marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '20px', borderBottom: `1px solid ${theme.border}` }}>
+                            <input type="text" placeholder="Name your build" value={buildName} onChange={(e) => setBuildName(e.target.value)} style={{ width: '100%', padding: '12px', boxSizing: 'border-box', borderRadius: '6px', border: `1px solid ${theme.border}`, background: '#111', color: 'white' }} />
+                            <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85em', color: '#aaa', cursor: 'pointer'}}><input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} /> Share this build</label>
+                            <button onClick={handleSaveSnapshot} style={{ width: '100%', padding: '12px', background: '#00c6ff', color: 'black', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>SAVE CONCEPT</button>
+                        </div>
+                    )}
                 </div>
 
-                {/* --- RIGHT PANEL: STAT GRID --- */}
+                {/* --- RIGHT PANEL: LIVE STATS & OVR DISPLAY --- */}
                 <div style={{ flex: 1, background: theme.panelBg, borderRadius: '12px', padding: '30px', border: `1px solid ${theme.border}` }}>
                     
-                    <h2 style={{ margin: '0 0 20px 0', fontSize: '1.5em', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{card.playername} <span style={{fontSize: '0.6em', color: '#888', fontWeight: 'normal'}}>| Player Progression</span></span>
-                        <span style={{ fontSize: '1.2em', color: theme.accent, background: '#111', padding: '5px 15px', borderRadius: '8px', border: `1px solid ${theme.accent}` }}>
-                            OVR: <span style={{color: 'white'}}>{currentLiveOVR}</span>
-                            {selectedManager && <span style={{color: '#a78bfa', fontSize: '0.7em', marginLeft: '8px'}}>+Mgr</span>}
-                        </span>
-                    </h2>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '40px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: `1px solid ${theme.border}` }}>
                         <div>
-                            <h4 style={{ color: '#888', fontSize: '0.75em', letterSpacing: '1px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '8px' }}>ATTACKING</h4>
-                            <StatRow label="Offensive Awareness" statKey="offensiveawareness" />
-                            <StatRow label="Ball Control" statKey="ballcontrol" />
-                            <StatRow label="Dribbling" statKey="dribbling" />
-                            <StatRow label="Passing" statKey="passing" />
-                            <StatRow label="Finishing" statKey="finishing" />
+                            <h2 style={{ margin: 0, fontSize: '1.8em' }}>{card.playername || "Player Profile"}</h2>
+                            <div style={{ fontSize: '0.9em', color: '#888', marginTop: '4px' }}>
+                                {card.cardtype} • {card.positioncode} • {card.clubname || card.club?.clubname}
+                            </div>
+                        </div>
+
+                        <div style={{ textAlign: 'center', background: 'rgba(0, 242, 254, 0.05)', padding: '15px 25px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
+                            <div style={{ fontSize: '0.75em', textTransform: 'uppercase', color: theme.accent, letterSpacing: '1px', fontWeight: 'bold' }}>PROJECTED OVR</div>
+                            <div style={{ fontSize: '3em', fontWeight: '900', color: theme.accent }}>{currentLiveOVR}</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                        <div>
+                            <h4 style={{ color: theme.accent, borderBottom: `1px solid ${theme.border}`, paddingBottom: '8px', marginTop: 0 }}>⚽ Attack & Skill Attributes</h4>
+                            {renderStatRow("Offensive Awareness", "offensiveawareness")}
+                            {renderStatRow("Finishing", "finishing")}
+                            {renderStatRow("Ball Control", "ballcontrol")}
+                            {renderStatRow("Dribbling", "dribbling")}
+                            {renderStatRow("Passing", "passing")}
+                            {renderStatRow("Kicking Power", "kickingpower")}
+                            {renderStatRow("Speed", "speed")}
+                            {renderStatRow("Acceleration", "acceleration")}
                         </div>
 
                         <div>
-                            <h4 style={{ color: '#888', fontSize: '0.75em', letterSpacing: '1px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '8px' }}>DEFENDING & GK</h4>
-                            <StatRow label="Defensive Awareness" statKey="defensiveawareness" />
-                            <StatRow label="Tackling" statKey="tackling" />
-                            <StatRow label="Aggression" statKey="aggression" />
-                            
-                            {/*Correctly Renders GK stats for GK cards */}
-                            {isGK && (
-                                <div style={{ marginTop: '15px' }}>
-                                    <StatRow label="GK Awareness" statKey="gkawareness" />
-                                    <StatRow label="GK Catching" statKey="gkcatching" />
-                                    <StatRow label="GK Parrying" statKey="gkparrying" />
-                                    <StatRow label="GK Reflexes" statKey="gkreflexes" />
-                                    <StatRow label="GK Reach" statKey="gkreach" />
-                                </div>
-                            )}
-                        </div>
-
-                        <div>
-                            <h4 style={{ color: '#888', fontSize: '0.75em', letterSpacing: '1px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '8px' }}>ATHLETICISM</h4>
-                            <StatRow label="Speed" statKey="speed" />
-                            <StatRow label="Acceleration" statKey="acceleration" />
-                            <StatRow label="Kicking Power" statKey="kickingpower" />
-                            <StatRow label="Jump" statKey="jump" />
-                            <StatRow label="Physical Contact" statKey="physicalcontact" />
-                            <StatRow label="Balance" statKey="balance" />
-                            <StatRow label="Stamina" statKey="stamina" />
+                            <h4 style={{ color: theme.accent, borderBottom: `1px solid ${theme.border}`, paddingBottom: '8px', marginTop: 0 }}>🛡️ Defense & Physical Attributes</h4>
+                            {renderStatRow("Stamina", "stamina")}
+                            {renderStatRow("Balance", "balance")}
+                            {renderStatRow("Physical Contact", "physicalcontact")}
+                            {renderStatRow("Jump", "jump")}
+                            {renderStatRow("Defensive Awareness", "defensiveawareness")}
+                            {renderStatRow("Tackling", "tackling")}
+                            {renderStatRow("Aggression", "aggression")}
+                            {isGK && renderStatRow("GK Reflexes", "gkreflexes")}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    );
+    </div>
+);
 }

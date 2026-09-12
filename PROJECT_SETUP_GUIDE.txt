@@ -1,0 +1,60 @@
+PROJECT SETUP GUIDE
+
+Follow the steps below to run the project locally.
+
+--------------------------------------------------
+
+PREREQUISITES
+
+Make sure you have installed:
+- Node.js (version 16 or higher recommended)
+- npm
+
+--------------------------------------------------
+
+SETUP AND RUN
+
+1. Start the Server
+
+Open a terminal and run:
+
+cd backend
+node src/server.js
+
+--------------------------------------------------
+
+2. Start the Client
+
+Open a new terminal and run:
+
+cd frontend
+npm install
+npm run dev
+
+--------------------------------------------------
+
+OPEN IN BROWSER
+
+http://localhost:5173/
+
+--------------------------------------------------
+
+NOTES
+
+- Both terminals must be running at the same time
+- Run "npm install" if this is your first time setting up
+- If something does not work, restart both server and client
+
+--------------------------------------------------
+
+QUICK COMMANDS
+
+Terminal 1:
+cd backend
+node src/server.js
+
+Terminal 2:
+cd frontend
+npm run dev
+
+--------------------------------------------------

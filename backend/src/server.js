@@ -35,7 +35,7 @@ app.use(cookieParser()); // Enable reading of JWT from cookies
 
 app.get('/', (req, res) => {
     res.json({
-        message: 'FHUB backend is running',
+        message: 'eFVerse backend is running',
         frontend: 'http://localhost:5173',
         api: {
             auth: '/api/auth',
