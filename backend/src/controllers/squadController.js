@@ -341,6 +341,7 @@ const getSquadDetails = async (req, res) => {
                 s.createdat,
                 s.updatedat,
                 s.isfavourite,
+                u.username,
                 m.managerid,
                 m.managername,
                 m.playstyle,
@@ -376,6 +377,7 @@ const getSquadDetails = async (req, res) => {
                 ps.gkreflexes,
                 ps.gkreach
             FROM squad s
+            LEFT JOIN "User" u ON s.userid = u.userid
             LEFT JOIN manager m ON s.managerid = m.managerid
             LEFT JOIN squadplayer sp ON s.squadid = sp.squadid
             LEFT JOIN card c ON sp.cardid = c.cardid
@@ -394,6 +396,7 @@ const getSquadDetails = async (req, res) => {
         const squadInfo = {
             squadId: result.rows[0].squadid,
             squadName: result.rows[0].squadname,
+            username: result.rows[0].username || 'Community Member',
             formation: result.rows[0].formation,
             teamStrength: result.rows[0].teamstrength,
             isFavourite: result.rows[0].isfavourite,

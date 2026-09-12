@@ -1215,10 +1215,213 @@ export default function SquadBuilder({ currentUser, onBack }) {
         if (communityViewSquad) {
             const sq = communityViewSquad;
             const formKey = sq.formation || '4-3-3';
-            const formLayout = FORMATIONS[formKey] || FORMATIONS['4-3-3'];
+            const initialSlots = getInitialLineup(formKey);
+            const communityLineup = initialSlots.map(s => ({ ...s }));
+
+            // Map saved players to formation slots
+            if (sq.players && Array.isArray(sq.players)) {
+                const positionCountFilled = {};
+
+                sq.players.forEach(player => {
+                    const assignedPos = player.assignedPosition;
+                    if (!positionCountFilled[assignedPos]) {
+                        positionCountFilled[assignedPos] = 0;
+                    }
+
+                    let count = 0;
+                    let slotIndex = -1;
+                    for (let i = 0; i < communityLineup.length; i++) {
+                        if (communityLineup[i].position === assignedPos) {
+                            if (count === positionCountFilled[assignedPos]) {
+                                slotIndex = i;
+                                break;
+                            }
+                            count++;
+                        }
+                    }
+                    positionCountFilled[assignedPos]++;
+
+                    // Fallback to first empty slot if position count exceeded or mismatch
+                    if (slotIndex === -1) {
+                        slotIndex = communityLineup.findIndex(s => !s.card);
+                    }
+
+                    if (slotIndex !== -1) {
+                        const cardData = {
+                            CardID: player.cardId,
+                            PlayerID: player.playerId,
+                            PositionCode: player.naturalPosition || player.assignedPosition || 'GK',
+                            PlayerName: player.playerName || 'Unknown',
+                            CurrentOverallRating: player.currentOverallRating || player.baseOverallRating || 0,
+                            BaseOverallRating: player.baseOverallRating || 0,
+                            CardType: player.cardType || 'Standard',
+                            ClubName: player.clubName || 'N/A'
+                        };
+
+                        communityLineup[slotIndex] = {
+                            ...communityLineup[slotIndex],
+                            card: cardData
+                        };
+                    }
+                });
+            }
+
+            // Helper to render read-only card slot
+            const renderReadOnlyCard = (slot, slotIndex) => {
+                const { top, left, position, card } = slot;
+                const posColor = getPositionColor(position);
+
+                // Unfilled slot - dashed outline matching builder
+                if (!card) {
+                    return (
+                        <div
+                            key={`comm-slot-${slotIndex}`}
+                            style={{
+                                position: 'absolute',
+                                top: `${top}%`,
+                                left: `${left}%`,
+                                transform: 'translate(-50%, -50%)',
+                                width: '50px',
+                                height: '62px',
+                                border: `1.5px dashed ${posColor.border}`,
+                                background: 'rgba(8, 14, 24, 0.8)',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                backdropFilter: 'blur(8px)',
+                                boxSizing: 'border-box',
+                                zIndex: 10,
+                                userSelect: 'none'
+                            }}
+                        >
+                            <span style={{
+                                fontSize: '0.55em',
+                                fontWeight: '900',
+                                color: posColor.color,
+                                background: posColor.bg,
+                                padding: '1px 5px',
+                                borderRadius: '3px',
+                                letterSpacing: '0.5px'
+                            }}>
+                                {position}
+                            </span>
+                            <span style={{ fontSize: '0.9em', color: posColor.color, opacity: 0.7, lineHeight: 1 }}>+</span>
+                            <span style={{ fontSize: '0.45em', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>
+                                {posColor.label}
+                            </span>
+                        </div>
+                    );
+                }
+
+                // Filled slot - authentic card with tier color, position, penalty, and rating
+                const cardType = card.CardType || card.cardType || 'Standard';
+                const tier = getCardTierColor(cardType);
+                const cardPos = (card.PositionCode || 'GK').toString().toUpperCase();
+                const penalty = getPositionPenalty(cardPos, (position || '').toUpperCase());
+                const effectiveRating = getEffectiveRating(card, position);
+                const playerName = card.PlayerName || 'Unknown';
+
+                return (
+                    <div
+                        key={`comm-slot-${slotIndex}`}
+                        style={{
+                            position: 'absolute',
+                            top: `${top}%`,
+                            left: `${left}%`,
+                            transform: 'translate(-50%, -50%)',
+                            width: '54px',
+                            height: '68px',
+                            background: tier.bg,
+                            border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.7)' : `2px solid ${tier.border}`,
+                            borderRadius: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '4px 3px',
+                            boxShadow: penalty > 0
+                                ? '0 0 14px rgba(255, 77, 77, 0.35), 0 4px 12px rgba(0,0,0,0.5)'
+                                : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.5)`,
+                            backdropFilter: 'blur(10px)',
+                            transition: 'transform 0.2s ease',
+                            boxSizing: 'border-box',
+                            zIndex: 20,
+                            cursor: 'default',
+                            userSelect: 'none'
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                            e.currentTarget.style.zIndex = '30';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)';
+                            e.currentTarget.style.zIndex = '20';
+                        }}
+                        title={`${playerName} | Natural: ${cardPos} | Role: ${position} | Rating: ${effectiveRating}`}
+                    >
+                        {/* Top: Position & Penalty */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                            <span style={{
+                                fontSize: '0.48em',
+                                fontWeight: '900',
+                                color: posColor.color,
+                                background: 'rgba(0,0,0,0.5)',
+                                padding: '1px 3px',
+                                borderRadius: '3px'
+                            }}>
+                                {position}
+                            </span>
+                            {penalty > 0 && (
+                                <span style={{
+                                    fontSize: '0.45em',
+                                    fontWeight: '800',
+                                    color: '#ff4d4d',
+                                    background: 'rgba(255,77,77,0.2)',
+                                    padding: '1px 4px',
+                                    borderRadius: '3px'
+                                }}>
+                                    -{penalty}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Center: Big OVR */}
+                        <div style={{
+                            fontSize: '1.2em',
+                            fontWeight: '900',
+                            lineHeight: 1,
+                            color: penalty > 0 ? '#ff6b6b' : tier.accent,
+                            textShadow: `0 0 12px ${penalty > 0 ? '#ff4d4d' : tier.accent}80`
+                        }}>
+                            {effectiveRating}
+                        </div>
+
+                        {/* Bottom: Player Name */}
+                        <div style={{
+                            width: '100%',
+                            textAlign: 'center',
+                            fontSize: '0.48em',
+                            fontWeight: '800',
+                            color: '#fff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            background: 'rgba(0,0,0,0.45)',
+                            borderRadius: '3px',
+                            padding: '2px 3px'
+                        }}>
+                            {playerName}
+                        </div>
+                    </div>
+                );
+            };
 
             return (
                 <div style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
+                    {/* Back Button */}
                     <button
                         onClick={() => setCommunityViewSquad(null)}
                         style={{
@@ -1242,26 +1445,32 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         ← Back to Community
                     </button>
 
+                    {/* Squad Header Info */}
                     <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                        <h2 style={{ fontSize: '1.6em', fontWeight: '900', color: '#fff', margin: '0 0 6px 0' }}>
+                        <h2 style={{ fontSize: '1.6em', fontWeight: '900', color: '#fff', margin: '0 0 8px 0' }}>
                             {sq.squadName}
                         </h2>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', fontSize: '0.82em', color: '#94a3b8' }}>
-                            <span style={{ background: 'rgba(167,139,250,0.1)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.25)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.82em', color: '#94a3b8' }}>
+                            <span style={{ background: 'rgba(167,139,250,0.12)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.3)', color: '#c4b5fd', fontWeight: '800' }}>
                                 📐 {sq.formation}
                             </span>
-                            <span style={{ background: 'rgba(0,242,254,0.08)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(0,242,254,0.25)' }}>
+                            <span style={{ background: 'rgba(0,242,254,0.08)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(0,242,254,0.3)', color: '#00f2fe', fontWeight: '800' }}>
                                 💪 {sq.teamStrength} OVR
                             </span>
                             {sq.manager && sq.manager.managerName && (
-                                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', fontWeight: '700' }}>
                                     👔 {sq.manager.managerName}
+                                </span>
+                            )}
+                            {sq.username && (
+                                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}>
+                                    👤 {sq.username}
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    {/* Read-only pitch view */}
+                    {/* Full Pitch View Matching Builder Pitch */}
                     <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
                         <div style={{
                             width: '100%',
@@ -1273,73 +1482,31 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             boxShadow: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 166, 48, 0.25)',
                             overflow: 'hidden'
                         }}>
+                            {/* Ambient Stadium Lighting & Turf Vibrancy */}
                             <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%)', pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 15%, rgba(255,255,255,0.14) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.12) 0%, transparent 55%)', pointerEvents: 'none' }} />
+
+                            {/* SVG Pitch Markings */}
                             <SvgPitch />
 
-                            {/* Render players on pitch */}
-                            {sq.players && sq.players.map((player, idx) => {
-                                const slot = formLayout[idx];
-                                if (!slot || !player) return null;
-                                const rating = player.currentOverallRating || player.baseOverallRating || 0;
-                                const posColor = getPositionColor(slot.position);
-                                return (
-                                    <div
-                                        key={idx}
-                                        style={{
-                                            position: 'absolute',
-                                            top: `${slot.top}%`,
-                                            left: `${slot.left}%`,
-                                            transform: 'translate(-50%, -50%)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '2px',
-                                            zIndex: 10
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: '42px',
-                                            height: '42px',
-                                            borderRadius: '50%',
-                                            background: `linear-gradient(145deg, ${posColor}33, ${posColor}88)`,
-                                            border: `2px solid ${posColor}`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontSize: '0.85em',
-                                            fontWeight: '900',
-                                            color: '#fff',
-                                            boxShadow: `0 4px 12px ${posColor}55`
-                                        }}>
-                                            {rating}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '0.6em',
-                                            fontWeight: '800',
-                                            color: '#fff',
-                                            textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                                            maxWidth: '70px',
-                                            textAlign: 'center',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {(player.playerName || 'Unknown').split(' ').pop()}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '0.5em',
-                                            fontWeight: '700',
-                                            color: posColor,
-                                            background: 'rgba(0,0,0,0.5)',
-                                            padding: '1px 5px',
-                                            borderRadius: '4px'
-                                        }}>
-                                            {player.assignedPosition}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {/* Render Formation Card Slots (Read-Only) */}
+                            {communityLineup.map((slot, index) => renderReadOnlyCard(slot, index))}
                         </div>
+                    </div>
+
+                    {/* Read-Only Indicator */}
+                    <div style={{
+                        textAlign: 'center',
+                        margin: '12px auto 0',
+                        fontSize: '0.75em',
+                        color: '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                    }}>
+                        <span style={{ color: '#a78bfa' }}>👁️</span> Community Squad Build · Read-Only View
                     </div>
                 </div>
             );

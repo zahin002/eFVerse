@@ -21,7 +21,7 @@ router.get('/community/all', optionalVerifyToken, squadController.getCommunitySq
 // Auth-protected routes
 router.post('/save', verifyToken, squadController.saveSquad);
 router.get('/user/:userId', verifyToken, squadController.getUserSquads);
-router.get('/:squadId', verifyToken, squadController.getSquadDetails);
+router.get('/:squadId', optionalVerifyToken, squadController.getSquadDetails);
 router.put('/:squadId', verifyToken, squadController.updateSquad);
 router.delete('/:squadId', verifyToken, squadController.deleteSquad);
 router.post('/:squadId/favorite', verifyToken, squadController.toggleFavorite);
