@@ -209,23 +209,90 @@ export const calculateAllocatedStats = (baseStats = {}, allocations = {}) => {
     return calculated;
 };
 
-// 6. Compute OVR via Position Weight Matrix (Weighted Sum Baseline Subtraction Model)
-// 6. Compute OVR via Position Weight Matrix & Progression Point Growth
-export const calculatePositionOVR = (stats = {}, position = 'AMF', baseOvr = 80, maxOvr = 99, allocations = {}) => {
+// 6. Compute OVR via Position-Aware Attribute Weighting Matrix
+export const calculatePositionOVR = (trainedStats = {}, position = 'AMF', arg3 = null, arg4 = null) => {
+    let bStats = null;
+    let bOvr = null;
+
+    if (typeof arg3 === 'object' && arg3 !== null) {
+        bStats = arg3;
+        bOvr = typeof arg4 === 'number' ? arg4 : (parseInt(arg4, 10) || null);
+    } else if (typeof arg3 === 'number' || (typeof arg3 === 'string' && !isNaN(parseInt(arg3, 10)))) {
+        bOvr = parseInt(arg3, 10);
+    }
+
     const posStr = Array.isArray(position) ? position[0] : (typeof position === 'string' ? position : 'AMF');
     const posUpper = (posStr || 'AMF').toUpperCase().trim();
+    const weights = POSITION_WEIGHTS[posUpper] || POSITION_WEIGHTS['AMF'];
 
-    const totalPointsAllocated = Object.keys(allocations).reduce((sum, k) => {
-        const lvl = allocations[k] || 0;
-        for (let i = 1; i <= lvl; i++) sum += getLevelCost(i);
-        return sum;
-    }, 0);
+    const tStats = { ...DEFAULT_BASE_STATS, ...(trainedStats || {}) };
 
-    const maxPoints = 62;
-    const progressRatio = Math.min(1.0, Math.max(0, totalPointsAllocated / maxPoints));
-    const ovrGain = Math.round(progressRatio * Math.max(1, (maxOvr - baseOvr)));
+    let sumTrained = 0;
+    let sumWeights = 0;
 
-    return baseOvr + ovrGain;
+    Object.keys(weights).forEach(statKey => {
+        const w = weights[statKey] || 0.1;
+        const val = typeof tStats[statKey] === 'number' ? tStats[statKey] : (parseInt(tStats[statKey], 10) || 60);
+        sumTrained += val * w;
+        sumWeights += w;
+    });
+
+    const scoreTrained = sumWeights > 0 ? (sumTrained / sumWeights) : 60;
+
+    if (bStats && typeof bStats === 'object') {
+        const defaultBStats = { ...DEFAULT_BASE_STATS, ...(bStats || {}) };
+        let sumBase = 0;
+        Object.keys(weights).forEach(statKey => {
+            const w = weights[statKey] || 0.1;
+            const val = typeof defaultBStats[statKey] === 'number' ? defaultBStats[statKey] : (parseInt(defaultBStats[statKey], 10) || 60);
+            sumBase += val * w;
+        });
+        const scoreBase = sumWeights > 0 ? (sumBase / sumWeights) : 60;
+        const delta = scoreTrained - scoreBase;
+
+        if (bOvr !== null && bOvr > 0) {
+            return Math.max(bOvr, bOvr + Math.round(delta));
+        }
+        return Math.round(scoreTrained);
+    }
+
+    if (bOvr !== null && bOvr > 0) {
+        let sumDefaultBase = 0;
+        Object.keys(weights).forEach(statKey => {
+            const w = weights[statKey] || 0.1;
+            const val = DEFAULT_BASE_STATS[statKey] || 60;
+            sumDefaultBase += val * w;
+        });
+        const scoreDefaultBase = sumWeights > 0 ? (sumDefaultBase / sumWeights) : 60;
+        const delta = scoreTrained - scoreDefaultBase;
+        return Math.max(bOvr, bOvr + Math.round(delta));
+    }
+
+    return Math.round(scoreTrained);
+};
+
+// 7. Calculate Final Live OVR with Manager and Booster bonuses (capped at 105)
+export const calculateFinalLiveOVR = ({
+    calculatedOvr = 80,
+    managerEffects = [],
+    booster1 = 'none',
+    booster2 = 'none',
+    isTrendingCard = false
+}) => {
+    let managerOvrBonus = 0;
+    if (managerEffects && Array.isArray(managerEffects) && managerEffects.length > 0) {
+        const totalBoost = managerEffects.reduce((sum, eff) => sum + (parseInt(eff.boost || eff.boostvalue || eff.value, 10) || 0), 0);
+        managerOvrBonus = Math.round(totalBoost * 0.5) || (totalBoost > 0 ? 2 : 0);
+    }
+
+    let boosterOvrBonus = 0;
+    if (!isTrendingCard) {
+        if (booster1 && booster1.toString().toLowerCase() !== 'none') boosterOvrBonus += 3;
+        if (booster2 && booster2.toString().toLowerCase() !== 'none') boosterOvrBonus += 2;
+    }
+
+    const finalLiveOvr = Math.min(105, calculatedOvr + managerOvrBonus + boosterOvrBonus);
+    return finalLiveOvr;
 };
 
 export const POSITION_TARGET_PROFILES = {

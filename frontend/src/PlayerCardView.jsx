@@ -9,7 +9,7 @@ import AttributeMatrixPanel from './AttributeMatrixPanel';
 import ProgressionSlidersPanel from './ProgressionSlidersPanel';
 import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl } from './badgeAssetEngine';
 import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor } from './efootballBoosters';
-import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, getLevelCost } from './progressionEngine';
+import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR, getLevelCost } from './progressionEngine';
 import shootingIcon from './assets/progression_icons/shooting.png';
 import passingIcon from './assets/progression_icons/passing.png';
 import dribblingIcon from './assets/progression_icons/dribbling.png';
@@ -629,33 +629,21 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const getBoostedOvr = () => {
         const pos = primaryposition || player.primaryposition || 'AMF';
         const baseOvr = data.baseoverallrating || data.currentoverallrating || 87;
-        const maxOvr = data.maxoverallrating || 98;
-
-        const totalPointsAllocated = Object.keys(allocations).reduce((sum, k) => {
-            const lvl = allocations[k] || 0;
-            for (let i = 1; i <= lvl; i++) sum += getLevelCost(i);
-            return sum;
-        }, 0);
 
         const calculatedProgressionOvr = isTrendingCard
             ? baseOvr
-            : calculatePositionOVR(allocatedStats, pos, baseOvr, maxOvr, allocations);
+            : calculatePositionOVR(allocatedStats, pos, stats, baseOvr);
 
-        let extra = 0;
-        if (selectedManagerId) {
-            const mgr = managersList.find(m => m.managerid.toString() === selectedManagerId);
-            if (mgr && mgr.effects) {
-                extra += Math.round(mgr.effects.reduce((sum, eff) => sum + (eff.boost || eff.boostvalue || 0), 0) * 0.5) || 2;
-            }
-        }
+        const mgr = selectedManagerId ? managersList.find(m => m.managerid.toString() === selectedManagerId) : null;
+        const managerEffects = mgr ? (mgr.effects || []) : [];
 
-        // Booster OVR additions apply ONLY to non-trending cards
-        if (!isTrendingCard && (totalPointsAllocated > 0 || selectedManagerId)) {
-            if (booster1 !== 'none') extra += 3;
-            if (booster2 !== 'none') extra += 2;
-        }
-
-        return Math.min(105, calculatedProgressionOvr + extra);
+        return calculateFinalLiveOVR({
+            calculatedOvr: calculatedProgressionOvr,
+            managerEffects,
+            booster1,
+            booster2,
+            isTrendingCard
+        });
     };
 
     const boostedOvr = getBoostedOvr();
