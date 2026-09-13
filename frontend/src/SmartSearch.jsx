@@ -30,18 +30,13 @@ const STAT_LABELS = {
 
 const CARD_TYPES = [
     { label: 'Standard',  value: 'Standard',  color: '#00f2fe', bg: 'rgba(0,242,254,0.12)', border: 'rgba(0,242,254,0.3)' },
-    { label: 'Highlight', value: 'Highlight', color: '#e2e8f0', bg: 'rgba(226,232,240,0.12)', border: 'rgba(226,232,240,0.3)' },
-    
-    { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
-    { label: 'Legend',    value: 'Legend',    color: '#eab308', bg: 'rgba(234,179,8,0.12)', border: 'rgba(234,179,8,0.3)' },
-    { label: 'Epic',      value: 'Epic',      color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
-
-    { label: 'Showtime',  value: 'Showtime',  color: '#00d2ff', bg: 'rgba(0,210,255,0.15)', border: 'rgba(0,210,255,0.4)' },
-    { label: 'Big Time',  value: 'Big Time',  color: '#ff4500', bg: 'rgba(255,69,0,0.15)', border: 'rgba(255,69,0,0.4)' },
-    
-    { label: 'POTW',      value: 'POTW',      color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
     { label: 'Featured',  value: 'Featured',  color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
     { label: 'Trending',  value: 'Trending',  color: '#ccff00', bg: 'rgba(204,255,0,0.12)', border: 'rgba(204,255,0,0.3)' },
+    { label: 'Legend',    value: 'Legend',    color: '#eab308', bg: 'rgba(234,179,8,0.12)', border: 'rgba(234,179,8,0.3)' },
+    { label: 'Epic',      value: 'Epic',      color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+    { label: 'Highlight', value: 'Highlight', color: '#e2e8f0', bg: 'rgba(226,232,240,0.12)', border: 'rgba(226,232,240,0.3)' },
+    { label: 'Bigtime',   value: 'Bigtime',   color: '#ff4500', bg: 'rgba(255,69,0,0.15)', border: 'rgba(255,69,0,0.4)' },
+    { label: 'Showtime',  value: 'Showtime',  color: '#00d2ff', bg: 'rgba(0,210,255,0.15)', border: 'rgba(0,210,255,0.4)' },
 ];
 
 const getCardColors = (cardtype) => {

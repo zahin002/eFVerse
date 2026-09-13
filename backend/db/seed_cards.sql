@@ -39,7 +39,7 @@ DECLARE
 BEGIN
 
     -- ------------------------------------------------------------
-    -- 1. Jude Bellingham (Legendary AMF)
+    -- 1. Jude Bellingham (Bigtime AMF)
     -- ------------------------------------------------------------
     INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid)
     VALUES ('Jude Bellingham', 21, 
@@ -49,14 +49,14 @@ BEGIN
     RETURNING playerid INTO v_player_id;
 
     INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints)
-    VALUES (v_player_id, 'Legendary', 'AMF', 87, 87, 99, 64)
+    VALUES (v_player_id, 'Bigtime', 'AMF', 87, 87, 99, 64)
     RETURNING cardid INTO v_card_id;
 
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)
     VALUES (v_card_id, 87, 85, 87, 86, 87, 85, 84, 83, 88, 83, 84, 82, 78, 76, 82, 40, 40, 40, 40, 40);
 
     -- ------------------------------------------------------------
-    -- 2. Kylian Mbappe (Legendary CF)
+    -- 2. Kylian Mbappe (Bigtime CF)
     -- ------------------------------------------------------------
     INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid)
     VALUES ('Kylian Mbappe', 25, 
@@ -66,14 +66,14 @@ BEGIN
     RETURNING playerid INTO v_player_id;
 
     INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints)
-    VALUES (v_player_id, 'Legendary', 'CF', 87, 87, 99, 64)
+    VALUES (v_player_id, 'Bigtime', 'CF', 87, 87, 99, 64)
     RETURNING cardid INTO v_card_id;
 
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)
     VALUES (v_card_id, 87, 88, 87, 87, 80, 86, 89, 89, 84, 85, 80, 81, 45, 42, 50, 40, 40, 40, 40, 40);
 
     -- ------------------------------------------------------------
-    -- 3. Ayyoub Bouaddi (POTW DMF)
+    -- 3. Ayyoub Bouaddi (Trending DMF)
     -- ------------------------------------------------------------
     INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid)
     VALUES ('Ayyoub Bouaddi', 17, 
@@ -83,14 +83,14 @@ BEGIN
     RETURNING playerid INTO v_player_id;
 
     INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints)
-    VALUES (v_player_id, 'POTW', 'DMF', 95, 95, 95, 0)
+    VALUES (v_player_id, 'Trending', 'DMF', 95, 95, 95, 0)
     RETURNING cardid INTO v_card_id;
 
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)
     VALUES (v_card_id, 74, 68, 84, 82, 86, 78, 79, 78, 85, 79, 81, 78, 84, 84, 83, 40, 40, 40, 40, 40);
 
     -- ------------------------------------------------------------
-    -- 4. Michael Olise (POTW AMF)
+    -- 4. Michael Olise (Trending AMF)
     -- ------------------------------------------------------------
     INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid)
     VALUES ('Michael Olise', 22, 
@@ -100,14 +100,14 @@ BEGIN
     RETURNING playerid INTO v_player_id;
 
     INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints)
-    VALUES (v_player_id, 'POTW', 'AMF', 96, 96, 96, 0)
+    VALUES (v_player_id, 'Trending', 'AMF', 96, 96, 96, 0)
     RETURNING cardid INTO v_card_id;
 
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)
     VALUES (v_card_id, 83, 82, 87, 87, 87, 84, 85, 86, 85, 87, 74, 72, 52, 50, 55, 40, 40, 40, 40, 40);
 
     -- ------------------------------------------------------------
-    -- 5. Enzo Fernandez (POTW CMF)
+    -- 5. Enzo Fernandez (Trending CMF)
     -- ------------------------------------------------------------
     INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid)
     VALUES ('Enzo Fernandez', 23, 
@@ -117,7 +117,7 @@ BEGIN
     RETURNING playerid INTO v_player_id;
 
     INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints)
-    VALUES (v_player_id, 'POTW', 'CMF', 96, 96, 96, 0)
+    VALUES (v_player_id, 'Trending', 'CMF', 96, 96, 96, 0)
     RETURNING cardid INTO v_card_id;
 
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)

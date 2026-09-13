@@ -713,9 +713,7 @@ const handleCardSelectForStats = async (e) => {
                     <option value="Standard">Standard</option>
                     <option value="Featured">Featured</option>
                     <option value="Trending">Trending</option>
-                    <option value="POTW">POTW</option>
                     <option value="Legend">Legend</option>
-                    <option value="Legendary">Legendary</option>
                     <option value="Epic">Epic</option>
                     <option value="Highlight">Highlight</option>
                     <option value="Bigtime">Bigtime</option>
@@ -974,9 +972,7 @@ const handleCardSelectForStats = async (e) => {
                     <option value="Standard">Standard</option>
                     <option value="Featured">Featured</option>
                     <option value="Trending">Trending</option>
-                    <option value="POTW">POTW</option>
                     <option value="Legend">Legend</option>
-                    <option value="Legendary">Legendary</option>
                     <option value="Epic">Epic</option>
                     <option value="Highlight">Highlight</option>
                     <option value="Bigtime">Bigtime</option>
@@ -1169,9 +1165,7 @@ const handleCardSelectForStats = async (e) => {
                                     <option value="Standard">Standard</option>
                                     <option value="Featured">Featured</option>
                                     <option value="Trending">Trending</option>
-                                    <option value="POTW">POTW</option>
                                     <option value="Legend">Legend</option>
-                                    <option value="Legendary">Legendary</option>
                                     <option value="Epic">Epic</option>
                                     <option value="Highlight">Highlight</option>
                                     <option value="Bigtime">Bigtime</option>
