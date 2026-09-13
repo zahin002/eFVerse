@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { FiCalendar, FiGlobe, FiShield, FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
 axios.defaults.withCredentials = true;
 
 export default function ComparePlayers({ cardId1, cardId2, onBack }) {
@@ -23,50 +24,46 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
     };
 
     const STAT_CONFIG = {
-        offensiveawareness: { label: 'Offensive Awareness', icon: '🎯' },
-        finishing: { label: 'Finishing', icon: '⚽' },
-        ballcontrol: { label: 'Ball Control', icon: '🪄' },
-        dribbling: { label: 'Dribbling', icon: '⚡' },
-        passing: { label: 'Passing / Distribution', icon: '👟' },
-        kickingpower: { label: 'Kicking Power', icon: '💥' },
-        speed: { label: 'Sprint Speed', icon: '🏃' },
-        acceleration: { label: 'Acceleration', icon: '💨' },
-        stamina: { label: 'Stamina', icon: '🔋' },
-        balance: { label: 'Physical Balance', icon: '⚖️' },
-        physicalcontact: { label: 'Physical Contact', icon: '🏋️' },
-        jump: { label: 'Jumping / Aerial', icon: '🦘' },
-        defensiveawareness: { label: 'Defensive Awareness', icon: '🧠' },
-        tackling: { label: 'Tackling', icon: '🛡️' },
-        aggression: { label: 'Aggression', icon: '🔥' },
-        gkawareness: { label: 'GK Awareness', icon: '🧤' },
-        gkcatching: { label: 'GK Catching', icon: '👐' },
-        gkparrying: { label: 'GK Parrying', icon: '🥊' },
-        gkreflexes: { label: 'GK Reflexes', icon: '⚡' },
-        gkreach: { label: 'GK Reach', icon: '📏' }
+        offensiveawareness: { label: 'Offensive Awareness' },
+        finishing: { label: 'Finishing' },
+        ballcontrol: { label: 'Ball Control' },
+        dribbling: { label: 'Dribbling' },
+        passing: { label: 'Passing' },
+        kickingpower: { label: 'Kicking Power' },
+        speed: { label: 'Sprint Speed' },
+        acceleration: { label: 'Acceleration' },
+        stamina: { label: 'Stamina' },
+        balance: { label: 'Balance' },
+        physicalcontact: { label: 'Physical Contact' },
+        jump: { label: 'Jumping' },
+        defensiveawareness: { label: 'Defensive Awareness' },
+        tackling: { label: 'Tackling' },
+        aggression: { label: 'Aggression' },
+        gkawareness: { label: 'GK Awareness' },
+        gkcatching: { label: 'GK Catching' },
+        gkparrying: { label: 'GK Parrying' },
+        gkreflexes: { label: 'GK Reflexes' },
+        gkreach: { label: 'GK Reach' }
     };
 
     const statGroups = [
         {
             name: 'ATTACKING & PLAYMAKING',
-            icon: '⚡',
             color: '#00f2fe',
             stats: ['offensiveawareness', 'finishing', 'ballcontrol', 'dribbling', 'passing']
         },
         {
             name: 'SPEED, POWER & AGILITY',
-            icon: '🚀',
             color: '#FFD700',
             stats: ['speed', 'acceleration', 'kickingpower', 'stamina', 'balance']
         },
         {
             name: 'DEFENDING & PHYSICALITY',
-            icon: '🛡️',
             color: '#00FF87',
             stats: ['defensiveawareness', 'tackling', 'aggression', 'physicalcontact', 'jump']
         },
         {
             name: 'GOALKEEPING ATTRIBUTES',
-            icon: '🧤',
             color: '#a78bfa',
             isGk: true,
             stats: ['gkawareness', 'gkcatching', 'gkparrying', 'gkreflexes', 'gkreach']
@@ -119,9 +116,9 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
     if (loading) {
         return (
             <div style={{ padding: '80px 20px', textAlign: 'center', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ fontSize: '3.5em', marginBottom: '20px', animation: 'spin 2s linear infinite' }}>⚽</div>
-                <h2 style={{ color: '#00f2fe', fontWeight: '800', marginBottom: '8px' }}>Analyzing Player Attributes...</h2>
-                <p style={{ color: '#94a3b8', fontSize: '0.95em' }}>Comparing tactical data, form, and skill ratings...</p>
+                <FiRefreshCw size={36} color="#00f2fe" style={{ marginBottom: '20px', animation: 'spin 1.5s linear infinite' }} />
+                <h2 style={{ color: '#00f2fe', fontWeight: '800', marginBottom: '8px' }}>Loading Comparison...</h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.95em' }}>Comparing player statistics and ratings...</p>
             </div>
         );
     }
@@ -129,7 +126,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
     if (!comparison || !comparison.player1 || !comparison.player2) {
         return (
             <div style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '60px auto', background: 'rgba(15,23,42,0.6)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ fontSize: '3em', marginBottom: '16px' }}>⚠️</div>
+                <FiAlertCircle size={40} color="#ff4d4d" style={{ marginBottom: '16px' }} />
                 <h3 style={{ color: '#ff4d4d', margin: '0 0 10px 0' }}>Comparison Unavailable</h3>
                 <p style={{ color: '#94a3b8', marginBottom: '24px' }}>Could not load data for one or both players. They may not have configured statistics.</p>
                 <button onClick={onBack} className="see-all-btn">← Back to Card</button>
@@ -200,7 +197,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                 }}>
                     <span>eFVerse</span>
                     <span style={{ color: 'rgba(255,255,255,0.3)' }}>/</span>
-                    <span style={{ color: '#00f2fe' }}>Head-to-Head Duel</span>
+                    <span style={{ color: '#00f2fe' }}>Player Comparison</span>
                 </div>
             </div>
 
@@ -221,7 +218,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                     letterSpacing: '1px',
                     marginBottom: '14px'
                 }}>
-                    ⚔️ HEAD-TO-HEAD TACTICAL COMPARISON
+                    PLAYER COMPARISON
                 </div>
                 <h1 style={{
                     fontSize: 'clamp(2em, 4vw, 3.2em)',
@@ -232,10 +229,10 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                     WebkitTextFillColor: 'transparent',
                     letterSpacing: '-0.5px'
                 }}>
-                    Player Attribute Duel
+                    Compare Players
                 </h1>
                 <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
-                    Comparing card performance, technical stats, and athletic capabilities
+                    Side-by-side attribute comparison
                 </p>
             </div>
 
@@ -335,14 +332,14 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         fontSize: '0.82em',
                         color: '#94a3b8'
                     }}>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🎂 {player1.age} yrs
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiCalendar size={12} /> {player1.age} yrs
                         </span>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🏳️ {player1.nation || 'Unknown'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiGlobe size={12} /> {player1.nation || 'Unknown'}
                         </span>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🛡️ {player1.club || 'Free Agent'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiShield size={12} /> {player1.club || 'Free Agent'}
                         </span>
                     </div>
 
@@ -360,7 +357,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         fontWeight: '800'
                     }}>
                         <span style={{ color: p1Wins >= p2Wins ? '#00FF87' : '#94a3b8' }}>
-                            {p1Wins > p2Wins ? '🏆 Category Leader' : p1Wins === p2Wins ? '🤝 Level Matchup' : 'Trailing'}
+                            {p1Wins > p2Wins ? 'Leading' : p1Wins === p2Wins ? 'Tied' : 'Trailing'}
                         </span>
                         <span style={{
                             color: '#fff',
@@ -402,7 +399,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         backdropFilter: 'blur(12px)'
                     }}>
                         <div style={{ fontSize: '0.7em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-                            MATCH SCORE
+                            STATS WON
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4em', fontWeight: '900' }}>
                             <span style={{ color: theme1.accent }}>{p1Wins}</span>
@@ -411,7 +408,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         </div>
                         {ties > 0 && (
                             <div style={{ fontSize: '0.72em', color: '#FFD700', marginTop: '2px', fontWeight: '700' }}>
-                                {ties} {ties === 1 ? 'Tie' : 'Ties'}
+                                {ties} Tied
                             </div>
                         )}
                     </div>
@@ -506,14 +503,14 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         fontSize: '0.82em',
                         color: '#94a3b8'
                     }}>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🎂 {player2.age} yrs
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiCalendar size={12} /> {player2.age} yrs
                         </span>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🏳️ {player2.nation || 'Unknown'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiGlobe size={12} /> {player2.nation || 'Unknown'}
                         </span>
-                        <span style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            🛡️ {player2.club || 'Free Agent'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <FiShield size={12} /> {player2.club || 'Free Agent'}
                         </span>
                     </div>
 
@@ -539,7 +536,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                             {p2Wins} Stats Won
                         </span>
                         <span style={{ color: p2Wins >= p1Wins ? '#00FF87' : '#94a3b8' }}>
-                            {p2Wins > p1Wins ? '🏆 Category Leader' : p2Wins === p1Wins ? '🤝 Level Matchup' : 'Trailing'}
+                            {p2Wins > p1Wins ? 'Leading' : p2Wins === p1Wins ? 'Tied' : 'Trailing'}
                         </span>
                     </div>
                 </div>
@@ -556,7 +553,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82em', fontWeight: '800', marginBottom: '8px' }}>
                     <span style={{ color: theme1.accent }}>{player1.name} ({p1Percent}%)</span>
-                    <span style={{ color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>ATTRIBUTE DOMINANCE RATIO</span>
+                    <span style={{ color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>OVERALL STAT SHARE</span>
                     <span style={{ color: theme2.accent }}>({p2Percent}%) {player2.name}</span>
                 </div>
                 <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden', display: 'flex' }}>
@@ -605,7 +602,6 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                                 onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <span style={{ fontSize: '1.3em' }}>🧤</span>
                                     <div>
                                         <div style={{ fontSize: '0.9em', fontWeight: '800', color: '#a78bfa' }}>
                                             Goalkeeper Attributes (Hidden)
@@ -653,7 +649,6 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                                 borderBottom: '1px solid rgba(255,255,255,0.06)'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <span style={{ fontSize: '1.3em' }}>{group.icon}</span>
                                     <h3 style={{
                                         margin: 0,
                                         fontSize: '1.05em',
@@ -700,7 +695,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                             {/* Stat Rows */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {group.stats.map(statKey => {
-                                    const meta = STAT_CONFIG[statKey] || { label: statKey, icon: '📊' };
+                                    const meta = STAT_CONFIG[statKey] || { label: statKey };
                                     const val1 = parseInt(player1.stats[statKey]) || 0;
                                     const val2 = parseInt(player2.stats[statKey]) || 0;
                                     const diff = Math.abs(val1 - val2);
@@ -785,10 +780,8 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                                                 padding: '6px 12px',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '8px'
+                                                justifyContent: 'center'
                                             }}>
-                                                <span style={{ fontSize: '0.95em' }}>{meta.icon}</span>
                                                 <span style={{
                                                     fontSize: '0.84em',
                                                     fontWeight: '700',
@@ -862,7 +855,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                 })}
             </div>
 
-            {/* ===================== SUMMARY & TACTICAL VERDICT ===================== */}
+            {/* ===================== SUMMARY ===================== */}
             <div style={{
                 marginTop: '48px',
                 background: 'rgba(10, 16, 28, 0.8)',
@@ -888,10 +881,10 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         letterSpacing: '1px',
                         marginBottom: '8px'
                     }}>
-                        📊 TACTICAL SCOUTING REPORT
+                        COMPARISON SUMMARY
                     </div>
                     <h3 style={{ margin: 0, fontSize: '1.6em', fontWeight: '900', color: '#fff' }}>
-                        Matchup Verdict & Key Advantages
+                        Key Differences & Highlights
                     </h3>
                 </div>
 
@@ -901,7 +894,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                     gap: '24px',
                     marginBottom: '28px'
                 }}>
-                    {/* Player 1 Strengths Card */}
+                    {/* Player 1 Highlights Card */}
                     <div style={{
                         background: 'rgba(255,255,255,0.02)',
                         border: `1px solid ${theme1.accent}30`,
@@ -910,21 +903,24 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         position: 'relative'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                            <span style={{ fontSize: '1.2em' }}>⭐</span>
                             <div style={{ fontSize: '1.05em', fontWeight: '900', color: theme1.accent }}>
-                                {player1.name} Strengths
+                                {player1.name} Highlights
                             </div>
                         </div>
                         <div style={{ fontSize: '0.88em', color: '#94a3b8', lineHeight: 1.6 }}>
-                            Leads in <strong style={{ color: '#fff' }}>{p1Wins}</strong> statistical categories.
-                            {player1.stats.speed > player2.stats.speed && ' Offers superior sprint pace and attacking burst.'}
-                            {player1.stats.finishing > player2.stats.finishing && ' Deadlier in front of goal with higher clinical finishing.'}
-                            {player1.stats.dribbling > player2.stats.dribbling && ' More agile on the turn with sharper ball control.'}
-                            {player1.stats.defensiveawareness > player2.stats.defensiveawareness && ' Stronger defensive positioning and interception reading.'}
+                            Leads in <strong style={{ color: '#fff' }}>{p1Wins}</strong> stats.
+                            {player1.stats.speed > player2.stats.speed && ' Higher sprint speed and acceleration.'}
+                            {player1.stats.finishing > player2.stats.finishing && ' Better finishing inside the box.'}
+                            {player1.stats.dribbling > player2.stats.dribbling && ' Sharper dribbling and ball control.'}
+                            {player1.stats.passing > player2.stats.passing && ' Better passing and distribution.'}
+                            {player1.stats.defensiveawareness > player2.stats.defensiveawareness && ' Higher defensive awareness and positioning.'}
+                            {player1.stats.tackling > player2.stats.tackling && ' Stronger tackling and ball winning.'}
+                            {player1.stats.physicalcontact > player2.stats.physicalcontact && ' Better physical contact and balance.'}
+                            {player1.stats.stamina > player2.stats.stamina && ' Higher stamina over 90 minutes.'}
                         </div>
                     </div>
 
-                    {/* Player 2 Strengths Card */}
+                    {/* Player 2 Highlights Card */}
                     <div style={{
                         background: 'rgba(255,255,255,0.02)',
                         border: `1px solid ${theme2.accent}30`,
@@ -933,17 +929,20 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                         position: 'relative'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                            <span style={{ fontSize: '1.2em' }}>⭐</span>
                             <div style={{ fontSize: '1.05em', fontWeight: '900', color: theme2.accent }}>
-                                {player2.name} Strengths
+                                {player2.name} Highlights
                             </div>
                         </div>
                         <div style={{ fontSize: '0.88em', color: '#94a3b8', lineHeight: 1.6 }}>
-                            Leads in <strong style={{ color: '#fff' }}>{p2Wins}</strong> statistical categories.
-                            {player2.stats.passing > player1.stats.passing && ' Superb playmaking distribution and passing range.'}
-                            {player2.stats.tackling > player1.stats.tackling && ' Dominates in defensive ball-winning and ball recovery.'}
-                            {player2.stats.stamina > player1.stats.stamina && ' Provides high-workrate engine across 90 minutes.'}
-                            {player2.stats.physicalcontact > player1.stats.physicalcontact && ' Resilient physical body contact in ground duels.'}
+                            Leads in <strong style={{ color: '#fff' }}>{p2Wins}</strong> stats.
+                            {player2.stats.speed > player1.stats.speed && ' Higher sprint speed and acceleration.'}
+                            {player2.stats.finishing > player1.stats.finishing && ' Better finishing inside the box.'}
+                            {player2.stats.dribbling > player1.stats.dribbling && ' Sharper dribbling and ball control.'}
+                            {player2.stats.passing > player1.stats.passing && ' Better passing and distribution.'}
+                            {player2.stats.tackling > player1.stats.tackling && ' Stronger tackling and ball winning.'}
+                            {player2.stats.defensiveawareness > player1.stats.defensiveawareness && ' Higher defensive awareness and positioning.'}
+                            {player2.stats.physicalcontact > player1.stats.physicalcontact && ' Better physical contact and balance.'}
+                            {player2.stats.stamina > player1.stats.stamina && ' Higher stamina over 90 minutes.'}
                         </div>
                     </div>
                 </div>
@@ -958,15 +957,15 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                 }}>
                     <div style={{ fontSize: '0.95em', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>
                         {p1Wins > p2Wins ? (
-                            <span>🎯 Overall Edge: <span style={{ color: theme1.accent }}>{player1.name}</span> holds the statistical advantage ({p1Wins} vs {p2Wins}).</span>
+                            <span>Overall: <span style={{ color: theme1.accent }}>{player1.name}</span> leads with {p1Wins} stats to {p2Wins}.</span>
                         ) : p2Wins > p1Wins ? (
-                            <span>🎯 Overall Edge: <span style={{ color: theme2.accent }}>{player2.name}</span> holds the statistical advantage ({p2Wins} vs {p1Wins}).</span>
+                            <span>Overall: <span style={{ color: theme2.accent }}>{player2.name}</span> leads with {p2Wins} stats to {p1Wins}.</span>
                         ) : (
-                            <span>🤝 Dead Heat: Both players are equally matched with {p1Wins} category wins each!</span>
+                            <span>Tied: Both players are level with {p1Wins} stats each.</span>
                         )}
                     </div>
                     <div style={{ fontSize: '0.84em', color: '#94a3b8' }}>
-                        Select the card that best compliments your team's tactical playstyle and manager proficiency requirements.
+                        Choose the player that best fits your squad and tactical playstyle.
                     </div>
                 </div>
             </div>
