@@ -807,7 +807,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                         style={{ 
                                                             position: 'absolute', 
                                                             inset: 0, 
-                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.0) 35%, rgba(0,0,0,0.0) 55%, rgba(0,0,0,0.55) 100%)', 
+                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.0) 60%, rgba(0,0,0,0.38) 100%)', 
                                                             zIndex: 2, 
                                                             pointerEvents: 'none' 
                                                         }} 
@@ -821,7 +821,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             </div>
 
                                             {/* Top Left OVR & Position Stack — pushed to left edge above flag */}
-                                            <div style={{ position: 'absolute', top: '10px', left: '0px', width: '58px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', zIndex: 3, paddingLeft: '5px' }}>
+                                            <div style={{ position: 'absolute', top: '10px', left: '8px', width: '58px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', zIndex: 3 }}>
                                                 <h1 style={{ 
                                                     fontSize: boostedOvr >= 100 ? '2.4em' : '2.8em', 
                                                     margin: 0, 
