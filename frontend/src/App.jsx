@@ -1327,10 +1327,7 @@ function App() {
                             </div>
                         )}
 
-                        {true && (
-                            <>
-
-                                {/* ===================== CINEMATIC HERO SECTION ===================== */}
+                        {/* ===================== CINEMATIC HERO SECTION ===================== */}
                                 <div className="hero-section animate-fadeinup">
                                     {/* Floating orbs */}
                                     <div style={{ position: 'absolute', top: '10%', left: '5%', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(0,242,254,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 4s ease-in-out infinite', pointerEvents: 'none' }} />
@@ -1693,9 +1690,7 @@ function App() {
                                 )}
                             </>
                         )}
-                    </>
-                )}
-            </div>
+                    </div>
 
             {/* --- AUTHENTICATION MODAL POPUP FOR GUESTS --- */}
             {showAuthModal && (
