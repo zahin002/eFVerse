@@ -35,7 +35,8 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     const [progressionRules, setProgressionRules] = useState({});
     const [loading, setLoading] = useState(true);
 
-    const isFixedCard = card?.cardtype === 'POTW' || card?.cardtype === 'Trending';
+    const cardTypeUpper = (card?.cardtype || '').toUpperCase();
+    const isFixedCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING';
     const totalMaxPoints = isFixedCard ? 0 : (card?.totalprogressionpoints || 64);
 
     const baseStats = card?.stats || {
@@ -378,8 +379,22 @@ export default function CardTrainer({ card, onBack, onComplete }) {
 
                     {/* POTW / TRENDING CARD BANNER */}
                     {isFixedCard && (
-                        <div style={{ background: 'linear-gradient(135deg, rgba(19, 78, 94, 0.4) 0%, rgba(113, 178, 128, 0.2) 100%)', border: '1px solid rgba(0, 255, 135, 0.4)', borderRadius: '10px', padding: '14px', color: '#00ff87', fontSize: '0.9em', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
-                            ⚡ {card.cardtype === 'Trending' ? 'Trending Card' : 'POTW Card'}
+                        <div style={{
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            borderRadius: '8px',
+                            padding: '12px 14px',
+                            color: '#f87171',
+                            fontSize: '0.82em',
+                            fontWeight: '700',
+                            textAlign: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <span>Trending & POTW players cannot undergo Level Training.</span>
                         </div>
                     )}
 

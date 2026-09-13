@@ -234,7 +234,7 @@ export default function PlayerSkillsPanel({ cardData, playerBio, stats }) {
                             gap: '8px',
                             marginBottom: '20px'
                         }}>
-                            <span>⛔ Trending & POTW players cannot undergo Skill Training.</span>
+                            <span>Trending & POTW players cannot undergo Skill Training.</span>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>

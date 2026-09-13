@@ -48,6 +48,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const stats = data.stats || {};
     const baseoverallrating = data.baseoverallrating || 80;
     const cardtype = data.cardtype || 'Standard';
+    const cardTypeUpper = (cardtype || '').toUpperCase();
+    const isTrendingCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING';
     const primaryposition = (data.positioncode || data.primaryposition || data.PositionCode || player.positioncode || player.position || 'AMF').toUpperCase();
     const playerid = data.playerid;
     const cardid = data.cardid;
@@ -179,6 +181,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     };
 
     const handleSmartAllocate = () => {
+        if (isTrendingCard) return;
         const rawPos = primaryposition || player.primaryposition || 'AMF';
         const pos = Array.isArray(rawPos) ? rawPos[0] : (typeof rawPos === 'string' ? rawPos : 'AMF');
         const maxPts = data.progressionpoints || 62;
@@ -438,8 +441,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
     const getStatColor = (val) => val >= 90 ? '#00f2fe' : val >= 80 ? '#39ff14' : val >= 70 ? '#f97316' : val >= 60 ? '#facc15' : '#ff4d4d';
 
-    const displayRating = (cardtype === 'POTW' || cardtype === 'Trending')
-        ? (data.maxoverallrating || data.currentoverallrating || baseoverallrating)
+    const displayRating = isTrendingCard
+        ? (data.baseoverallrating || data.currentoverallrating || baseoverallrating)
         : (data.currentoverallrating || baseoverallrating);
 
     const allocatedStats = calculateAllocatedStats(stats, allocations);
@@ -532,8 +535,10 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             }
         };
 
-        applyBoosterToStats(booster1, null, 4);
-        applyBoosterToStats(booster2, booster2Level, 3);
+        if (!isTrendingCard) {
+            applyBoosterToStats(booster1, null, 4);
+            applyBoosterToStats(booster2, booster2Level, 3);
+        }
 
         return boosted;
     };
@@ -551,7 +556,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             return sum;
         }, 0);
 
-        const calculatedProgressionOvr = calculatePositionOVR(allocatedStats, pos, baseOvr, maxOvr, allocations);
+        const calculatedProgressionOvr = isTrendingCard
+            ? baseOvr
+            : calculatePositionOVR(allocatedStats, pos, baseOvr, maxOvr, allocations);
 
         let extra = 0;
         if (selectedManagerId) {
@@ -561,8 +568,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             }
         }
 
-        // Booster OVR additions apply when points are allocated or a manager boost is active
-        if (totalPointsAllocated > 0 || selectedManagerId) {
+        // Booster OVR additions apply ONLY to non-trending cards
+        if (!isTrendingCard && (totalPointsAllocated > 0 || selectedManagerId)) {
             if (booster1 !== 'none') extra += 3;
             if (booster2 !== 'none') extra += 2;
         }
@@ -632,9 +639,13 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flexWrap: 'wrap', justifyContent: 'center', flex: 1, marginRight: '90px' }}>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => setCompareMode(true)}>COMPARE</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('community')}>COMMUNITY BUILDS</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
+                    {!isTrendingCard && (
+                        <>
+                            <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
+                            <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('community')}>COMMUNITY BUILDS</span>
+                            <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
+                        </>
+                    )}
                     <span style={{ color: copied ? '#4ade80' : '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px', transition: 'color 0.2s ease' }} onClick={handleShareLink}>
                         {copied ? 'COPIED!' : 'SHARE'}
                     </span>
@@ -692,52 +703,17 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                     <div style={{ fontSize: '0.85em', margin: '4px 0' }}>{starsString}</div>
                                     <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: '#22c55e', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em' }}>B</div>
                                 </div>
-                                {/* Boosters Row - Compact 220px Width Matching Card */}
-                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', background: '#111722', padding: '5px 6px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', width: '220px', boxSizing: 'border-box', position: 'relative' }}>
-                                    <select 
-                                        ref={booster1Ref}
-                                        value={booster1} 
-                                        onChange={(e) => setBooster1(e.target.value)} 
-                                        style={{ 
-                                            background: '#0d1117', 
-                                            color: getBoosterCategoryColor(booster1), 
-                                            border: `1px solid ${getBoosterCategoryColor(booster1)}`, 
-                                            borderRadius: '6px', 
-                                            padding: '3px 4px', 
-                                            fontSize: '0.68em', 
-                                            fontWeight: 'bold', 
-                                            outline: 'none', 
-                                            cursor: 'pointer',
-                                            maxWidth: '72px',
-                                            textOverflow: 'ellipsis',
-                                            overflow: 'hidden',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    >
-                                        <option value="none">No Boost 1</option>
-                                        {EFOOTBALL_BOOSTERS.map(b => (
-                                            <option key={`b1-${b.name}`} value={`${b.name} +4`}>
-                                                {b.name} +4
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    <DoubleBoosterLogo 
-                                        color1={getBoosterCategoryColor(booster1)} 
-                                        color2={getEffectiveBooster2Color()} 
-                                        onBooster1Click={handleBooster1Click}
-                                        onBooster2Click={handleBooster2Click}
-                                    />
-
-                                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                {/* Boosters Row - Compact 220px Width Matching Card (Disabled for POTW / Trending cards) */}
+                                {!isTrendingCard && (
+                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', background: '#111722', padding: '5px 6px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', width: '220px', boxSizing: 'border-box', position: 'relative' }}>
                                         <select 
-                                            ref={booster2Ref}
-                                            value={booster2} 
-                                            onChange={(e) => setBooster2(e.target.value)} 
+                                            ref={booster1Ref}
+                                            value={booster1} 
+                                            onChange={(e) => setBooster1(e.target.value)} 
                                             style={{ 
                                                 background: '#0d1117', 
-                                                color: getEffectiveBooster2Color(), 
-                                                border: `1px solid ${getEffectiveBooster2Color()}`, 
+                                                color: getBoosterCategoryColor(booster1), 
+                                                border: `1px solid ${getBoosterCategoryColor(booster1)}`, 
                                                 borderRadius: '6px', 
                                                 padding: '3px 4px', 
                                                 fontSize: '0.68em', 
@@ -750,102 +726,139 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 whiteSpace: 'nowrap'
                                             }}
                                         >
-                                            <option value="none">No Boost 2</option>
+                                            <option value="none">No Boost 1</option>
                                             {EFOOTBALL_BOOSTERS.map(b => (
-                                                <option key={`b2-${b.name}`} value={`${b.name} +3`}>{b.name} +{booster2Level}</option>
+                                                <option key={`b1-${b.name}`} value={`${b.name} +4`}>
+                                                    {b.name} +4
+                                                </option>
                                             ))}
                                         </select>
 
-                                        {/* 3 DOTS BOOSTER 2 LEVEL SELECTOR (+1, +2, +3) */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
-                                            {[1, 2, 3].map(lvl => (
-                                                <button
-                                                    key={lvl}
-                                                    type="button"
-                                                    title={`Set Level +${lvl}`}
-                                                    onClick={() => setBooster2Level(lvl)}
-                                                    style={{
-                                                        width: '5px',
-                                                        height: '5px',
-                                                        borderRadius: '50%',
-                                                        border: 'none',
-                                                        padding: 0,
-                                                        cursor: 'pointer',
-                                                        background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
-                                                        boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
-                                    {showBooster2TypeMenu && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '42px',
-                                            left: '50%',
-                                            transform: 'translateX(-50%)',
-                                            width: '270px',
-                                            background: '#0d1117',
-                                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                                            borderRadius: '12px',
-                                            padding: '10px',
-                                            boxShadow: '0 10px 30px rgba(0,0,0,0.9)',
-                                            zIndex: 200,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '8px'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                <span style={{ fontSize: '0.75em', fontWeight: '900', color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                    ⚡ Select Booster 2 Category
-                                                </span>
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => setShowBooster2TypeMenu(false)}
-                                                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9em', cursor: 'pointer', fontWeight: 'bold' }}
-                                                >
-                                                    ✕
-                                                </button>
-                                            </div>
+                                        <DoubleBoosterLogo 
+                                            color1={getBoosterCategoryColor(booster1)} 
+                                            color2={getEffectiveBooster2Color()} 
+                                            onBooster1Click={handleBooster1Click}
+                                            onBooster2Click={handleBooster2Click}
+                                        />
 
-                                            {BOOSTER_TYPES.map(type => (
-                                                <div
-                                                    key={type.id}
-                                                    onClick={() => {
-                                                        setBooster2Category(type.id);
-                                                        setBooster2Level(type.maxBoost);
-                                                        setShowBooster2TypeMenu(false);
-                                                    }}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '10px',
-                                                        padding: '6px 8px',
-                                                        borderRadius: '8px',
-                                                        background: booster2Category === type.id ? 'rgba(255,255,255,0.08)' : '#111722',
-                                                        border: `1px solid ${booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}`,
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.borderColor = type.color}
-                                                    onMouseLeave={e => e.currentTarget.style.borderColor = booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}
-                                                >
-                                                    <HexagonBadge color={type.color} />
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ fontSize: '0.78em', fontWeight: '900', color: type.color }}>
-                                                            {type.name}
-                                                        </span>
-                                                        <span style={{ fontSize: '0.62em', color: '#94a3b8' }}>
-                                                            {type.desc}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                            <select 
+                                                ref={booster2Ref}
+                                                value={booster2} 
+                                                onChange={(e) => setBooster2(e.target.value)} 
+                                                style={{ 
+                                                    background: '#0d1117', 
+                                                    color: getEffectiveBooster2Color(), 
+                                                    border: `1px solid ${getEffectiveBooster2Color()}`, 
+                                                    borderRadius: '6px', 
+                                                    padding: '3px 4px', 
+                                                    fontSize: '0.68em', 
+                                                    fontWeight: 'bold', 
+                                                    outline: 'none', 
+                                                    cursor: 'pointer',
+                                                    maxWidth: '72px',
+                                                    textOverflow: 'ellipsis',
+                                                    overflow: 'hidden',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                <option value="none">No Boost 2</option>
+                                                {EFOOTBALL_BOOSTERS.map(b => (
+                                                    <option key={`b2-${b.name}`} value={`${b.name} +3`}>{b.name} +{booster2Level}</option>
+                                                ))}
+                                            </select>
+
+                                            {/* 3 DOTS BOOSTER 2 LEVEL SELECTOR (+1, +2, +3) */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
+                                                {[1, 2, 3].map(lvl => (
+                                                    <button
+                                                        key={lvl}
+                                                        type="button"
+                                                        title={`Set Level +${lvl}`}
+                                                        onClick={() => setBooster2Level(lvl)}
+                                                        style={{
+                                                            width: '5px',
+                                                            height: '5px',
+                                                            borderRadius: '50%',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            cursor: 'pointer',
+                                                            background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
+                                                            boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
+                                        {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
+                                        {showBooster2TypeMenu && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '42px',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                width: '270px',
+                                                background: '#0d1117',
+                                                border: '1px solid rgba(56, 189, 248, 0.4)',
+                                                borderRadius: '12px',
+                                                padding: '10px',
+                                                boxShadow: '0 10px 30px rgba(0,0,0,0.9)',
+                                                zIndex: 200,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '8px'
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                                    <span style={{ fontSize: '0.75em', fontWeight: '900', color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                        Select Booster 2 Category
+                                                    </span>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setShowBooster2TypeMenu(false)}
+                                                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9em', cursor: 'pointer', fontWeight: 'bold' }}
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+
+                                                {BOOSTER_TYPES.map(type => (
+                                                    <div
+                                                        key={type.id}
+                                                        onClick={() => {
+                                                            setBooster2Category(type.id);
+                                                            setBooster2Level(type.maxBoost);
+                                                            setShowBooster2TypeMenu(false);
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '10px',
+                                                            padding: '6px 8px',
+                                                            borderRadius: '8px',
+                                                            background: booster2Category === type.id ? 'rgba(255,255,255,0.08)' : '#111722',
+                                                            border: `1px solid ${booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}`,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.borderColor = type.color}
+                                                        onMouseLeave={e => e.currentTarget.style.borderColor = booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}
+                                                    >
+                                                        <HexagonBadge color={type.color} />
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.78em', fontWeight: '900', color: type.color }}>
+                                                                {type.name}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.62em', color: '#94a3b8' }}>
+                                                                {type.desc}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* RIGHT BIO PILLS COLUMN — 5 items, space-between, matching card height */}
@@ -1054,34 +1067,126 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginTop: '25px' }}>
                                     {/* EMBEDDED PROGRESSION SLIDERS PANEL (LEFT) WITH SECTION HEADER */}
                                     <div style={{ width: '270px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        <div style={{
-                                            background: '#00f2fe',
-                                            color: '#000',
-                                            borderRadius: '8px',
-                                            padding: '8px 14px',
-                                            fontWeight: '900',
-                                            fontSize: '0.82em',
-                                            letterSpacing: '0.5px',
-                                            textAlign: 'center',
-                                            textTransform: 'uppercase',
-                                            boxShadow: '0 0 12px rgba(0, 242, 254, 0.4)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '6px'
-                                        }}>
-                                            PLAYER PROGRESSION
-                                        </div>
+                                        {isTrendingCard ? (
+                                            <>
+                                                <div style={{
+                                                    background: 'rgba(255, 255, 255, 0.08)',
+                                                    color: '#94a3b8',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 14px',
+                                                    fontWeight: '900',
+                                                    fontSize: '0.82em',
+                                                    letterSpacing: '0.5px',
+                                                    textAlign: 'center',
+                                                    textTransform: 'uppercase',
+                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px'
+                                                }}>
+                                                    LEVEL TRAINING (LOCKED)
+                                                </div>
 
-                                        <ProgressionSlidersPanel
-                                            primaryPosition={primaryposition}
-                                            levelCap={data.maxlevel || 32}
-                                            maxPoints={data.progressionpoints || 62}
-                                            allocations={allocations}
-                                            onAllocationChange={setAllocations}
-                                            onSmartAllocate={handleSmartAllocate}
-                                            onReset={handleResetAllocations}
-                                        />
+                                                <div style={{
+                                                    background: '#0d1117',
+                                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                                    borderRadius: '12px',
+                                                    padding: '16px',
+                                                    width: '270px',
+                                                    boxSizing: 'border-box',
+                                                    fontFamily: "'Outfit', sans-serif",
+                                                    color: '#fff',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '14px'
+                                                }}>
+                                                    <div style={{
+                                                        background: 'rgba(239, 68, 68, 0.08)',
+                                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                        borderRadius: '8px',
+                                                        padding: '12px 14px',
+                                                        color: '#f87171',
+                                                        fontSize: '0.82em',
+                                                        fontWeight: '700',
+                                                        textAlign: 'center',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px'
+                                                    }}>
+                                                        <span>Trending & POTW players cannot undergo Level Training.</span>
+                                                    </div>
+
+                                                    {/* Card specifications badge block */}
+                                                    <div style={{
+                                                        background: 'rgba(255, 255, 255, 0.02)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                                                        borderRadius: '10px',
+                                                        padding: '12px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '10px'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78em' }}>
+                                                            <span style={{ color: '#94a3b8', fontWeight: 'bold' }}>EDITION</span>
+                                                            <span style={{ color: '#00ff87', fontWeight: '900', background: 'rgba(0, 255, 135, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0, 255, 135, 0.2)' }}>
+                                                                {cardtype.toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78em' }}>
+                                                            <span style={{ color: '#94a3b8', fontWeight: 'bold' }}>MAX LEVEL</span>
+                                                            <span style={{ color: '#fff', fontWeight: '900' }}>1 / 1</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78em' }}>
+                                                            <span style={{ color: '#94a3b8', fontWeight: 'bold' }}>TRAINING STATUS</span>
+                                                            <span style={{ color: '#eab308', fontWeight: '900' }}>PRE-TRAINED</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{
+                                                        fontSize: '0.74em',
+                                                        color: '#64748b',
+                                                        lineHeight: '1.45',
+                                                        textAlign: 'center',
+                                                        padding: '0 4px'
+                                                    }}>
+                                                        POTW and Trending cards are pre-trained with fixed optimal attributes upon release and cannot be manually trained.
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div style={{
+                                                    background: '#00f2fe',
+                                                    color: '#000',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 14px',
+                                                    fontWeight: '900',
+                                                    fontSize: '0.82em',
+                                                    letterSpacing: '0.5px',
+                                                    textAlign: 'center',
+                                                    textTransform: 'uppercase',
+                                                    boxShadow: '0 0 12px rgba(0, 242, 254, 0.4)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px'
+                                                }}>
+                                                    PLAYER PROGRESSION
+                                                </div>
+
+                                                <ProgressionSlidersPanel
+                                                    primaryPosition={primaryposition}
+                                                    levelCap={data.maxlevel || 32}
+                                                    maxPoints={data.progressionpoints || 62}
+                                                    allocations={allocations}
+                                                    onAllocationChange={setAllocations}
+                                                    onSmartAllocate={handleSmartAllocate}
+                                                    onReset={handleResetAllocations}
+                                                />
+                                            </>
+                                        )}
                                     </div>
 
                                     {/* 3-COLUMN CATEGORIZED ATTRIBUTE MATRIX (ATTACKING, DEFENDING, ATHLETICISM) (RIGHT) */}
