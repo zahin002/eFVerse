@@ -812,7 +812,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             </div>
 
                                             {/* Top Left OVR & Position Stack — centered alignment above flag */}
-                                            <div style={{ position: 'absolute', top: '10px', left: '12px', width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                                            <div style={{ position: 'absolute', top: '10px', left: '9px', width: '54px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
                                                 <h1 style={{ 
                                                     fontSize: boostedOvr >= 100 ? '2.4em' : '2.8em', 
                                                     margin: 0, 
@@ -845,7 +845,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             {/* Player Name */}
                                             <h2 style={{ 
                                                 position: 'absolute', 
-                                                bottom: cardImgUrl ? '42px' : '50px', 
+                                                bottom: cardImgUrl ? '58px' : '64px', 
                                                 left: '10px', 
                                                 right: '10px', 
                                                 margin: 0, 
