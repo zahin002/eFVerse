@@ -1301,8 +1301,6 @@ function App() {
                                     <div style={{ position: 'absolute', top: '10%', left: '5%', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(0,242,254,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 4s ease-in-out infinite', pointerEvents: 'none' }} />
                                     <div style={{ position: 'absolute', bottom: '10%', right: '8%', width: '220px', height: '220px', background: 'radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 5s ease-in-out infinite 1s', pointerEvents: 'none' }} />
 
-                                    <div className="hero-badge"> eFootball Squad Building Platform</div>
-
                                     <h1 className="hero-title">
                                         eFVerse
                                     </h1>
