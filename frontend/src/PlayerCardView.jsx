@@ -1095,16 +1095,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                                 }}
                                                             >
                                                                 <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontSize: '0.8em', flexShrink: 0 }}>
-<<<<<<< Updated upstream
-                                                                    {mgr.imageurl ? <img src={mgr.imageurl} alt="" style={{ width: '100%', height: '100%', borderRadius: '6px', objectFit: 'cover' }} /> : '👔'}
-=======
                                                                     {mgr.imageurl ? <img src={mgr.imageurl} alt="" style={{ width: '100%', height: '100%', borderRadius: '6px', objectFit: 'cover' }} /> : (
                                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                                                             <circle cx="12" cy="7" r="4"></circle>
                                                                         </svg>
                                                                     )}
->>>>>>> Stashed changes
                                                                 </div>
                                                                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                                                                     <span style={{ fontSize: '0.85em', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1120,7 +1116,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </div>
                                             )}
 
-<<<<<<< Updated upstream
                                             {/* BOOST EFFECTS DISPLAY */}
                                             {selectedManager && (
                                                 <div style={{ marginTop: '8px', fontSize: '0.72em', color: '#a78bfa', fontWeight: '600' }}>
@@ -1133,73 +1128,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                         : 'No stat effects assigned'}
                                                 </div>
                                             )}
-=======
-                                             {/* BOOST EFFECTS DISPLAY */}
-                                             {selectedManager && (
-                                                 <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                                     {selectedManager.effects?.length > 0 ? (
-                                                         selectedManager.effects.map((e, idx) => {
-                                                             const rawName = (e.statName || e.statname || e.stat_name || e.stat || 'Unknown').trim();
-                                                             const statMap = {
-                                                                 offensiveawareness: 'Offensive Awareness',
-                                                                 attackingawareness: 'Offensive Awareness',
-                                                                 ballcontrol: 'Ball Control',
-                                                                 dribbling: 'Dribbling',
-                                                                 tightpossession: 'Tight Possession',
-                                                                 lowpass: 'Low Pass',
-                                                                 shortpass: 'Low Pass',
-                                                                 groundpass: 'Low Pass',
-                                                                 loftedpass: 'Lofted Pass',
-                                                                 longpass: 'Lofted Pass',
-                                                                 longball: 'Lofted Pass',
-                                                                 highpass: 'Lofted Pass',
-                                                                 passing: 'Passing',
-                                                                 finishing: 'Finishing',
-                                                                 shooting: 'Finishing',
-                                                                 heading: 'Heading',
-                                                                 placekicking: 'Place Kicking',
-                                                                 freekick: 'Place Kicking',
-                                                                 curl: 'Curl',
-                                                                 curve: 'Curl',
-                                                                 defensiveawareness: 'Defensive Awareness',
-                                                                 defensiveengagement: 'Defensive Engagement',
-                                                                 tackling: 'Tackling',
-                                                                 aggression: 'Aggression',
-                                                                 defending: 'Defending',
-                                                                 gkawareness: 'Goalkeeping',
-                                                                 goalkeeping: 'Goalkeeping',
-                                                                 gkcatching: 'GK Catching',
-                                                                 gkparrying: 'GK Parrying',
-                                                                 gkreflexes: 'GK Reflexes',
-                                                                 gkreach: 'GK Reach',
-                                                                 speed: 'Speed',
-                                                                 acceleration: 'Acceleration',
-                                                                 kickingpower: 'Kicking Power',
-                                                                 shotpower: 'Kicking Power',
-                                                                 jump: 'Jump',
-                                                                 jumping: 'Jump',
-                                                                 physicalcontact: 'Physical Contact',
-                                                                 physicality: 'Physical Contact',
-                                                                 balance: 'Balance',
-                                                                 stamina: 'Stamina'
-                                                             };
-                                                             const key = rawName.toLowerCase().replace(/[\s_\-]+/g, '');
-                                                             const boostVal = e.boost || e.boostvalue || e.value || 0;
-                                                             const label = statMap[key] || (rawName.charAt(0).toUpperCase() + rawName.slice(1));
-                                                             return (
-                                                                 <div key={idx} style={{ fontSize: '0.78em', color: '#22c55e', fontWeight: '800', letterSpacing: '0.3px' }}>
-                                                                     {label} +{boostVal}
-                                                                 </div>
-                                                             );
-                                                         })
-                                                     ) : (
-                                                         <div style={{ fontSize: '0.72em', color: '#94a3b8', fontWeight: '600' }}>
-                                                             No stat effects assigned
-                                                         </div>
-                                                     )}
-                                                 </div>
-                                             )}
->>>>>>> Stashed changes
                                         </div>
                                     );
                                 })()}
@@ -1225,7 +1153,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginTop: '25px' }}>
                                     {/* EMBEDDED PROGRESSION SLIDERS PANEL (LEFT) WITH SECTION HEADER */}
                                     <div style={{ width: '270px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-<<<<<<< Updated upstream
                                         {isTrendingCard ? (
                                             <>
                                                 <div style={{
@@ -1246,26 +1173,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 }}>
                                                     LEVEL TRAINING (LOCKED)
                                                 </div>
-=======
-                                        <div style={{
-                                            background: '#00f2fe',
-                                            color: '#000',
-                                            borderRadius: '8px',
-                                            padding: '8px 14px',
-                                            fontWeight: '900',
-                                            fontSize: '0.82em',
-                                            letterSpacing: '0.5px',
-                                            textAlign: 'center',
-                                            textTransform: 'uppercase',
-                                            boxShadow: '0 0 12px rgba(0, 242, 254, 0.4)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '6px'
-                                        }}>
-                                            PLAYER PROGRESSION
-                                        </div>
->>>>>>> Stashed changes
 
                                                 <div style={{
                                                     background: '#0d1117',
