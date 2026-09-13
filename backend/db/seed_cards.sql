@@ -310,4 +310,58 @@ BEGIN
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach)
     VALUES (v_card_id, 70, 60, 78, 77, 79, 75, 80, 80, 82, 80, 81, 82, 81, 81, 80, 40, 40, 40, 40, 40);
 
+    -- ------------------------------------------------------------
+    -- 17. Edwin van der Sar (Bigtime GK)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Edwin van der Sar', 37, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Premier League' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Manchester United' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'Netherlands' LIMIT 1),
+        197, 84, 'Right', 'Attacking GK', 'Rarely', 'Medium', 'Unwavering', 7, 7, 8, 7, 6, 4, 11, 7, 4, 7, 7)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Bigtime', 'GK', 89, 89, 99, 58, 0, 5, ARRAY['GK Low Punt', 'GK High Punt', 'GK Long Throw', 'GK Penalty Saver'], ARRAY[]::text[], 'S+', 'B', 'Goalkeeping +3', 30, 58)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 40, 40, 57, 50, 58, 66, 50, 47, 55, 48, 70, 67, 45, 44, 50, 83, 82, 85, 83, 82, 57, 58, 60, 44, 46, 49, 50);
+
+    -- ------------------------------------------------------------
+    -- 18. Gianluigi Buffon (Bigtime GK)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Gianluigi Buffon', 28, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Serie A' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Juventus' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'Italy' LIMIT 1),
+        192, 92, 'Right', 'Attacking GK', 'Rarely', 'Medium', 'Unwavering', 7, 11, 5, 7, 9, 5, 8, 9, 7, 10, 8)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Bigtime', 'GK', 91, 91, 99, 56, 0, 5, ARRAY['GK Low Punt', 'GK High Punt', 'GK Long Throw', 'GK Penalty Saver', 'Captaincy', 'Fighting Spirit', 'GK Directing Defence'], ARRAY['Early Crosser'], 'S+', 'B', 'Saving +4', 29, 56)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 42, 42, 47, 46, 58, 69, 49, 47, 52, 52, 63, 70, 48, 44, 48, 86, 84, 84, 86, 85, 44, 58, 59, 49, 49, 48, 49);
+
+    -- ------------------------------------------------------------
+    -- 19. Manuel Neuer (Showtime GK)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Manuel Neuer', 40, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Bundesliga' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Bayern Munich' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'Germany' LIMIT 1),
+        193, 93, 'Right', 'Attacking GK', 'Rarely', 'High', 'Unwavering', 9, 10, 8, 5, 6, 5, 11, 5, 5, 8, 6)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, booster2, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Showtime', 'GK', 91, 91, 99, 54, 0, 5, ARRAY['Through Passing', 'One-touch Pass', 'Weighted Pass', 'Low Lofted Pass', 'GK Low Punt', 'GK Long Throw', 'GK Penalty Saver', 'Captaincy', 'Visionary Pass', 'GK Directing Defence'], ARRAY[]::text[], 'S+', 'B', 'Saving +3', 'Passing +3', 28, 54)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 40, 40, 62, 64, 77, 80, 59, 56, 64, 57, 56, 59, 62, 60, 66, 86, 80, 83, 85, 86, 60, 77, 80, 55, 64, 64, 64);
+
 END $$;
