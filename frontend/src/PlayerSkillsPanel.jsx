@@ -176,7 +176,7 @@ export default function PlayerSkillsPanel({ cardData, playerBio, stats }) {
                     pointerEvents: 'none'
                 }}>
                     <div style={{ color: '#00f2fe', fontWeight: '900', fontSize: '0.9em', marginBottom: '3px' }}>
-                        ⚡ {tooltipPos.title}
+                        {tooltipPos.title}
                     </div>
                     <div style={{ color: '#cbd5e1', fontSize: '0.78em', lineHeight: 1.4 }}>
                         {tooltipPos.desc}
@@ -311,38 +311,47 @@ export default function PlayerSkillsPanel({ cardData, playerBio, stats }) {
                                             <div 
                                                 style={{ 
                                                     display: 'flex', 
-                                                    justify: 'space-between', 
+                                                    justifyContent: 'space-between', 
                                                     alignItems: 'center', 
                                                     background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(0, 242, 254, 0.05) 100%)', 
                                                     border: '1px solid rgba(56, 189, 248, 0.35)', 
                                                     padding: '7px 12px', 
                                                     borderRadius: '8px', 
                                                     fontSize: '0.85em',
-                                                    boxShadow: '0 2px 8px rgba(0, 242, 254, 0.1)'
+                                                    boxShadow: '0 2px 8px rgba(0, 242, 254, 0.1)',
+                                                    minHeight: '38px',
+                                                    boxSizing: 'border-box'
                                                 }}
                                                 onMouseEnter={(e) => handleMouseEnterSkill(e, skillName)}
                                                 onMouseLeave={handleMouseLeaveSkill}
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <span style={{ color: '#38bdf8', fontWeight: '900', fontSize: '0.8em' }}>⚡</span>
-                                                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{skillName}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '6px' }}>
-                                                    <button 
-                                                        onClick={() => { setActiveAddSlot(slotIdx); setSkillSearch(''); }} 
-                                                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#38bdf8', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold' }}
-                                                        title="Overwrite this skill"
-                                                    >
-                                                        ✏️ Overwrite
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleRemoveSkill(slotIdx)} 
-                                                        style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75em', fontWeight: 'bold' }}
-                                                        title="Remove skill"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </div>
+                                                <span style={{ color: '#fff', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: '10px' }}>
+                                                    {skillName}
+                                                </span>
+                                                <button 
+                                                    onClick={() => handleRemoveSkill(slotIdx)} 
+                                                    style={{ 
+                                                        background: 'rgba(239, 68, 68, 0.12)', 
+                                                        border: '1px solid rgba(239, 68, 68, 0.35)', 
+                                                        color: '#ef4444', 
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        borderRadius: '6px', 
+                                                        cursor: 'pointer', 
+                                                        fontSize: '0.8em', 
+                                                        fontWeight: '900',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        flexShrink: 0,
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)'; }}
+                                                    title="Remove skill"
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
                                         ) : (
                                             <button 

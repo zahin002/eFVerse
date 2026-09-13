@@ -93,8 +93,7 @@ const trainCard = async (req, res) => {
 
 
 const saveBuildSnapshot = async (req, res) => {
-    
-    const { cardId, buildName, points, isPublic } = req.body;
+    const { cardId, buildName, points, isPublic, managerId } = req.body;
     const userId = req.user ? (req.user.userid || req.user.userId) : null;
 
     if (!userId) {
@@ -109,16 +108,15 @@ const saveBuildSnapshot = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        
+        const parsedManagerId = managerId ? parseInt(managerId, 10) : null;
+
         const buildRes = await client.query(
-            `INSERT INTO Build (UserID, CardID, BuildName, IsPublic) 
-             VALUES ($1, $2, $3, $4) RETURNING BuildID`,
-            
-            [userId, cardId, buildName, isPublic || false]
+            `INSERT INTO Build (UserID, CardID, BuildName, IsPublic, ManagerID) 
+             VALUES ($1, $2, $3, $4, $5) RETURNING BuildID`,
+            [userId, cardId, buildName, isPublic || false, parsedManagerId]
         );
         const newBuildId = buildRes.rows[0].buildid;
 
-      
         await client.query(
             `INSERT INTO BuildStats (
                 BuildID, Finishing, Passing, Dribbling, OffensiveAwareness, 
@@ -152,7 +150,7 @@ const saveBuildSnapshot = async (req, res) => {
 
 const updateBuildSnapshot = async (req, res) => {
     const { id } = req.params;
-    const { buildName, points, isPublic } = req.body;
+    const { buildName, points, isPublic, managerId } = req.body;
     const userId = req.user ? (req.user.userid || req.user.userId) : null;
 
     if (!userId) {
@@ -165,15 +163,17 @@ const updateBuildSnapshot = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        const parsedManagerId = managerId ? parseInt(managerId, 10) : null;
 
         const updateBuildRes = await client.query(
             `UPDATE Build 
              SET BuildName = COALESCE($1, BuildName), 
                  IsPublic = COALESCE($2, IsPublic),
+                 ManagerID = COALESCE($3, ManagerID),
                  UpdatedAt = CURRENT_TIMESTAMP
-             WHERE BuildID = $3 AND UserID = $4
+             WHERE BuildID = $4 AND UserID = $5
              RETURNING BuildID`,
-            [buildName ? buildName.trim() : null, isPublic !== undefined ? isPublic : null, parseInt(id, 10), userId]
+            [buildName ? buildName.trim() : null, isPublic !== undefined ? isPublic : null, parsedManagerId, parseInt(id, 10), userId]
         );
 
         if (updateBuildRes.rows.length === 0) {
@@ -240,7 +240,6 @@ const getSavedBuild = async (req, res) => {
     }
 
     try {
-      
         const sql = `
             SELECT 
                 bs.Finishing AS shooting, 
@@ -260,7 +259,6 @@ const getSavedBuild = async (req, res) => {
             LIMIT 1
         `;
         const result = await pool.query(sql, [id, userId]);
-     
         res.json(result.rows[0] || null);
     } catch (err) {
         console.error("Get Saved Build Error:", err.message);
@@ -275,14 +273,17 @@ const getSavedBuildsList = async (req, res) => {
     if (!userId) return res.json([]);
 
     try {
+        const parsedCardId = parseInt(cardId, 10) || 0;
+        const cardIdStr = cardId ? cardId.toString() : '';
         const sql = `
-            SELECT b.BuildID, b.BuildName, b.IsPublic, b.CreatedAt, bs.*
+            SELECT b.BuildID, b.BuildName, b.IsPublic, b.CreatedAt, b.ManagerID, m.ManagerName AS managername, m.Playstyle AS managerplaystyle, bs.*
             FROM Build b
-            JOIN BuildStats bs ON b.BuildID = bs.BuildID
-            WHERE b.CardID = $1 AND b.UserID = $2
+            LEFT JOIN BuildStats bs ON b.BuildID = bs.BuildID
+            LEFT JOIN Manager m ON b.ManagerID = m.ManagerID
+            WHERE (b.CardID = $1 OR b.CardID::text = $2) AND b.UserID = $3
             ORDER BY b.CreatedAt DESC
         `;
-        const result = await pool.query(sql, [cardId, userId]);
+        const result = await pool.query(sql, [parsedCardId, cardIdStr, userId]);
         res.json(result.rows);
     } catch (err) {
         console.error("Fetch Builds Error:", err.message);
@@ -296,25 +297,25 @@ const getCommunityBuilds = async (req, res) => {
     const userId = req.user ? (req.user.userid || req.user.userId) : null;
 
     try {
+        const parsedCardId = parseInt(cardId, 10) || 0;
+        const cardIdStr = cardId ? cardId.toString() : '';
         const sql = `
             SELECT 
-                b.BuildID, b.BuildName, b.CreatedAt, u.Username, bs.*,
-                -- Count total likes
+                b.BuildID, b.BuildName, b.CreatedAt, b.IsPublic, b.ManagerID, u.Username, m.ManagerName AS managername, m.Playstyle AS managerplaystyle, bs.*,
                 COALESCE(SUM(CASE WHEN br.Reaction = 'LIKE' THEN 1 ELSE 0 END), 0) as likes,
-                -- Count total dislikes
                 COALESCE(SUM(CASE WHEN br.Reaction = 'DISLIKE' THEN 1 ELSE 0 END), 0) as dislikes,
-                -- Identify if the current user has reacted
                 MAX(CASE WHEN br.UserID = $2 THEN br.Reaction ELSE NULL END) as my_reaction
             FROM Build b
-            JOIN BuildStats bs ON b.BuildID = bs.BuildID
+            LEFT JOIN BuildStats bs ON b.BuildID = bs.BuildID
             JOIN "User" u ON b.UserID = u.UserID
+            LEFT JOIN Manager m ON b.ManagerID = m.ManagerID
             LEFT JOIN BuildReaction br ON b.BuildID = br.BuildID
-            WHERE b.CardID = $1 AND b.IsPublic = TRUE
-            GROUP BY b.BuildID, u.Username, bs.BuildID
+            WHERE (b.CardID = $1 OR b.CardID::text = $3) AND (b.IsPublic = TRUE OR b.IsPublic IS TRUE)
+            GROUP BY b.BuildID, u.Username, bs.BuildID, m.ManagerName, m.Playstyle
             ORDER BY likes DESC, b.CreatedAt DESC
             LIMIT 20
         `;
-        const result = await pool.query(sql, [cardId, userId]);
+        const result = await pool.query(sql, [parsedCardId, userId, cardIdStr]);
         res.json(result.rows);
     } catch (err) {
         console.error("Community Builds Error:", err.message);
