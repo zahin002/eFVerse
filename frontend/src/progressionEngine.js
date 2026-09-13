@@ -368,3 +368,117 @@ export const autoAllocatePoints = (baseStats = {}, position = 'AMF', totalPoints
 
     return allocations;
 };
+
+// 8. Position Affinity Maps & Konami Out-Of-Position Rating Engine
+export const POSITION_PRIMARY_MAP = {
+    'AMF': ['AMF', 'CMF'],
+    'CMF': ['CMF', 'AMF', 'DMF'],
+    'CF':  ['CF', 'SS'],
+    'SS':  ['SS', 'CF', 'AMF'],
+    'LWF': ['LWF', 'RWF', 'SS'],
+    'RWF': ['RWF', 'LWF', 'SS'],
+    'LMF': ['LMF', 'RMF', 'AMF'],
+    'RMF': ['RMF', 'LMF', 'AMF'],
+    'DMF': ['DMF', 'CMF'],
+    'CB':  ['CB'],
+    'LB':  ['LB', 'RB'],
+    'RB':  ['RB', 'LB'],
+    'GK':  ['GK']
+};
+
+export const POSITION_FULL_AFFINITY_MAP = {
+    'AMF': ['LMF', 'RMF', 'SS'],
+    'CMF': ['LMF', 'RMF', 'LB', 'RB'],
+    'CF':  ['LWF', 'RWF'],
+    'SS':  ['LWF', 'RWF'],
+    'LWF': ['CF', 'LMF'],
+    'RWF': ['CF', 'RMF'],
+    'LMF': ['LWF', 'CMF', 'LB'],
+    'RMF': ['RWF', 'CMF', 'RB'],
+    'DMF': ['CB', 'LB', 'RB'],
+    'CB':  ['LB', 'RB', 'DMF'],
+    'LB':  ['LMF', 'CB'],
+    'RB':  ['RMF', 'CB'],
+    'GK':  []
+};
+
+export const POSITION_PARTIAL_AFFINITY_MAP = {
+    'AMF': ['CF', 'LWF', 'RWF', 'DMF'],
+    'CMF': ['CF', 'CB'],
+    'CF':  ['AMF', 'LMF', 'RMF'],
+    'SS':  ['CMF'],
+    'LWF': ['AMF', 'CMF'],
+    'RWF': ['AMF', 'CMF'],
+    'LMF': ['CF', 'DMF'],
+    'RMF': ['CF', 'DMF'],
+    'DMF': ['AMF'],
+    'CB':  ['GK'],
+    'LB':  ['CMF'],
+    'RB':  ['CMF'],
+    'GK':  []
+};
+
+export const getAffinityTier = (primaryPosition = 'AMF', targetPosition = 'AMF', customPrimary = [], customSecondary = []) => {
+    const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
+    const tPos = (targetPosition || 'AMF').toUpperCase().trim();
+
+    if (customPrimary && Array.isArray(customPrimary) && customPrimary.length > 0) {
+        if (customPrimary.map(p => p.toUpperCase().trim()).includes(tPos)) return 'PRIMARY';
+    } else if (POSITION_PRIMARY_MAP[cardPos]?.includes(tPos)) {
+        return 'PRIMARY';
+    }
+
+    if (customSecondary && Array.isArray(customSecondary) && customSecondary.length > 0) {
+        if (customSecondary.map(p => p.toUpperCase().trim()).includes(tPos)) return 'FULL';
+    } else if (POSITION_FULL_AFFINITY_MAP[cardPos]?.includes(tPos)) {
+        return 'FULL';
+    }
+
+    if (POSITION_PARTIAL_AFFINITY_MAP[cardPos]?.includes(tPos)) return 'PARTIAL';
+    return 'NONE';
+};
+
+export const calculateEffectivePositionOVR = ({
+    trainedStats = {},
+    primaryPosition = 'AMF',
+    targetPosition = 'AMF',
+    baseOvr = 80,
+    customPrimaryPositions = [],
+    customSecondaryPositions = []
+}) => {
+    const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
+    const targetPos = (targetPosition || 'AMF').toUpperCase().trim();
+
+    if (cardPos === targetPos) {
+        return calculatePositionOVR(trainedStats, targetPos, trainedStats, baseOvr);
+    }
+
+    const affinity = getAffinityTier(cardPos, targetPos, customPrimaryPositions, customSecondaryPositions);
+
+    let affinityMultiplier = 1.0;
+    if (affinity === 'PRIMARY') {
+        affinityMultiplier = 1.0;
+    } else if (affinity === 'FULL') {
+        affinityMultiplier = 0.95;
+    } else if (affinity === 'PARTIAL') {
+        affinityMultiplier = 0.85;
+    } else {
+        if (targetPos === 'GK' && cardPos !== 'GK') {
+            affinityMultiplier = 0.20;
+        } else if (cardPos === 'GK' && targetPos !== 'GK') {
+            affinityMultiplier = 0.40;
+        } else {
+            affinityMultiplier = 0.65;
+        }
+    }
+
+    const penalizedStats = {};
+    Object.keys(DEFAULT_BASE_STATS).forEach(statKey => {
+        const val = typeof trainedStats[statKey] === 'number' ? trainedStats[statKey] : (parseInt(trainedStats[statKey], 10) || 60);
+        penalizedStats[statKey] = Math.max(40, Math.round(val * affinityMultiplier));
+    });
+
+    const calculatedOvr = calculatePositionOVR(penalizedStats, targetPos, trainedStats, baseOvr);
+    return Math.max(40, calculatedOvr);
+};
+
