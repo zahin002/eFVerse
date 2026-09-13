@@ -53,7 +53,8 @@ const getCardsList = async (req, res) => {
         let sql = `
             SELECT 
                 p.PlayerID, p.PlayerName,
-                c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode
+                c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
+                c.GPCost as gpcost
             FROM Player p
             LEFT JOIN Card c ON p.PlayerID = c.PlayerID
             WHERE 1=1 
@@ -525,13 +526,11 @@ const addPlayer = async (req, res) => {
 
 
 const addCard = async (req, res) => {
-    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating } = req.body;
-    
+    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, gpcost } = req.body;
     
     const client = await pool.connect();
 
     try {
-        
         await client.query('BEGIN');
 
         const sql = `SELECT * FROM insert_card_sql($1, $2, $3, $4, $5, $6)`;
@@ -541,23 +540,25 @@ const addCard = async (req, res) => {
             positioncode, 
             parseInt(baseoverallrating), 
             parseInt(currentoverallrating), 
-            parseInt(maxoverallrating)
+            parseInt(maxoverallrating || 85)
         ];
 
-        
         const result = await client.query(sql, values);
+        const cardId = result.rows[0]?.id || result.rows[0]?.insert_card_sql?.id;
 
-        
+        // If card is Standard and gpcost is provided, save gpcost
+        if (cardId && cardtype === 'Standard' && gpcost !== undefined && gpcost !== '') {
+            await client.query('UPDATE card SET gpcost = $1 WHERE cardid = $2', [parseInt(gpcost), cardId]);
+        }
+
         await client.query('COMMIT');
 
         res.json(result.rows[0]);
     } catch (error) {
-        
         await client.query('ROLLBACK');
         console.error("Add Card Transaction Error:", error);
         res.status(400).json({ error: error.message });
     } finally {
-        
         client.release();
     }
 };
@@ -989,7 +990,7 @@ const updateCard = async (req, res) => {
     const { 
         cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating,
         primarypositions, secondarypositions, booster1, booster2, tierbadge, livecondition,
-        skills, comskills, maxlevel, progressionpoints
+        skills, comskills, maxlevel, progressionpoints, gpcost
     } = req.body;
 
     try {
@@ -1006,6 +1007,10 @@ const updateCard = async (req, res) => {
         const comSkillsArray = typeof comskills === 'string'
             ? comskills.split(',').map(s => s.trim()).filter(Boolean)
             : Array.isArray(comskills) ? comskills : null;
+
+        const gpValue = (cardtype === 'Standard' && gpcost !== undefined && gpcost !== '') 
+            ? parseInt(gpcost) 
+            : (cardtype && cardtype !== 'Standard' ? null : undefined);
 
         const sql = `
             UPDATE card 
@@ -1024,7 +1029,8 @@ const updateCard = async (req, res) => {
                 skills = COALESCE($12, skills),
                 comskills = COALESCE($13, comskills),
                 maxlevel = COALESCE($15, maxlevel),
-                progressionpoints = COALESCE($16, progressionpoints)
+                progressionpoints = COALESCE($16, progressionpoints),
+                gpcost = CASE WHEN $1 = 'Standard' THEN $17 ELSE CASE WHEN $1 IS NOT NULL THEN NULL ELSE gpcost END END
             WHERE cardid = $14
         `;
         await pool.query(sql, [
@@ -1036,7 +1042,8 @@ const updateCard = async (req, res) => {
             primArray, secArray, booster1 || null, booster2 || null, tierbadge || null, livecondition || null,
             skillsArray, comSkillsArray, parseInt(id),
             maxlevel ? parseInt(maxlevel) : null,
-            progressionpoints ? parseInt(progressionpoints) : null
+            progressionpoints ? parseInt(progressionpoints) : null,
+            gpValue !== undefined ? gpValue : null
         ]);
         res.json({ message: "✅ Card details, skills, booster list, level cap & progression points updated successfully!" });
     } catch (error) {

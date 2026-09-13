@@ -57,8 +57,8 @@ export default function AdminPanel() {
   const [mgmtClubs, setMgmtClubs] = useState([]);
 
 
-  const [playerForm, setPlayerForm] = useState({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '', marketvalue: '' });
-  const [cardForm, setCardForm] = useState({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85 });
+  const [playerForm, setPlayerForm] = useState({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '' });
+  const [cardForm, setCardForm] = useState({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '' });
   const [managerForm, setManagerForm] = useState({
       managername: '',
       playstyle: 'Possession Game',
@@ -115,6 +115,7 @@ export default function AdminPanel() {
       booster2: 'Technique +3',
       tierbadge: 'S+',
       livecondition: 'B',
+      gpcost: '',
       skills: '',
       comskills: '',
       // Player Model Metrics
@@ -246,6 +247,7 @@ export default function AdminPanel() {
             booster2: c.booster2 || 'Technique +3',
             tierbadge: c.tierbadge || 'S+',
             livecondition: c.livecondition || 'B',
+            gpcost: c.gpcost || '',
             // FIXED: Fall back to '' so placeholders show when array is empty or undefined
             skills: Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || ''),
             comskills: Array.isArray(c.comskills) ? c.comskills.join(', ') : (c.comskills || ''),
@@ -421,14 +423,10 @@ export default function AdminPanel() {
 
   const handlePlayerSubmit = async (e) => { 
       e.preventDefault(); 
-
-      if (!playerForm.marketvalue) {
-          return setMessage(' Please enter a Market Value!');
-      }
       try {
           await axios.post('http://localhost:5001/api/players/add-player', playerForm);
           setMessage(' Player Saved!'); 
-          setPlayerForm({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '', marketvalue: '' });
+          setPlayerForm({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '' });
           fetchAllData(); 
       } catch (err) {
           const errMsg = err.response?.data?.error || err.message || 'Unknown error';
@@ -464,6 +462,7 @@ export default function AdminPanel() {
       try {
           await axios.post('http://localhost:5001/api/players/add-card', cardForm);
           setMessage(' Card Created!'); 
+          setCardForm({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '' });
           fetchAllData(); 
       } catch (err) {
           const errMsg = err.response?.data?.error || err.message || 'Unknown error';
@@ -649,7 +648,7 @@ const handleCardSelectForStats = async (e) => {
           { key: 'player', label: '1. ADD PLAYER' },
           { key: 'card', label: '2. ADD CARD' },
           { key: 'stats', label: '3. ADD STATS' },
-          { key: 'status', label: '4. UPDATE STATUS (MARKET VALUE)' },
+          { key: 'status', label: '4. UPDATE STATUS' },
           { key: 'manager', label: '5. ADD MANAGER' },
           { key: 'boosts', label: '6. MANAGER BOOSTER' }
         ].map(item => (
@@ -685,19 +684,6 @@ const handleCardSelectForStats = async (e) => {
             <h3 style={{ margin: 0, color: '#00f2fe'}}>Register Entity</h3>
                 <input placeholder="Name" value={playerForm.playername} onChange={e=>setPlayerForm({...playerForm, playername: e.target.value})} style={inputStyle} required />
                 <input placeholder="Age" type="number" value={playerForm.age} onChange={e=>setPlayerForm({...playerForm, age: e.target.value})} style={inputStyle} required />
-                
-                <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                    {/* <span style={{color:'#00f2fe', fontSize:'1.2em'}}>$</span> */}
-                    <input 
-                        placeholder="Market Value (Million €)" 
-                        type="number" 
-                        step="0.01" 
-                        value={playerForm.marketvalue} 
-                        onChange={e=>setPlayerForm({...playerForm, marketvalue: e.target.value})} 
-                        style={inputStyle} 
-                        required
-                    />
-                </div>
 
                 <select value={playerForm.nationalityid} onChange={e=>setPlayerForm({...playerForm, nationalityid: e.target.value})} style={inputStyle} required>
                     <option value="">Nationality</option>
@@ -722,13 +708,13 @@ const handleCardSelectForStats = async (e) => {
                     <option value="">Select Player...</option>
                     {playersList.map(p => <option key={p.playerid} value={p.playerid}>{p.playername}</option>)}
                 </select>
-                <select value={cardForm.cardtype} onChange={e=>setCardForm({...cardForm, cardtype: e.target.value})} style={inputStyle}>
+                <select value={cardForm.cardtype} onChange={e=>setCardForm({...cardForm, cardtype: e.target.value, gpcost: e.target.value === 'Standard' ? cardForm.gpcost : ''})} style={inputStyle}>
                     <option value="Standard">Standard</option>
-                                    <option value="Legendary">Legendary</option>
-                                    <option value="POTW">POTW</option>
-                                    <option value="Highlight">Highlight</option>
-                                    <option value="Epic">Epic</option>
-                                    <option value="Trending">Trending</option>
+                    <option value="Legendary">Legendary</option>
+                    <option value="POTW">POTW</option>
+                    <option value="Highlight">Highlight</option>
+                    <option value="Epic">Epic</option>
+                    <option value="Trending">Trending</option>
                 </select>
                 <select value={cardForm.positioncode} onChange={e=>setCardForm({...cardForm, positioncode: e.target.value})} style={inputStyle} required>
                     <option value="">Position...</option>
@@ -737,8 +723,24 @@ const handleCardSelectForStats = async (e) => {
                 <div style={{display:'flex', gap:'10px'}}>
                     <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Base OVR</label> <input type="number" value={cardForm.baseoverallrating} onChange={e=> setCardForm({...cardForm, baseoverallrating: parseInt(e.target.value), currentoverallrating: Math.max(parseInt(e.target.value), cardForm.currentoverallrating)})} style={inputStyle} /></div>
                     <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Current OVR</label> <input type="number" value={cardForm.currentoverallrating} onChange={e=>setCardForm({...cardForm, currentoverallrating: parseInt(e.target.value)})} style={inputStyle} /></div>
-                    {/* <div style={{flex:1}}><label style={{fontSize:'0.7em'}}>Max OVR</label> <input type="number" value={cardForm.maxoverallrating} onChange={e=>setCardForm({...cardForm, maxoverallrating: parseInt(e.target.value)})} style={inputStyle} /></div> */}
                 </div>
+
+                {/* Price in GP Coin ONLY for Standard player cards */}
+                {cardForm.cardtype === 'Standard' && (
+                    <div>
+                        <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>PRICE (GP COIN)</label>
+                        <input 
+                            placeholder="Price in GP (e.g. 180000)" 
+                            type="number" 
+                            min="0"
+                            value={cardForm.gpcost} 
+                            onChange={e => setCardForm({ ...cardForm, gpcost: e.target.value })} 
+                            style={{ ...inputStyle, border: '1px solid #00f2fe' }} 
+                            required
+                        />
+                    </div>
+                )}
+
                 <button className="click-btn" type="submit" style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>Create Entity</button>
             </form>
           )}
@@ -858,7 +860,7 @@ const handleCardSelectForStats = async (e) => {
                 </select>
 
                 <button className="click-btn" type="submit" style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>
-                    UPDATE STATUS & RECALCULATE VALUE
+                    UPDATE STATUS
                 </button>
             </form>
           )}
@@ -1176,6 +1178,21 @@ const handleCardSelectForStats = async (e) => {
                                     <input type="number" value={editForm.progressionpoints} onChange={e => setEditForm({...editForm, progressionpoints: parseInt(e.target.value)})} style={{ ...inputStyle, border: '1px solid #00f2fe' }} placeholder="62" />
                                 </div>
                             </div>
+
+                            {/* PRICE (GP COIN) ONLY FOR STANDARD CARDS IN EDIT MODAL */}
+                            {editForm.cardtype === 'Standard' && (
+                                <div>
+                                    <label style={{ fontSize: '0.75em', color: '#00f2fe', fontWeight: 'bold' }}>PRICE (GP COIN)</label>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        value={editForm.gpcost || ''} 
+                                        onChange={e => setEditForm({ ...editForm, gpcost: e.target.value })} 
+                                        style={{ ...inputStyle, border: '1px solid #00f2fe' }} 
+                                        placeholder="Price in GP (e.g. 180000)" 
+                                    />
+                                </div>
+                            )}
 
                             {/* PRIMARY PITCH POSITIONS (GREEN GLOW 100%) */}
                             <div>
