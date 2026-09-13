@@ -1258,23 +1258,13 @@ const handleCardSelectForStats = async (e) => {
                                 <label style={{ fontSize: '0.75em', color: '#38bdf8', textTransform: 'uppercase' }}>
                                      Base Player Skills List 
                                 </label>
-                                 <input 
+                                <input 
                                     type="text" 
-                                     placeholder="e.g. Double Touch, First Time Shot, One Touch Pass, Long Range Shooting, Blitz Curler"
-                                    value={editForm.primarypositions} 
-                                    onChange={e => setEditForm({...editForm, primarypositions: e.target.value})} 
-                                    style={{ ...inputStyle, border: '1px solid #38bdf8' }} 
-                                />
-                                {/* <input 
-                                    type="text"
                                     placeholder="e.g. Double Touch, First Time Shot, One Touch Pass, Long Range Shooting, Blitz Curler"
                                     value={editForm.skills} 
                                     onChange={e => setEditForm({...editForm, skills: e.target.value})} 
-                                    style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} 
-                                /> */}
-                                {/* <div style={{ fontSize: '0.68em', color: '#64748b', marginTop: '2px' }}>
-                                    Default skills provided on this card.
-                                </div> */}
+                                    style={{ ...inputStyle, border: '1px solid #38bdf8' }} 
+                                />
                             </div>
 
                             {/* COM SKILLS LIST */}
