@@ -811,8 +811,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 S+
                                             </div>
 
-                                            {/* Top Left OVR & Position Stack — pushed to left edge above flag */}
-                                            <div style={{ position: 'absolute', top: '10px', left: '8px', width: '58px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', zIndex: 3 }}>
+                                            {/* Top Left OVR & Position Stack — centered alignment above flag */}
+                                            <div style={{ position: 'absolute', top: '10px', left: '12px', width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
                                                 <h1 style={{ 
                                                     fontSize: boostedOvr >= 100 ? '2.4em' : '2.8em', 
                                                     margin: 0, 
@@ -822,19 +822,21 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     fontWeight: '900', 
                                                     letterSpacing: '-1px',
                                                     fontFamily: "'Outfit', 'Impact', sans-serif",
+                                                    textAlign: 'center',
                                                     transition: 'all 0.2s ease' 
                                                 }}>
                                                     {boostedOvr}
                                                 </h1>
 
                                                 <h3 style={{ 
-                                                    margin: '3px 0 0 2px', 
-                                                    fontSize: '1.15em', 
+                                                    margin: '2px 0 0 0', 
+                                                    fontSize: '1.2em', 
                                                     color: '#fff', 
                                                     textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', 
                                                     fontWeight: '900', 
-                                                    letterSpacing: '1.5px',
-                                                    lineHeight: 1
+                                                    letterSpacing: '1px',
+                                                    lineHeight: 1,
+                                                    textAlign: 'center'
                                                 }}>
                                                     {primaryposition}
                                                 </h3>
