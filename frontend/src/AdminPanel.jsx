@@ -58,7 +58,7 @@ export default function AdminPanel() {
 
 
   const [playerForm, setPlayerForm] = useState({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '' });
-  const [cardForm, setCardForm] = useState({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '' });
+  const [cardForm, setCardForm] = useState({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '', cardimageurl: '' });
   const [managerForm, setManagerForm] = useState({
       managername: '',
       playstyle: 'Possession Game',
@@ -248,6 +248,7 @@ export default function AdminPanel() {
             tierbadge: c.tierbadge || 'S+',
             livecondition: c.livecondition || 'B',
             gpcost: c.gpcost || '',
+            cardimageurl: c.cardimageurl || c.imageurl || '',
             // FIXED: Fall back to '' so placeholders show when array is empty or undefined
             skills: Array.isArray(c.skills) ? c.skills.join(', ') : (c.skills || ''),
             comskills: Array.isArray(c.comskills) ? c.comskills.join(', ') : (c.comskills || ''),
@@ -462,7 +463,7 @@ export default function AdminPanel() {
       try {
           await axios.post('http://localhost:5001/api/players/add-card', cardForm);
           setMessage(' Card Created!'); 
-          setCardForm({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '' });
+          setCardForm({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '', cardimageurl: '' });
           fetchAllData(); 
       } catch (err) {
           const errMsg = err.response?.data?.error || err.message || 'Unknown error';
@@ -740,6 +741,18 @@ const handleCardSelectForStats = async (e) => {
                         />
                     </div>
                 )}
+
+                {/* Card Image URL (Optional) */}
+                <div>
+                    <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL (OPTIONAL)</label>
+                    <input 
+                        placeholder="Card Image URL (e.g. https://.../mbappe.png)" 
+                        type="url" 
+                        value={cardForm.cardimageurl || ''} 
+                        onChange={e => setCardForm({ ...cardForm, cardimageurl: e.target.value })} 
+                        style={{ ...inputStyle, border: '1px solid rgba(0, 242, 254, 0.4)' }} 
+                    />
+                </div>
 
                 <button className="click-btn" type="submit" style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>Create Entity</button>
             </form>
@@ -1165,10 +1178,10 @@ const handleCardSelectForStats = async (e) => {
                                     <label style={{ fontSize: '0.7em', color: '#aaa' }}>Current OVR</label>
                                     <input type="number" value={editForm.currentoverallrating} onChange={e => setEditForm({...editForm, currentoverallrating: parseInt(e.target.value)})} style={inputStyle} />
                                 </div>
-                                <div>
+                                {/* <div>
                                     <label style={{ fontSize: '0.7em', color: '#aaa' }}>Max OVR</label>
                                     <input type="number" value={editForm.maxoverallrating} onChange={e => setEditForm({...editForm, maxoverallrating: parseInt(e.target.value)})} style={inputStyle} />
-                                </div>
+                                </div> */}
                                 <div>
                                     <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>Level Cap</label>
                                     <input type="number" value={editForm.maxlevel} onChange={e => setEditForm({...editForm, maxlevel: parseInt(e.target.value)})} style={{ ...inputStyle, border: '1px solid #00f2fe' }} placeholder="32" />
@@ -1193,6 +1206,18 @@ const handleCardSelectForStats = async (e) => {
                                     />
                                 </div>
                             )}
+
+                            {/* CARD IMAGE URL (OPTIONAL) IN EDIT MODAL */}
+                            <div>
+                                <label style={{ fontSize: '0.75em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL (OPTIONAL)</label>
+                                <input 
+                                    type="url" 
+                                    placeholder="Card Image URL (e.g. https://.../mbappe.png)" 
+                                    value={editForm.cardimageurl || ''} 
+                                    onChange={e => setEditForm({ ...editForm, cardimageurl: e.target.value })} 
+                                    style={{ ...inputStyle, border: '1px solid rgba(0, 242, 254, 0.4)' }} 
+                                />
+                            </div>
 
                             {/* PRIMARY PITCH POSITIONS (GREEN GLOW 100%) */}
                             <div>

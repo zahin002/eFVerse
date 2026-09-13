@@ -311,11 +311,10 @@ export const POSITION_TARGET_PROFILES = {
     GK:  { gk1: 8, gk2: 8, gk3: 8 }
 };
 
-// 7. MAX OPTIMAL ALLOCATION SOLVER FOR POSITION
+// 7. MAX OPTIMAL GREEDY OVR SOLVER (Konami Auto Development Logic)
 export const autoAllocatePoints = (baseStats = {}, position = 'AMF', totalPoints = 62) => {
     const posStr = Array.isArray(position) ? position[0] : (typeof position === 'string' ? position : 'AMF');
     const posUpper = (posStr || 'AMF').toUpperCase().trim();
-    const targetProfile = POSITION_TARGET_PROFILES[posUpper] || POSITION_TARGET_PROFILES['AMF'];
 
     const allocations = {
         shooting: 0,
@@ -332,39 +331,172 @@ export const autoAllocatePoints = (baseStats = {}, position = 'AMF', totalPoints
 
     let pointsRemaining = totalPoints;
 
-    // Step 1: Assign levels according to position profile template
-    Object.keys(targetProfile).forEach(groupKey => {
-        const targetLvl = targetProfile[groupKey] || 0;
-        for (let lvl = 1; lvl <= targetLvl; lvl++) {
-            const cost = getLevelCost(lvl);
-            if (pointsRemaining >= cost) {
-                allocations[groupKey] += 1;
-                pointsRemaining -= cost;
+    const isGK = posUpper === 'GK';
+    const validGroups = isGK
+        ? ['gk1', 'gk2', 'gk3', 'passing', 'lowerBody', 'aerial']
+        : ['shooting', 'passing', 'dribbling', 'dexterity', 'lowerBody', 'aerial', 'defending'];
+
+    // Greedy optimization: spend points on category step yielding highest marginal OVR gain per point cost
+    let improved = true;
+    while (pointsRemaining > 0 && improved) {
+        improved = false;
+        let bestGroup = null;
+        let bestGainPerPoint = -1;
+
+        const currentTrainedStats = calculateAllocatedStats(baseStats, allocations);
+        const currentScore = calculatePositionOVR(currentTrainedStats, posUpper, baseStats);
+
+        for (const groupKey of validGroups) {
+            const currentLevel = allocations[groupKey] || 0;
+            if (currentLevel >= 16) continue;
+
+            const cost = getLevelCost(currentLevel + 1);
+            if (pointsRemaining < cost) continue;
+
+            const testAllocations = { ...allocations, [groupKey]: currentLevel + 1 };
+            const testStats = calculateAllocatedStats(baseStats, testAllocations);
+            const testScore = calculatePositionOVR(testStats, posUpper, baseStats);
+
+            const scoreGain = testScore - currentScore;
+            // Primary stat priority bias to break ties among zero-gain or equal-gain steps
+            const weights = POSITION_WEIGHTS[posUpper] || POSITION_WEIGHTS['AMF'];
+            let categoryWeightSum = 0;
+            const groupObj = STAT_GROUPS[groupKey];
+            if (groupObj && groupObj.effects) {
+                groupObj.effects.forEach(({ stat }) => {
+                    categoryWeightSum += (weights[stat] || 0.05);
+                });
+            }
+
+            const gainPerPoint = (scoreGain * 100 + categoryWeightSum) / cost;
+
+            if (gainPerPoint > bestGainPerPoint) {
+                bestGainPerPoint = gainPerPoint;
+                bestGroup = groupKey;
             }
         }
-    });
 
-    // Step 2: Distribute any remaining points to highest priority groups for position
-    const groupPriority = (posUpper === 'GK')
-        ? ['gk1', 'gk2', 'gk3', 'passing', 'lowerBody']
-        : ['dribbling', 'dexterity', 'passing', 'lowerBody', 'shooting', 'defending', 'aerial'];
-
-    let canAllocate = true;
-    while (canAllocate && pointsRemaining > 0) {
-        canAllocate = false;
-        for (const key of groupPriority) {
-            const currentLvl = allocations[key] || 0;
-            if (currentLvl < 16) {
-                const cost = getLevelCost(currentLvl + 1);
-                if (pointsRemaining >= cost) {
-                    allocations[key] += 1;
-                    pointsRemaining -= cost;
-                    canAllocate = true;
-                    break;
-                }
-            }
+        if (bestGroup && bestGainPerPoint > 0) {
+            const cost = getLevelCost(allocations[bestGroup] + 1);
+            allocations[bestGroup] += 1;
+            pointsRemaining -= cost;
+            improved = true;
         }
     }
 
     return allocations;
 };
+
+// 8. Position Affinity Maps & Konami Out-Of-Position Rating Engine
+export const POSITION_PRIMARY_MAP = {
+    'AMF': ['AMF', 'CMF'],
+    'CMF': ['CMF', 'AMF', 'DMF'],
+    'CF':  ['CF', 'SS'],
+    'SS':  ['SS', 'CF', 'AMF'],
+    'LWF': ['LWF', 'RWF', 'SS'],
+    'RWF': ['RWF', 'LWF', 'SS'],
+    'LMF': ['LMF', 'RMF', 'AMF'],
+    'RMF': ['RMF', 'LMF', 'AMF'],
+    'DMF': ['DMF', 'CMF'],
+    'CB':  ['CB'],
+    'LB':  ['LB', 'RB'],
+    'RB':  ['RB', 'LB'],
+    'GK':  ['GK']
+};
+
+export const POSITION_FULL_AFFINITY_MAP = {
+    'AMF': ['LMF', 'RMF', 'SS'],
+    'CMF': ['LMF', 'RMF', 'LB', 'RB'],
+    'CF':  ['LWF', 'RWF'],
+    'SS':  ['LWF', 'RWF'],
+    'LWF': ['CF', 'LMF'],
+    'RWF': ['CF', 'RMF'],
+    'LMF': ['LWF', 'CMF', 'LB'],
+    'RMF': ['RWF', 'CMF', 'RB'],
+    'DMF': ['CB', 'LB', 'RB'],
+    'CB':  ['LB', 'RB', 'DMF'],
+    'LB':  ['LMF', 'CB'],
+    'RB':  ['RMF', 'CB'],
+    'GK':  []
+};
+
+export const POSITION_PARTIAL_AFFINITY_MAP = {
+    'AMF': ['CF', 'LWF', 'RWF', 'DMF'],
+    'CMF': ['CF', 'CB'],
+    'CF':  ['AMF', 'LMF', 'RMF'],
+    'SS':  ['CMF'],
+    'LWF': ['AMF', 'CMF'],
+    'RWF': ['AMF', 'CMF'],
+    'LMF': ['CF', 'DMF'],
+    'RMF': ['CF', 'DMF'],
+    'DMF': ['AMF'],
+    'CB':  ['GK'],
+    'LB':  ['CMF'],
+    'RB':  ['CMF'],
+    'GK':  []
+};
+
+export const getAffinityTier = (primaryPosition = 'AMF', targetPosition = 'AMF', customPrimary = [], customSecondary = []) => {
+    const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
+    const tPos = (targetPosition || 'AMF').toUpperCase().trim();
+
+    if (customPrimary && Array.isArray(customPrimary) && customPrimary.length > 0) {
+        if (customPrimary.map(p => p.toUpperCase().trim()).includes(tPos)) return 'PRIMARY';
+    } else if (POSITION_PRIMARY_MAP[cardPos]?.includes(tPos)) {
+        return 'PRIMARY';
+    }
+
+    if (customSecondary && Array.isArray(customSecondary) && customSecondary.length > 0) {
+        if (customSecondary.map(p => p.toUpperCase().trim()).includes(tPos)) return 'FULL';
+    } else if (POSITION_FULL_AFFINITY_MAP[cardPos]?.includes(tPos)) {
+        return 'FULL';
+    }
+
+    if (POSITION_PARTIAL_AFFINITY_MAP[cardPos]?.includes(tPos)) return 'PARTIAL';
+    return 'NONE';
+};
+
+export const calculateEffectivePositionOVR = ({
+    trainedStats = {},
+    primaryPosition = 'AMF',
+    targetPosition = 'AMF',
+    baseOvr = 80,
+    customPrimaryPositions = [],
+    customSecondaryPositions = []
+}) => {
+    const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
+    const targetPos = (targetPosition || 'AMF').toUpperCase().trim();
+
+    if (cardPos === targetPos) {
+        return calculatePositionOVR(trainedStats, targetPos, trainedStats, baseOvr);
+    }
+
+    const affinity = getAffinityTier(cardPos, targetPos, customPrimaryPositions, customSecondaryPositions);
+
+    let affinityMultiplier = 1.0;
+    if (affinity === 'PRIMARY') {
+        affinityMultiplier = 1.0;
+    } else if (affinity === 'FULL') {
+        affinityMultiplier = 0.95;
+    } else if (affinity === 'PARTIAL') {
+        affinityMultiplier = 0.85;
+    } else {
+        if (targetPos === 'GK' && cardPos !== 'GK') {
+            affinityMultiplier = 0.20;
+        } else if (cardPos === 'GK' && targetPos !== 'GK') {
+            affinityMultiplier = 0.40;
+        } else {
+            affinityMultiplier = 0.65;
+        }
+    }
+
+    const penalizedStats = {};
+    Object.keys(DEFAULT_BASE_STATS).forEach(statKey => {
+        const val = typeof trainedStats[statKey] === 'number' ? trainedStats[statKey] : (parseInt(trainedStats[statKey], 10) || 60);
+        penalizedStats[statKey] = Math.max(40, Math.round(val * affinityMultiplier));
+    });
+
+    const calculatedOvr = calculatePositionOVR(penalizedStats, targetPos, trainedStats, baseOvr);
+    return Math.max(40, calculatedOvr);
+};
+

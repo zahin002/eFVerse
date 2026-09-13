@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { calculateEffectivePositionOVR } from './progressionEngine';
 import {
     FiLayers,
     FiGlobe,
@@ -382,9 +383,13 @@ export default function SquadBuilder({ currentUser, onBack }) {
             safeGet(card, 'PositionCode', 'positioncode', 'PrimaryPosition', 'primaryposition') || 'GK'
         ).toString().toUpperCase().trim();
 
-        const penalty = getPositionPenalty(naturalPos, assignedRole);
-        return Math.max(40, baseRating - penalty);
-    }, [getPositionPenalty, safeGet]);
+        return calculateEffectivePositionOVR({
+            trainedStats: card,
+            primaryPosition: naturalPos,
+            targetPosition: assignedRole,
+            baseOvr: baseRating
+        });
+    }, [safeGet]);
 
     const totalStrength = useMemo(() => {
         return lineup.reduce((acc, slot) => {

@@ -526,7 +526,7 @@ const addPlayer = async (req, res) => {
 
 
 const addCard = async (req, res) => {
-    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, gpcost } = req.body;
+    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, gpcost, cardimageurl, imageurl } = req.body;
     
     const client = await pool.connect();
 
@@ -549,6 +549,13 @@ const addCard = async (req, res) => {
         // If card is Standard and gpcost is provided, save gpcost
         if (cardId && cardtype === 'Standard' && gpcost !== undefined && gpcost !== '') {
             await client.query('UPDATE card SET gpcost = $1 WHERE cardid = $2', [parseInt(gpcost), cardId]);
+        }
+
+        // Save optional cardimageurl if provided
+        const imgUrl = (cardimageurl || imageurl || '').trim();
+        if (cardId && imgUrl) {
+            await client.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS cardimageurl VARCHAR(500)');
+            await client.query('UPDATE card SET cardimageurl = $1 WHERE cardid = $2', [imgUrl, cardId]);
         }
 
         await client.query('COMMIT');
@@ -1045,6 +1052,13 @@ const updateCard = async (req, res) => {
             progressionpoints ? parseInt(progressionpoints) : null,
             gpValue !== undefined ? gpValue : null
         ]);
+
+        const imgUrl = req.body.cardimageurl !== undefined ? req.body.cardimageurl : req.body.imageurl;
+        if (imgUrl !== undefined) {
+            await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS cardimageurl VARCHAR(500)');
+            await pool.query('UPDATE card SET cardimageurl = $1 WHERE cardid = $2', [imgUrl ? imgUrl.trim() : null, parseInt(id)]);
+        }
+
         res.json({ message: "✅ Card details, skills, booster list, level cap & progression points updated successfully!" });
     } catch (error) {
         console.error("Update Card Error:", error);
