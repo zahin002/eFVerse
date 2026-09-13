@@ -54,7 +54,7 @@ const getCardsList = async (req, res) => {
             SELECT 
                 p.PlayerID, p.PlayerName,
                 c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
-                c.GPCost as gpcost
+                c.GPCost as gpcost, c.cardimageurl
             FROM Player p
             LEFT JOIN Card c ON p.PlayerID = c.PlayerID
             WHERE 1=1 
@@ -91,6 +91,7 @@ const getCardsList = async (req, res) => {
             cardtype: row.cardtype || "No Card Configured",
             baseoverallrating: row.baseoverallrating || "-",
             currentoverallrating: row.currentoverallrating || "-",
+            cardimageurl: row.cardimageurl || null,
             playerid: row.playerid,
             player: {
                 playername: row.playername || "Unknown Player",
@@ -447,6 +448,7 @@ const smartSearchCards = async (req, res) => {
             cardtype: row.cardtype || "Standard",
             baseoverallrating: row.baserating || "-",
             currentoverallrating: row.currentoverallrating || "-",
+            cardimageurl: row.cardimageurl || row.imageurl || null,
             playerid: row.playerid,
             player: {
                 playername: row.playername || "Unknown Player",
