@@ -720,7 +720,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flexWrap: 'wrap', justifyContent: 'center', flex: 1, marginRight: '90px' }}>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => setCompareMode(true)}>COMPARE</span>
-<<<<<<< Updated upstream
                     {!isTrendingCard && (
                         <>
                             <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
@@ -728,11 +727,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                             <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
                         </>
                     )}
-=======
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('community')}>COMMUNITY BUILDS</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
->>>>>>> Stashed changes
                     <span style={{ color: copied ? '#4ade80' : '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px', transition: 'color 0.2s ease' }} onClick={handleShareLink}>
                         {copied ? 'COPIED!' : 'SHARE'}
                     </span>
