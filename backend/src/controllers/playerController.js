@@ -72,8 +72,8 @@ const getCardsList = async (req, res) => {
             sql += ` AND c.CardID IS NOT NULL`;
         } else if (filter === 'no_cards') {
             sql += ` AND c.CardID IS NULL`;
-        } else if (['Legendary', 'POTW', 'Standard'].includes(filter)) {
-            sql += ` AND c.CardType = $${paramIdx++}`;
+        } else if (filter && filter !== 'all') {
+            sql += ` AND c.CardType ILIKE $${paramIdx++}`;
             params.push(filter);
         }
 
