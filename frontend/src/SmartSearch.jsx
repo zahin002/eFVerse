@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FcSearch } from "react-icons/fc";
-
+import { getTierBadge } from './badgeAssetEngine';
 import axios from 'axios';
 
 axios.defaults.withCredentials = true;
@@ -561,9 +561,14 @@ export default function SmartSearch({ onCardClick }) {
                                                 </div>
 
                                                 {/* Top Right Tier Badge */}
-                                                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(24, 28, 36, 0.9)', color: color || '#f97316', border: `1px solid ${border}`, padding: '2px 7px', borderRadius: '6px', fontWeight: '900', fontSize: '0.7em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
-                                                    {card.cardtype || 'S+'}
-                                                </div>
+                                                {(() => {
+                                                    const badge = getTierBadge(card.baseoverallrating || card.maxoverallrating || 0);
+                                                    return (
+                                                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(24, 28, 36, 0.9)', color: badge.color, border: `1px solid ${badge.border}`, padding: '2px 7px', borderRadius: '6px', fontWeight: '900', fontSize: '0.7em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
+                                                            {badge.label}
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 {/* Player Name */}
                                                 <div style={{ position: 'absolute', bottom: '48px', left: '6px', right: '6px', textAlign: 'center', color: '#fff', fontSize: '1.05em', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', fontWeight: '900', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

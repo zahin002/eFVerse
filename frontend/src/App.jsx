@@ -6,7 +6,7 @@ import SmartSearch from './SmartSearch';
 import ManagerDetailView from './ManagerDetailView';
 import SquadBuilder from './SquadBuilder';
 import CardTrainer from './CardTrainer';
-import { getManagerPhotoUrl } from './badgeAssetEngine';
+import { getManagerPhotoUrl, getTierBadge } from './badgeAssetEngine';
 import { FaLongArrowAltRight } from "react-icons/fa";
 
 axios.defaults.withCredentials = true;
@@ -132,23 +132,28 @@ const CardTileItem = ({ card, onClick, cardType }) => {
                 </div>
 
                 {/* Top Right Tier Badge */}
-                <div style={{ 
-                    position: 'absolute', 
-                    top: '10px', 
-                    right: '10px', 
-                    background: 'rgba(24, 28, 36, 0.9)', 
-                    color: '#f97316', 
-                    border: '1px solid rgba(249, 115, 22, 0.4)', 
-                    padding: '2px 7px', 
-                    borderRadius: '6px', 
-                    fontWeight: '900', 
-                    fontSize: '0.7em', 
-                    zIndex: 3, 
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.7)', 
-                    letterSpacing: '0.5px' 
-                }}>
-                    S+
-                </div>
+                {(() => {
+                    const badge = getTierBadge(card.baseoverallrating || card.maxoverallrating || 0);
+                    return (
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: '10px', 
+                            right: '10px', 
+                            background: 'rgba(24, 28, 36, 0.9)', 
+                            color: badge.color, 
+                            border: `1px solid ${badge.border}`, 
+                            padding: '2px 7px', 
+                            borderRadius: '6px', 
+                            fontWeight: '900', 
+                            fontSize: '0.7em', 
+                            zIndex: 3, 
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.7)', 
+                            letterSpacing: '0.5px' 
+                        }}>
+                            {badge.label}
+                        </div>
+                    );
+                })()}
 
                 {/* Player Name near bottom */}
                 <h2 style={{ 

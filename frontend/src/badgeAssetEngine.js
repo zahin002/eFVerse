@@ -141,3 +141,13 @@ export const getManagerPhotoUrl = (managerName) => {
     }
     return 'https://secure.gravatar.com/avatar/unknown?d=mp';
 };
+
+export const getTierBadge = (ovr) => {
+    const rating = parseInt(ovr) || 0;
+    if (rating >= 100) return { label: 'S+', color: '#f97316', border: 'rgba(249, 115, 22, 0.4)' };
+    if (rating >= 95)  return { label: 'A',  color: '#10b981', border: 'rgba(16, 185, 129, 0.4)' };
+    if (rating >= 90)  return { label: 'B',  color: '#00f2fe', border: 'rgba(0, 242, 254, 0.4)' };
+    if (rating >= 80)  return { label: 'C',  color: '#f59e0b', border: 'rgba(245, 158, 11, 0.4)' };
+    if (rating >= 60)  return { label: 'D',  color: '#a855f7', border: 'rgba(168, 85, 247, 0.4)' };
+    return { label: 'E', color: '#94a3b8', border: 'rgba(148, 163, 184, 0.4)' };
+};

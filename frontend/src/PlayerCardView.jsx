@@ -7,7 +7,7 @@ import PositionRatingsPitch from './PositionRatingsPitch';
 import PlayerSkillsPanel from './PlayerSkillsPanel';
 import AttributeMatrixPanel from './AttributeMatrixPanel';
 import ProgressionSlidersPanel from './ProgressionSlidersPanel';
-import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl } from './badgeAssetEngine';
+import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl, getTierBadge } from './badgeAssetEngine';
 import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor } from './efootballBoosters';
 import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR, getLevelCost } from './progressionEngine';
 import shootingIcon from './assets/progression_icons/shooting.png';
@@ -807,9 +807,14 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             )}
 
                                             {/* Top Right Tier Badge */}
-                                            <div style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(24, 28, 36, 0.9)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.4)', padding: '2px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '0.8em', zIndex: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.7)', letterSpacing: '0.5px' }}>
-                                                S+
-                                            </div>
+                                            {(() => {
+                                                const badge = getTierBadge(boostedOvr);
+                                                return (
+                                                    <div style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(24, 28, 36, 0.9)', color: badge.color, border: `1px solid ${badge.border}`, padding: '2px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '0.8em', zIndex: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.7)', letterSpacing: '0.5px' }}>
+                                                        {badge.label}
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {/* Top Left OVR & Position Stack — centered alignment above flag */}
                                             <div style={{ position: 'absolute', top: '10px', left: '9px', width: '54px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
