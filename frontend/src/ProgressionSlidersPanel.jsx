@@ -1,6 +1,99 @@
 import React from 'react';
 import { getLevelCost } from './progressionEngine';
+import shootingIcon from './assets/progression_icons/shooting.png';
+import passingIcon from './assets/progression_icons/passing.png';
+import dribblingIcon from './assets/progression_icons/dribbling.png';
+import dexterityIcon from './assets/progression_icons/dexterity.png';
+import lowerbodyIcon from './assets/progression_icons/lowerbody.png';
+import aerialIcon from './assets/progression_icons/aerial.png';
+import defendingIcon from './assets/progression_icons/defending.png';
+import gk1Icon from './assets/progression_icons/gk1.png';
+import gk2Icon from './assets/progression_icons/gk2.png';
+import gk3Icon from './assets/progression_icons/gk3.png';
 
+// ---- Inline icons (Konami / eFHUB official style) ----
+const TargetIcon = ({ size = 22 }) => (
+    <img 
+        src={shootingIcon} 
+        alt="Shooting" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const BallIcon = ({ size = 22 }) => (
+    <img 
+        src={passingIcon} 
+        alt="Passing" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const TriangleIcon = ({ size = 22 }) => (
+    <img 
+        src={dribblingIcon} 
+        alt="Dribbling" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const ShuffleIcon = ({ size = 22 }) => (
+    <img 
+        src={dexterityIcon} 
+        alt="Dexterity" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const BootIcon = ({ size = 22 }) => (
+    <img 
+        src={lowerbodyIcon} 
+        alt="Lower Body Strength" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const DoubleUpIcon = ({ size = 22 }) => (
+    <img 
+        src={aerialIcon} 
+        alt="Aerial Strength" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const ShieldIcon = ({ size = 22 }) => (
+    <img 
+        src={defendingIcon} 
+        alt="Defending" 
+        style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+    />
+);
+
+const GloveIcon = ({ size = 22, number = 1 }) => {
+    const iconSrc = number === 2 ? gk2Icon : (number === 3 ? gk3Icon : gk1Icon);
+    return (
+        <img 
+            src={iconSrc} 
+            alt={`GK ${number}`} 
+            style={{ width: size, height: size, minWidth: size, borderRadius: '50%', objectFit: 'contain', display: 'block', verticalAlign: 'middle' }} 
+        />
+    );
+};
+
+// ---- Category icon map ----
+const CATEGORY_ICONS = {
+    shooting:  <TargetIcon size={22} />,
+    passing:   <BallIcon size={22} />,
+    dribbling: <TriangleIcon size={22} />,
+    dexterity: <ShuffleIcon size={22} />,
+    lowerBody: <BootIcon size={22} />,
+    aerial:    <DoubleUpIcon size={22} />,
+    defending: <ShieldIcon size={22} />,
+    gk1:       <GloveIcon size={22} number={1} />,
+    gk2:       <GloveIcon size={22} number={2} />,
+    gk3:       <GloveIcon size={22} number={3} />,
+};
+
+// ---- Main Component ----
 const INITIAL_ALLOCATIONS = {
     shooting: 0, passing: 0, dribbling: 0, dexterity: 0,
     lowerBody: 0, aerial: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0
@@ -137,11 +230,32 @@ export default function ProgressionSlidersPanel({
                     const currentLvl = allocations[key] || 0;
                     const nextCost = getLevelCost(currentLvl + 1);
                     const canAdd = currentLvl < 16 && pointsRemaining >= nextCost;
+                    const active = currentLvl > 0;
 
                     return (
                         <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '0.62em', color: '#64748b', fontWeight: '800', letterSpacing: '0.5px' }}>
-                                {label}
+                            {/* Label row with icon */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }}>
+                                <div style={{
+                                    width: '22px',
+                                    height: '22px',
+                                    minWidth: '22px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    {CATEGORY_ICONS[key]}
+                                </div>
+                                <span style={{
+                                    fontSize: '0.66em',
+                                    color: active ? '#fff' : '#94a3b8',
+                                    fontWeight: '800',
+                                    letterSpacing: '0.5px',
+                                    lineHeight: 1
+                                }}>
+                                    {label}
+                                </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {/* Track / Slider Bar */}
@@ -226,3 +340,4 @@ export default function ProgressionSlidersPanel({
         </div>
     );
 }
+

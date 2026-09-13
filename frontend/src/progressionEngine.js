@@ -35,32 +35,32 @@ export const STAT_GROUPS = {
     dribbling: {
         name: 'Dribbling',
         effects: [
+            { stat: 'ballcontrol', weight: 1.0 },
             { stat: 'dribbling', weight: 1.0 },
-            { stat: 'tightpossession', weight: 1.0 },
-            { stat: 'ballcontrol', weight: 1.0 }
+            { stat: 'tightpossession', weight: 1.0 }
         ]
     },
     dexterity: {
         name: 'Dexterity',
         effects: [
+            { stat: 'offensiveawareness', weight: 1.0 },
             { stat: 'acceleration', weight: 1.0 },
-            { stat: 'balance', weight: 1.0 },
-            { stat: 'offensiveawareness', weight: 1.0 }
+            { stat: 'balance', weight: 1.0 }
         ]
     },
     lowerBody: {
         name: 'Lower Body Strength',
         effects: [
             { stat: 'speed', weight: 1.0 },
-            { stat: 'stamina', weight: 1.0 },
-            { stat: 'kickingpower', weight: 1.0 }
+            { stat: 'kickingpower', weight: 1.0 },
+            { stat: 'stamina', weight: 1.0 }
         ]
     },
     aerial: {
         name: 'Aerial Strength',
         effects: [
-            { stat: 'jump', weight: 1.0 },
             { stat: 'heading', weight: 1.0 },
+            { stat: 'jump', weight: 1.0 },
             { stat: 'physicalcontact', weight: 1.0 }
         ]
     },
@@ -68,8 +68,8 @@ export const STAT_GROUPS = {
         name: 'Defending',
         effects: [
             { stat: 'defensiveawareness', weight: 1.0 },
-            { stat: 'tackling', weight: 1.0 },
             { stat: 'defensiveengagement', weight: 1.0 },
+            { stat: 'tackling', weight: 1.0 },
             { stat: 'aggression', weight: 1.0 }
         ]
     },
@@ -77,21 +77,21 @@ export const STAT_GROUPS = {
         name: 'GK 1',
         effects: [
             { stat: 'gkawareness', weight: 1.0 },
-            { stat: 'gkcatching', weight: 1.0 }
+            { stat: 'jump', weight: 1.0 }
         ]
     },
     gk2: {
         name: 'GK 2',
         effects: [
             { stat: 'gkparrying', weight: 1.0 },
-            { stat: 'gkreflexes', weight: 1.0 }
+            { stat: 'gkreach', weight: 1.0 }
         ]
     },
     gk3: {
         name: 'GK 3',
         effects: [
-            { stat: 'gkreach', weight: 1.0 },
-            { stat: 'jump', weight: 1.0 }
+            { stat: 'gkcatching', weight: 1.0 },
+            { stat: 'gkreflexes', weight: 1.0 }
         ]
     }
 };
