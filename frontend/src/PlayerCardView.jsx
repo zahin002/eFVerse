@@ -523,7 +523,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     }
 
     const getCardStyle = (type) => {
-        const baseStyle = { padding: '20px', borderRadius: '14px', position: 'relative', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.8)', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', width: '220px' };
+        const baseStyle = { padding: '16px 14px', borderRadius: '14px', position: 'relative', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.8)', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', height: '320px', width: '220px', overflow: 'hidden', boxSizing: 'border-box' };
         switch (type) {
             case 'Legendary':
             case 'Legend':
@@ -783,21 +783,61 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                             {/* PLAYER CARD + BOOSTERS */}
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                                <div style={getCardStyle(cardtype)}>
-                                    <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em' }}>S+</div>
-                                    <h1 style={{ fontSize: '3.8em', margin: 0, lineHeight: 1, color: getStatColor(boostedOvr) }}>{boostedOvr}</h1>
-                                    <h3 style={{ margin: '4px 0', fontSize: '1.3em', color: '#fff' }}>{primaryposition}</h3>
-                                    {(data?.cardimageurl || data?.imageurl || player?.cardimageurl || player?.imageurl) && (
-                                        <img 
-                                            src={data?.cardimageurl || data?.imageurl || player?.cardimageurl || player?.imageurl} 
-                                            alt={player.playername} 
-                                            style={{ width: '80px', height: '80px', objectFit: 'contain', margin: '4px auto 0 auto', display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.6))' }} 
-                                        />
-                                    )}
-                                    <h2 style={{ margin: '8px 0 2px 0', fontSize: '1.5em', textAlign: 'center', color: '#fff' }}>{player.playername}</h2>
-                                    <div style={{ fontSize: '0.85em', margin: '4px 0' }}>{starsString}</div>
-                                    <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: '#22c55e', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em' }}>B</div>
-                                </div>
+                                {(() => {
+                                    const cardImgUrl = data?.cardimageurl || data?.imageurl || player?.cardimageurl || player?.imageurl;
+                                    return (
+                                        <div style={getCardStyle(cardtype)}>
+                                            {cardImgUrl && (
+                                                <>
+                                                    <img 
+                                                        src={cardImgUrl} 
+                                                        alt={player.playername} 
+                                                        style={{ 
+                                                            position: 'absolute', 
+                                                            top: 0, 
+                                                            left: 0, 
+                                                            width: '100%', 
+                                                            height: '100%', 
+                                                            objectFit: 'cover', 
+                                                            zIndex: 1 
+                                                        }} 
+                                                    />
+                                                    <div 
+                                                        style={{ 
+                                                            position: 'absolute', 
+                                                            inset: 0, 
+                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.85) 100%)', 
+                                                            zIndex: 2, 
+                                                            pointerEvents: 'none' 
+                                                        }} 
+                                                    />
+                                                </>
+                                            )}
+
+                                            <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>S+</div>
+
+                                            <h1 style={{ fontSize: '3.8em', margin: 0, lineHeight: 1, color: getStatColor(boostedOvr), zIndex: 3, textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 15px rgba(0,0,0,0.8)', fontWeight: '900', transition: 'all 0.2s ease' }}>
+                                                {boostedOvr}
+                                            </h1>
+
+                                            <h3 style={{ margin: '2px 0 0 0', fontSize: '1.3em', color: '#fff', zIndex: 3, textShadow: '0 2px 6px rgba(0,0,0,0.9)', fontWeight: '800', letterSpacing: '1px' }}>
+                                                {primaryposition}
+                                            </h3>
+
+                                            <div style={{ flex: 1, minHeight: '40px', zIndex: 3 }} />
+
+                                            <h2 style={{ margin: '4px 0 2px 0', fontSize: '1.4em', textAlign: 'center', color: '#fff', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95)', fontWeight: '800', lineHeight: 1.15 }}>
+                                                {player.playername}
+                                            </h2>
+
+                                            <div style={{ fontSize: '0.85em', margin: '2px 0 4px 0', zIndex: 3, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))' }}>
+                                                {starsString}
+                                            </div>
+
+                                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: '#22c55e', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>B</div>
+                                        </div>
+                                    );
+                                })()}
                                 {/* Boosters Row - Compact 220px Width Matching Card (Disabled for POTW / Trending cards) */}
                                 {!isTrendingCard && (
                                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', background: '#111722', padding: '5px 6px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', width: '220px', boxSizing: 'border-box', position: 'relative' }}>
