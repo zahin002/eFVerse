@@ -258,7 +258,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     };
 
     const handleBooster2Click = () => {
-        if (isBooster2AdminSet) return;
         setShowBooster2TypeMenu(prev => !prev);
     };
 
@@ -833,9 +832,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             <select 
                                                 ref={booster2Ref}
                                                 value={booster2} 
-                                                disabled={isBooster2AdminSet}
                                                 onChange={(e) => setBooster2(e.target.value)} 
-                                                title={isBooster2AdminSet ? "Predefined by admin" : "Select Booster 2"}
+                                                title="Select Booster 2"
                                                 style={{ 
                                                     background: '#0d1117', 
                                                     color: getEffectiveBooster2Color(), 
@@ -845,8 +843,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     fontSize: '0.68em', 
                                                     fontWeight: 'bold', 
                                                     outline: 'none', 
-                                                    cursor: isBooster2AdminSet ? 'not-allowed' : 'pointer',
-                                                    opacity: isBooster2AdminSet ? 0.85 : 1,
+                                                    cursor: 'pointer',
+                                                    opacity: 1,
                                                     maxWidth: '72px',
                                                     textOverflow: 'ellipsis',
                                                     overflow: 'hidden',
@@ -860,32 +858,30 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             </select>
 
                                             {/* 3 DOTS BOOSTER 2 LEVEL SELECTOR (+1, +2, +3) */}
-                                            {!isBooster2AdminSet && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
-                                                    {[1, 2, 3].map(lvl => (
-                                                        <button
-                                                            key={lvl}
-                                                            type="button"
-                                                            title={`Set Level +${lvl}`}
-                                                            onClick={() => setBooster2Level(lvl)}
-                                                            style={{
-                                                                width: '5px',
-                                                                height: '5px',
-                                                                borderRadius: '50%',
-                                                                border: 'none',
-                                                                padding: 0,
-                                                                cursor: 'pointer',
-                                                                background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
-                                                                boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
-                                                                transition: 'all 0.2s ease'
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
+                                                {[1, 2, 3].map(lvl => (
+                                                    <button
+                                                        key={lvl}
+                                                        type="button"
+                                                        title={`Set Level +${lvl}`}
+                                                        onClick={() => setBooster2Level(lvl)}
+                                                        style={{
+                                                            width: '5px',
+                                                            height: '5px',
+                                                            borderRadius: '50%',
+                                                            border: 'none',
+                                                            padding: 0,
+                                                            cursor: 'pointer',
+                                                            background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
+                                                            boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                         {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
-                                        {!isBooster2AdminSet && showBooster2TypeMenu && (
+                                        {showBooster2TypeMenu && (
                                             <div style={{
                                                 position: 'absolute',
                                                 bottom: '42px',
