@@ -802,11 +802,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                             zIndex: 1 
                                                         }} 
                                                     />
+                                                    {/* Very light overlay — just enough for text readability, image stays bright */}
                                                     <div 
                                                         style={{ 
                                                             position: 'absolute', 
                                                             inset: 0, 
-                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.85) 100%)', 
+                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.0) 35%, rgba(0,0,0,0.0) 55%, rgba(0,0,0,0.55) 100%)', 
                                                             zIndex: 2, 
                                                             pointerEvents: 'none' 
                                                         }} 
@@ -819,14 +820,14 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 S+
                                             </div>
 
-                                            {/* Top Left OVR & Position Stack (Directly centered above national flag) */}
-                                            <div style={{ position: 'absolute', top: '12px', left: '6px', width: '52px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3, textAlign: 'center' }}>
+                                            {/* Top Left OVR & Position Stack — pushed to left edge above flag */}
+                                            <div style={{ position: 'absolute', top: '10px', left: '0px', width: '58px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', zIndex: 3, paddingLeft: '5px' }}>
                                                 <h1 style={{ 
-                                                    fontSize: boostedOvr >= 100 ? '2.4em' : '2.7em', 
+                                                    fontSize: boostedOvr >= 100 ? '2.4em' : '2.8em', 
                                                     margin: 0, 
                                                     lineHeight: 0.9, 
                                                     color: '#fff', 
-                                                    textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 16px rgba(0,0,0,0.9)', 
+                                                    textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.85)', 
                                                     fontWeight: '900', 
                                                     letterSpacing: '-1px',
                                                     fontFamily: "'Outfit', 'Impact', sans-serif",
@@ -836,10 +837,10 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </h1>
 
                                                 <h3 style={{ 
-                                                    margin: '4px 0 0 0', 
-                                                    fontSize: '1.2em', 
+                                                    margin: '3px 0 0 2px', 
+                                                    fontSize: '1.15em', 
                                                     color: '#fff', 
-                                                    textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.9)', 
+                                                    textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', 
                                                     fontWeight: '900', 
                                                     letterSpacing: '1.5px',
                                                     lineHeight: 1
