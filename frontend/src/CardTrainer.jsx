@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR } from './progressionEngine';
+import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR } from './progressionEngine';
 
 const authAxios = axios.create({
     baseURL: 'http://localhost:5001/api',
@@ -166,22 +166,20 @@ export default function CardTrainer({ card, onBack, onComplete }) {
         const position = card.primaryposition || card.positioncode || 'AMF';
         const baseStats = card.stats || {};
         const allocatedStats = calculateAllocatedStats(baseStats, customAllocations);
-        
         const baseOvr = card.baseoverallrating || 80;
-        const maxOvr = card.maxoverallrating || 99;
 
-        const calculatedOvr = calculatePositionOVR(allocatedStats, position, baseOvr, maxOvr);
+        const calculatedOvr = calculatePositionOVR(allocatedStats, position, baseStats, baseOvr);
 
-        let managerOvrBonus = 0;
-        if (selectedManager) {
-            const mgr = managersList.find(m => m.managerid.toString() === selectedManager);
-            if (mgr && mgr.effects && mgr.effects.length > 0) {
-                const totalStatsBoosted = mgr.effects.reduce((sum, eff) => sum + (eff.boost || eff.boostvalue || 0), 0);
-                managerOvrBonus = Math.round(totalStatsBoosted * 0.15); 
-            }
-        }
+        const mgr = selectedManager ? managersList.find(m => m.managerid.toString() === selectedManager) : null;
+        const managerEffects = mgr ? (mgr.effects || []) : [];
 
-        return Math.min(105, calculatedOvr + managerOvrBonus);
+        return calculateFinalLiveOVR({
+            calculatedOvr,
+            managerEffects,
+            booster1: 'none',
+            booster2: 'none',
+            isTrendingCard: false
+        });
     };
 
     const calculateCost = (currentLevel) => {
