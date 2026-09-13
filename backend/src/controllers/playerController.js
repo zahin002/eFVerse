@@ -50,11 +50,16 @@ const getCardsList = async (req, res) => {
     const { filter, sort } = req.query; 
 
     try {
+        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS cardimageurl VARCHAR(500)');
+        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS imageurl VARCHAR(500)');
+        await pool.query('ALTER TABLE player ADD COLUMN IF NOT EXISTS imageurl VARCHAR(500)');
+        
         let sql = `
             SELECT 
                 p.PlayerID, p.PlayerName,
                 c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
-                c.GPCost as gpcost, c.cardimageurl
+                c.GPCost as gpcost,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl
             FROM Player p
             LEFT JOIN Card c ON p.PlayerID = c.PlayerID
             WHERE 1=1 
@@ -91,7 +96,7 @@ const getCardsList = async (req, res) => {
             cardtype: row.cardtype || "No Card Configured",
             baseoverallrating: row.baseoverallrating || "-",
             currentoverallrating: row.currentoverallrating || "-",
-            cardimageurl: row.cardimageurl || null,
+            cardimageurl: row.cardimageurl || row.imageurl || null,
             playerid: row.playerid,
             player: {
                 playername: row.playername || "Unknown Player",

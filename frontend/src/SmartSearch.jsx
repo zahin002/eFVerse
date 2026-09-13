@@ -523,7 +523,7 @@ export default function SmartSearch({ onCardClick }) {
                         {hasSearched && !isLoading && searchResults.length > 0 && (
                             <div className="ss-animate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '14px' }}>
                                 {searchResults.map((card, idx) => {
-                                    const cardImgUrl = card.cardimageurl || card.imageurl || card.player?.cardimageurl || card.player?.imageurl;
+                                    const cardImgUrl = card.cardimageurl || card.imageurl || card.cardImageURL || card.imageURL || card.player?.cardimageurl || card.player?.imageurl || card.player?.cardImageURL || card.player?.imageURL;
                                     const { color, bg, border, glow } = getCardColors(card.cardtype);
 
                                     if (cardImgUrl) {

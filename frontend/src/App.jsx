@@ -34,7 +34,7 @@ axios.interceptors.response.use(
 );
 
 const CardTileItem = ({ card, onClick, cardType }) => {
-    const cardImgUrl = card.cardimageurl || card.imageurl || card.player?.cardimageurl || card.player?.imageurl;
+    const cardImgUrl = card.cardimageurl || card.imageurl || card.cardImageURL || card.imageURL || card.player?.cardimageurl || card.player?.imageurl || card.player?.cardImageURL || card.player?.imageURL;
     
     let typeClass = 'card-tile-standard';
     let badgeBg = 'rgba(0,200,255,0.1)';
