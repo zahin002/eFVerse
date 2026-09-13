@@ -7,8 +7,10 @@ export default function PositionRatingsPitch({
     playstyle, 
     customPrimaryPositions, 
     customSecondaryPositions,
+    boostedStats,
     trainedStats = {}
 }) {
+    const liveStats = boostedStats || trainedStats || {};
     const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
 
     const getAffinityTier = (targetPos) => {
@@ -21,7 +23,7 @@ export default function PositionRatingsPitch({
         if (tPos === cardPos) return baseOvr;
 
         return calculateEffectivePositionOVR({
-            trainedStats,
+            trainedStats: liveStats,
             primaryPosition: cardPos,
             targetPosition: tPos,
             baseOvr,
