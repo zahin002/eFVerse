@@ -192,11 +192,18 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         }
     };
 
+    // Admin predefined booster detection
+    const rawAdminB1 = (data?.booster1 || player?.booster1 || "").trim();
+    const rawAdminB2 = (data?.booster2 || player?.booster2 || "").trim();
+
+    const isBooster1AdminSet = Boolean(rawAdminB1 && rawAdminB1.toLowerCase() !== 'none');
+    const isBooster2AdminSet = Boolean(rawAdminB2 && rawAdminB2.toLowerCase() !== 'none');
+
     // Manager and Booster selection states
     const [managersList, setManagersList] = useState([]);
     const [selectedManagerId, setSelectedManagerId] = useState("");
-    const [booster1, setBooster1] = useState(data.booster1 || "Technique +4");
-    const [booster2, setBooster2] = useState(data.booster2 || "Hard Worker +3");
+    const [booster1, setBooster1] = useState(rawAdminB1 || "none");
+    const [booster2, setBooster2] = useState(rawAdminB2 || "none");
     const [booster2Level, setBooster2Level] = useState(3);
     const [booster2Category, setBooster2Category] = useState('STANDARD');
     const [showBooster2TypeMenu, setShowBooster2TypeMenu] = useState(false);
@@ -243,6 +250,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     ];
 
     const handleBooster1Click = () => {
+        if (isBooster1AdminSet) return;
         if (booster1Ref.current) {
             booster1Ref.current.focus();
             if (booster1Ref.current.showPicker) booster1Ref.current.showPicker();
@@ -250,6 +258,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     };
 
     const handleBooster2Click = () => {
+        if (isBooster2AdminSet) return;
         setShowBooster2TypeMenu(prev => !prev);
     };
 
@@ -270,6 +279,13 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const handleResetAllocations = () => {
         setAllocations(INITIAL_ALLOCATIONS);
     };
+
+    useEffect(() => {
+        const b1 = (data?.booster1 || player?.booster1 || "none").trim();
+        const b2 = (data?.booster2 || player?.booster2 || "none").trim();
+        setBooster1(b1 || "none");
+        setBooster2(b2 || "none");
+    }, [data?.booster1, data?.booster2, player?.booster1, player?.booster2]);
 
     useEffect(() => {
         if (playerid) {
@@ -778,7 +794,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                         <select 
                                             ref={booster1Ref}
                                             value={booster1} 
+                                            disabled={isBooster1AdminSet}
                                             onChange={(e) => setBooster1(e.target.value)} 
+                                            title={isBooster1AdminSet ? "Predefined by admin" : "Select Booster 1"}
                                             style={{ 
                                                 background: '#0d1117', 
                                                 color: getBoosterCategoryColor(booster1), 
@@ -788,7 +806,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 fontSize: '0.68em', 
                                                 fontWeight: 'bold', 
                                                 outline: 'none', 
-                                                cursor: 'pointer',
+                                                cursor: isBooster1AdminSet ? 'not-allowed' : 'pointer',
+                                                opacity: isBooster1AdminSet ? 0.85 : 1,
                                                 maxWidth: '72px',
                                                 textOverflow: 'ellipsis',
                                                 overflow: 'hidden',
@@ -814,7 +833,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             <select 
                                                 ref={booster2Ref}
                                                 value={booster2} 
+                                                disabled={isBooster2AdminSet}
                                                 onChange={(e) => setBooster2(e.target.value)} 
+                                                title={isBooster2AdminSet ? "Predefined by admin" : "Select Booster 2"}
                                                 style={{ 
                                                     background: '#0d1117', 
                                                     color: getEffectiveBooster2Color(), 
@@ -824,7 +845,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     fontSize: '0.68em', 
                                                     fontWeight: 'bold', 
                                                     outline: 'none', 
-                                                    cursor: 'pointer',
+                                                    cursor: isBooster2AdminSet ? 'not-allowed' : 'pointer',
+                                                    opacity: isBooster2AdminSet ? 0.85 : 1,
                                                     maxWidth: '72px',
                                                     textOverflow: 'ellipsis',
                                                     overflow: 'hidden',
@@ -838,30 +860,32 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             </select>
 
                                             {/* 3 DOTS BOOSTER 2 LEVEL SELECTOR (+1, +2, +3) */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
-                                                {[1, 2, 3].map(lvl => (
-                                                    <button
-                                                        key={lvl}
-                                                        type="button"
-                                                        title={`Set Level +${lvl}`}
-                                                        onClick={() => setBooster2Level(lvl)}
-                                                        style={{
-                                                            width: '5px',
-                                                            height: '5px',
-                                                            borderRadius: '50%',
-                                                            border: 'none',
-                                                            padding: 0,
-                                                            cursor: 'pointer',
-                                                            background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
-                                                            boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
-                                                            transition: 'all 0.2s ease'
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
+                                            {!isBooster2AdminSet && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
+                                                    {[1, 2, 3].map(lvl => (
+                                                        <button
+                                                            key={lvl}
+                                                            type="button"
+                                                            title={`Set Level +${lvl}`}
+                                                            onClick={() => setBooster2Level(lvl)}
+                                                            style={{
+                                                                width: '5px',
+                                                                height: '5px',
+                                                                borderRadius: '50%',
+                                                                border: 'none',
+                                                                padding: 0,
+                                                                cursor: 'pointer',
+                                                                background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
+                                                                boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
-                                        {showBooster2TypeMenu && (
+                                        {!isBooster2AdminSet && showBooster2TypeMenu && (
                                             <div style={{
                                                 position: 'absolute',
                                                 bottom: '42px',
