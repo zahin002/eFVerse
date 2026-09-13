@@ -127,7 +127,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const baseoverallrating = data.baseoverallrating || 80;
     const cardtype = data.cardtype || 'Standard';
     const cardTypeUpper = (cardtype || '').toUpperCase();
-    const isTrendingCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING';
+    const isTrendingCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING' || cardTypeUpper === 'FEATURED';
     const primaryposition = (data.positioncode || data.primaryposition || data.PositionCode || player.positioncode || player.position || 'AMF').toUpperCase();
     const playerid = data.playerid;
     const cardid = data.cardid;
@@ -539,6 +539,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                 return { ...baseStyle, background: 'linear-gradient(135deg, #3a0007 0%, #7a0010 40%, #b8001f 75%, #ff4500 100%)', border: '3px solid #ff4500', boxShadow: '0 0 25px rgba(255, 69, 0, 0.7)', color: '#ffffff' };
             case 'POTW':
             case 'Trending':
+            case 'Featured':
                 return { ...baseStyle, background: 'linear-gradient(135deg, #134e5e 0%, #71b280 50%, #00ff00 100%)', border: '3px solid #00ff00', boxShadow: '0 0 25px rgba(0, 255, 0, 0.6)' };
             default:
                 return { ...baseStyle, background: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)', border: '2px solid #4ca1af', boxShadow: '0 8px 20px rgba(0,0,0,0.5)' };

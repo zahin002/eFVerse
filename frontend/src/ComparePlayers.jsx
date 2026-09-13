@@ -108,6 +108,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                 };
             case 'POTW':
             case 'Trending':
+            case 'Featured':
                 return {
                     accent: '#00FF87',
                     bg: 'linear-gradient(145deg, rgba(0,255,135,0.12) 0%, rgba(5,20,12,0.7) 100%)',

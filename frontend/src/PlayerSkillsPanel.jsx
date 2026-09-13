@@ -6,7 +6,7 @@ export default function PlayerSkillsPanel({ cardData, playerBio, stats }) {
     
     // Check card type for Trending / POTW restriction
     const cardType = (cardData?.cardtype || '').toUpperCase();
-    const isTrendingCard = cardType === 'POTW' || cardType === 'TRENDING';
+    const isTrendingCard = cardType === 'POTW' || cardType === 'TRENDING' || cardType === 'FEATURED';
 
     const [skillsList] = useState(
         cardData?.skills || ['Double Touch', 'First Time Shot', 'One Touch Pass', 'Long Range Shooting', 'Blitz Curler']

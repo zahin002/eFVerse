@@ -1061,6 +1061,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 return { accent: '#ff4500', bg: 'linear-gradient(145deg, #2b0404 0%, #170202 100%)', border: 'rgba(255, 69, 0, 0.6)', shadow: '0 0 16px rgba(255, 69, 0, 0.35)' };
             case 'POTW':
             case 'Trending':
+            case 'Featured':
                 return { accent: '#00FF87', bg: 'linear-gradient(145deg, #052413 0%, #03140a 100%)', border: 'rgba(0, 255, 135, 0.6)', shadow: '0 0 16px rgba(0, 255, 135, 0.35)' };
             default:
                 return { accent: '#00f2fe', bg: 'linear-gradient(145deg, #071f30 0%, #04101a 100%)', border: 'rgba(0, 242, 254, 0.5)', shadow: '0 0 16px rgba(0, 242, 254, 0.3)' };

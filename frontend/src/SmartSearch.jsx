@@ -30,7 +30,6 @@ const STAT_LABELS = {
 
 const CARD_TYPES = [
     { label: 'Standard',  value: 'Standard',  color: '#00f2fe', bg: 'rgba(0,242,254,0.12)', border: 'rgba(0,242,254,0.3)' },
-    { label: 'Featured',  value: 'Featured',  color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)' },
     { label: 'Highlight', value: 'Highlight', color: '#e2e8f0', bg: 'rgba(226,232,240,0.12)', border: 'rgba(226,232,240,0.3)' },
     
     { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
@@ -41,6 +40,7 @@ const CARD_TYPES = [
     { label: 'Big Time',  value: 'Big Time',  color: '#ff4500', bg: 'rgba(255,69,0,0.15)', border: 'rgba(255,69,0,0.4)' },
     
     { label: 'POTW',      value: 'POTW',      color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
+    { label: 'Featured',  value: 'Featured',  color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
     { label: 'Trending',  value: 'Trending',  color: '#ccff00', bg: 'rgba(204,255,0,0.12)', border: 'rgba(204,255,0,0.3)' },
 ];
 
@@ -63,15 +63,14 @@ const getCardColors = (cardtype) => {
         case 'BigTime':
             return { color: '#ff4500', bg: 'linear-gradient(160deg,#2b0404,#4a0808)', border: 'rgba(255,69,0,0.4)', glow: 'rgba(255,69,0,0.3)' };
 
-        // Neon Green & Electric Lime Pair
+        // Neon Green & Electric Lime Group (POTW / Featured / Trending)
         case 'POTW':
+        case 'Featured':
             return { color: '#00FF87', bg: 'linear-gradient(160deg,#001a0f,#002818)', border: 'rgba(0,255,135,0.3)', glow: 'rgba(0,255,135,0.2)' };
         case 'Trending':
             return { color: '#ccff00', bg: 'linear-gradient(160deg,#1a2e05,#264208)', border: 'rgba(204,255,0,0.35)', glow: 'rgba(204,255,0,0.25)' };
 
         // Cyan & Platinum Silver Pair
-        case 'Featured':
-            return { color: '#38bdf8', bg: 'linear-gradient(160deg,#0c4a6e,#0369a1)', border: 'rgba(56,189,248,0.35)', glow: 'rgba(56,189,248,0.2)' };
         case 'Highlight':
             return { color: '#e2e8f0', bg: 'linear-gradient(160deg,#0f172a,#1e293b)', border: 'rgba(226,232,240,0.35)', glow: 'rgba(226,232,240,0.2)' };
         case 'Standard':

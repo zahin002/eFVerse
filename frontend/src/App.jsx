@@ -1534,15 +1534,15 @@ function App() {
                                                 )}
 
                                                 {/* ── POTW COLLECTION ── */}
-                                                {allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).length > 0 && (
+                                                {allCards.filter(c => ['POTW', 'Trending', 'Featured'].includes(c.cardtype)).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.2s' }}>
                                                         <div className="section-header">
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00FF87, #00A855)' }} />
                                                             <h3 style={{ color: '#00FF87' }}>PLAYER OF THE WEEK</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).length} cards</span>
+                                                            <span className="section-header-count">{allCards.filter(c => ['POTW', 'Trending', 'Featured'].includes(c.cardtype)).length} cards</span>
                                                         </div>
                                                         <div className="card-scroll-row">
-                                                            {allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).map((card, idx) => (
+                                                            {allCards.filter(c => ['POTW', 'Trending', 'Featured'].includes(c.cardtype)).map((card, idx) => (
                                                                 <CardTileItem key={card.cardid || `potw-${idx}`} card={card} cardType="POTW" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
@@ -1550,15 +1550,15 @@ function App() {
                                                 )}
 
                                                 {/* ── STANDARD CARDS COLLECTION ── */}
-                                                {allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length > 0 && (
+                                                {allCards.filter(c => ['Standard', 'Normal', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.3s' }}>
                                                         <div className="section-header" style={{ marginBottom: '16px' }}>
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00f2fe, #4facfe)' }} />
                                                             <h3 style={{ color: '#00f2fe' }}>STANDARD PLAYER CARDS</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length} cards</span>
+                                                            <span className="section-header-count">{allCards.filter(c => ['Standard', 'Normal', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length} cards</span>
                                                         </div>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: '16px' }}>
-                                                            {allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).map((card, idx) => (
+                                                            {allCards.filter(c => ['Standard', 'Normal', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).map((card, idx) => (
                                                                 <CardTileItem key={card.cardid || `std-${idx}`} card={card} cardType="Standard" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>

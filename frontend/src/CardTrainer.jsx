@@ -36,7 +36,7 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     const [loading, setLoading] = useState(true);
 
     const cardTypeUpper = (card?.cardtype || '').toUpperCase();
-    const isFixedCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING';
+    const isFixedCard = cardTypeUpper === 'POTW' || cardTypeUpper === 'TRENDING' || cardTypeUpper === 'FEATURED';
     const totalMaxPoints = isFixedCard ? 0 : (card?.totalprogressionpoints || 64);
 
     const baseStats = card?.stats || {
