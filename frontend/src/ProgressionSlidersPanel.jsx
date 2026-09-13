@@ -164,22 +164,23 @@ export default function ProgressionSlidersPanel({
         }}>
             {/* TOP ACTION BAR */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <select 
-                    value={primaryPosition}
-                    disabled
+                <div
                     style={{
                         background: '#161b22',
                         color: '#00f2fe',
                         border: '1px solid rgba(0, 242, 254, 0.3)',
                         borderRadius: '6px',
-                        padding: '4px 8px',
+                        padding: '4px 10px',
                         fontSize: '0.75em',
                         fontWeight: '900',
-                        outline: 'none'
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textTransform: 'uppercase'
                     }}
                 >
-                    <option value={primaryPosition}>{primaryPosition}</option>
-                </select>
+                    {primaryPosition}
+                </div>
 
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <button
