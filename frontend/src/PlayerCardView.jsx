@@ -802,16 +802,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                             zIndex: 1 
                                                         }} 
                                                     />
-                                                    {/* Very light overlay — just enough for text readability, image stays bright */}
-                                                    <div 
-                                                        style={{ 
-                                                            position: 'absolute', 
-                                                            inset: 0, 
-                                                            background: 'linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.0) 60%, rgba(0,0,0,0.38) 100%)', 
-                                                            zIndex: 2, 
-                                                            pointerEvents: 'none' 
-                                                        }} 
-                                                    />
+
                                                 </>
                                             )}
 
