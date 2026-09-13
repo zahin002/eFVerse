@@ -711,11 +711,15 @@ const handleCardSelectForStats = async (e) => {
                 </select>
                 <select value={cardForm.cardtype} onChange={e=>setCardForm({...cardForm, cardtype: e.target.value, gpcost: e.target.value === 'Standard' ? cardForm.gpcost : ''})} style={inputStyle}>
                     <option value="Standard">Standard</option>
-                    <option value="Legendary">Legendary</option>
-                    <option value="POTW">POTW</option>
-                    <option value="Highlight">Highlight</option>
-                    <option value="Epic">Epic</option>
+                    <option value="Featured">Featured</option>
                     <option value="Trending">Trending</option>
+                    <option value="POTW">POTW</option>
+                    <option value="Legend">Legend</option>
+                    <option value="Legendary">Legendary</option>
+                    <option value="Epic">Epic</option>
+                    <option value="Highlight">Highlight</option>
+                    <option value="Bigtime">Bigtime</option>
+                    <option value="Showtime">Showtime</option>
                 </select>
                 <select value={cardForm.positioncode} onChange={e=>setCardForm({...cardForm, positioncode: e.target.value})} style={inputStyle} required>
                     <option value="">Position...</option>
@@ -967,7 +971,16 @@ const handleCardSelectForStats = async (e) => {
                 </select>
                 <select value={mgmtFilters.cardType} onChange={e => setMgmtFilters({...mgmtFilters, cardType: e.target.value})} style={inputStyle}>
                     <option value="">Any Card Type</option>
-                    <option value="POTW">POTW</option><option value="Legendary">Legendary</option><option value="Standard">Standard</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Featured">Featured</option>
+                    <option value="Trending">Trending</option>
+                    <option value="POTW">POTW</option>
+                    <option value="Legend">Legend</option>
+                    <option value="Legendary">Legendary</option>
+                    <option value="Epic">Epic</option>
+                    <option value="Highlight">Highlight</option>
+                    <option value="Bigtime">Bigtime</option>
+                    <option value="Showtime">Showtime</option>
                 </select>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1154,11 +1167,15 @@ const handleCardSelectForStats = async (e) => {
                                 <label style={{ fontSize: '0.75em', color: '#aaa', textTransform: 'uppercase' }}>Card Type</label>
                                 <select value={editForm.cardtype} onChange={e => setEditForm({...editForm, cardtype: e.target.value})} style={inputStyle}>
                                     <option value="Standard">Standard</option>
-                                    <option value="Legendary">Legendary</option>
-                                    <option value="POTW">POTW</option>
-                                    <option value="Highlight">Highlight</option>
-                                    <option value="Epic">Epic</option>
+                                    <option value="Featured">Featured</option>
                                     <option value="Trending">Trending</option>
+                                    <option value="POTW">POTW</option>
+                                    <option value="Legend">Legend</option>
+                                    <option value="Legendary">Legendary</option>
+                                    <option value="Epic">Epic</option>
+                                    <option value="Highlight">Highlight</option>
+                                    <option value="Bigtime">Bigtime</option>
+                                    <option value="Showtime">Showtime</option>
                                 </select>
                             </div>
 

@@ -1016,7 +1016,8 @@ function App() {
         margin: 0;
         font-size: 1.35em;
         font-weight: 800;
-        letter-spacing: -0.3px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
     }
     .section-header-count {
         margin-left: auto;
@@ -1485,31 +1486,63 @@ function App() {
                                                 </div>
 
                                                 {/* ── LEGENDARY COLLECTION ── */}
-                                                {allCards.filter(c => c.cardtype === 'Legendary').length > 0 && (
+                                                {allCards.filter(c => ['Legendary', 'Legend', 'Epic'].includes(c.cardtype)).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.1s' }}>
                                                         <div className="section-header">
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #FFD700, #B8860B)' }} />
-                                                            <h3 style={{ color: '#FFD700' }}> Legendary Stars</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => c.cardtype === 'Legendary').length} cards</span>
+                                                            <h3 style={{ color: '#FFD700' }}>LEGENDARY STARS</h3>
+                                                            <span className="section-header-count">{allCards.filter(c => ['Legendary', 'Legend', 'Epic'].includes(c.cardtype)).length} cards</span>
                                                         </div>
                                                         <div className="card-scroll-row">
-                                                            {allCards.filter(c => c.cardtype === 'Legendary').map((card, idx) => (
-                                                                <CardTileItem key={card.cardid || `leg-${idx}`} card={card} cardType="Legendary" onClick={() => handleCardClick(card.cardid)} />
+                                                            {allCards.filter(c => ['Legendary', 'Legend', 'Epic'].includes(c.cardtype)).map((card, idx) => (
+                                                                <CardTileItem key={card.cardid || `leg-${idx}`} card={card} cardType={card.cardtype} onClick={() => handleCardClick(card.cardid)} />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ── SHOWTIME COLLECTION ── */}
+                                                {allCards.filter(c => ['Showtime', 'Show Time', 'ShowTime'].includes(c.cardtype)).length > 0 && (
+                                                    <div className="animate-fadeinup" style={{ animationDelay: '0.15s' }}>
+                                                        <div className="section-header">
+                                                            <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00d2ff, #0074D9)' }} />
+                                                            <h3 style={{ color: '#00d2ff' }}>SHOWTIME STARS</h3>
+                                                            <span className="section-header-count">{allCards.filter(c => ['Showtime', 'Show Time', 'ShowTime'].includes(c.cardtype)).length} cards</span>
+                                                        </div>
+                                                        <div className="card-scroll-row">
+                                                            {allCards.filter(c => ['Showtime', 'Show Time', 'ShowTime'].includes(c.cardtype)).map((card, idx) => (
+                                                                <CardTileItem key={card.cardid || `show-${idx}`} card={card} cardType="Showtime" onClick={() => handleCardClick(card.cardid)} />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ── BIG TIME COLLECTION ── */}
+                                                {allCards.filter(c => ['Big Time', 'Bigtime', 'BigTime'].includes(c.cardtype)).length > 0 && (
+                                                    <div className="animate-fadeinup" style={{ animationDelay: '0.18s' }}>
+                                                        <div className="section-header">
+                                                            <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #ff4500, #b8001f)' }} />
+                                                            <h3 style={{ color: '#ff4500' }}>BIG TIME STARS</h3>
+                                                            <span className="section-header-count">{allCards.filter(c => ['Big Time', 'Bigtime', 'BigTime'].includes(c.cardtype)).length} cards</span>
+                                                        </div>
+                                                        <div className="card-scroll-row">
+                                                            {allCards.filter(c => ['Big Time', 'Bigtime', 'BigTime'].includes(c.cardtype)).map((card, idx) => (
+                                                                <CardTileItem key={card.cardid || `big-${idx}`} card={card} cardType="Big Time" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
                                                     </div>
                                                 )}
 
                                                 {/* ── POTW COLLECTION ── */}
-                                                {allCards.filter(c => c.cardtype === 'POTW').length > 0 && (
+                                                {allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.2s' }}>
                                                         <div className="section-header">
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00FF87, #00A855)' }} />
-                                                            <h3 style={{ color: '#00FF87' }}> Player of the Week</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => c.cardtype === 'POTW').length} cards</span>
+                                                            <h3 style={{ color: '#00FF87' }}>PLAYER OF THE WEEK</h3>
+                                                            <span className="section-header-count">{allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).length} cards</span>
                                                         </div>
                                                         <div className="card-scroll-row">
-                                                            {allCards.filter(c => c.cardtype === 'POTW').map((card, idx) => (
+                                                            {allCards.filter(c => ['POTW', 'Trending'].includes(c.cardtype)).map((card, idx) => (
                                                                 <CardTileItem key={card.cardid || `potw-${idx}`} card={card} cardType="POTW" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
@@ -1517,49 +1550,26 @@ function App() {
                                                 )}
 
                                                 {/* ── STANDARD CARDS COLLECTION ── */}
-                                                {allCards.filter(c => c.cardtype === 'Standard' || (!c.cardtype && c.cardid)).length > 0 && (
+                                                {allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length > 0 && (
                                                     <div className="animate-fadeinup" style={{ animationDelay: '0.3s' }}>
                                                         <div className="section-header" style={{ marginBottom: '16px' }}>
                                                             <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #00f2fe, #4facfe)' }} />
-                                                            <h3 style={{ color: '#00f2fe' }}> Standard Player Cards</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => c.cardtype === 'Standard' || (!c.cardtype && c.cardid)).length} cards</span>
+                                                            <h3 style={{ color: '#00f2fe' }}>STANDARD PLAYER CARDS</h3>
+                                                            <span className="section-header-count">{allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).length} cards</span>
                                                         </div>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: '16px' }}>
-                                                            {allCards.filter(c => c.cardtype === 'Standard' || (!c.cardtype && c.cardid)).map((card, idx) => (
+                                                            {allCards.filter(c => ['Standard', 'Normal', 'Featured', 'Highlight'].includes(c.cardtype) || (!c.cardtype && c.cardid)).map((card, idx) => (
                                                                 <CardTileItem key={card.cardid || `std-${idx}`} card={card} cardType="Standard" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
                                                     </div>
                                                 )}
 
-                                                {/* ── UNCONFIGURED PLAYERS (WHEN FILTERED) ── */}
-                                                {/* {allCards.filter(c => !c.cardid).length > 0 && (
-                                                    <div className="animate-fadeinup" style={{ animationDelay: '0.3s' }}>
-                                                        <div className="section-header" style={{ marginBottom: '16px' }}>
-                                                            <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #94a3b8, #64748b)' }} />
-                                                            <h3 style={{ color: '#94a3b8' }}>👤 Unconfigured Database Players</h3>
-                                                            <span className="section-header-count">{allCards.filter(c => !c.cardid).length} players</span>
-                                                        </div>
-                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: '16px' }}>
-                                                            {allCards.filter(c => !c.cardid).map((card, idx) => (
-                                                                <div key={`unconf-${idx}`} className="card-tile" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px dashed rgba(255,255,255,0.15)', cursor: 'default', maxWidth: '100%' }}>
-                                                                    <div className="card-tile-inner">
-                                                                        <span className="card-tile-type-badge" style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}>NO CARD</span>
-                                                                        <div className="card-tile-ovr" style={{ color: '#64748b' }}>—</div>
-                                                                        <div className="card-tile-pos" style={{ color: '#64748b' }}>{card.player?.primaryposition || 'N/A'}</div>
-                                                                        <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )} */}
-
                                                 {/* ── SMART SEARCH (BELOW THE FOLD) ── */}
                                                 <div className="animate-fadeinup" style={{ animationDelay: '0.4s' }}>
                                                     <div className="section-header" style={{ marginBottom: '16px' }}>
                                                         <div className="section-header-bar" style={{ background: 'linear-gradient(180deg, #a78bfa, #7c3aed)' }} />
-                                                        <h3 style={{ color: '#a78bfa' }}> Smart Search Intelligence</h3>
+                                                        <h3 style={{ color: '#a78bfa' }}>SMART SEARCH INTELLIGENCE</h3>
                                                     </div>
                                                     <div className="glass-panel" style={{ padding: '28px' }}>
                                                         <SmartSearch onCardClick={handleCardClick} />

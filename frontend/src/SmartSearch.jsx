@@ -30,9 +30,11 @@ const STAT_LABELS = {
 
 const CARD_TYPES = [
     { label: 'Standard',  value: 'Standard',  color: '#00f2fe', bg: 'rgba(0,242,254,0.12)', border: 'rgba(0,242,254,0.3)' },
+    { label: 'Featured',  value: 'Featured',  color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)' },
     { label: 'Highlight', value: 'Highlight', color: '#e2e8f0', bg: 'rgba(226,232,240,0.12)', border: 'rgba(226,232,240,0.3)' },
     
     { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
+    { label: 'Legend',    value: 'Legend',    color: '#eab308', bg: 'rgba(234,179,8,0.12)', border: 'rgba(234,179,8,0.3)' },
     { label: 'Epic',      value: 'Epic',      color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
 
     { label: 'Showtime',  value: 'Showtime',  color: '#00d2ff', bg: 'rgba(0,210,255,0.15)', border: 'rgba(0,210,255,0.4)' },
@@ -46,6 +48,7 @@ const getCardColors = (cardtype) => {
     switch (cardtype) {
         // Gold & Purple-Amber Pair
         case 'Legendary':
+        case 'Legend':
             return { color: '#FFD700', bg: 'linear-gradient(160deg,#1a1200,#2c1f00)', border: 'rgba(255,215,0,0.35)', glow: 'rgba(255,180,0,0.25)' };
         case 'Epic':
             return { color: '#fbbf24', bg: 'linear-gradient(160deg,#2e1065,#3b0764)', border: 'rgba(251,191,36,0.4)', glow: 'rgba(168,85,247,0.3)' };
@@ -67,6 +70,8 @@ const getCardColors = (cardtype) => {
             return { color: '#ccff00', bg: 'linear-gradient(160deg,#1a2e05,#264208)', border: 'rgba(204,255,0,0.35)', glow: 'rgba(204,255,0,0.25)' };
 
         // Cyan & Platinum Silver Pair
+        case 'Featured':
+            return { color: '#38bdf8', bg: 'linear-gradient(160deg,#0c4a6e,#0369a1)', border: 'rgba(56,189,248,0.35)', glow: 'rgba(56,189,248,0.2)' };
         case 'Highlight':
             return { color: '#e2e8f0', bg: 'linear-gradient(160deg,#0f172a,#1e293b)', border: 'rgba(226,232,240,0.35)', glow: 'rgba(226,232,240,0.2)' };
         case 'Standard':
