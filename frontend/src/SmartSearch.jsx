@@ -523,7 +523,56 @@ export default function SmartSearch({ onCardClick }) {
                         {hasSearched && !isLoading && searchResults.length > 0 && (
                             <div className="ss-animate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: '14px' }}>
                                 {searchResults.map((card, idx) => {
+                                    const cardImgUrl = card.cardimageurl || card.imageurl || card.player?.cardimageurl || card.player?.imageurl;
                                     const { color, bg, border, glow } = getCardColors(card.cardtype);
+
+                                    if (cardImgUrl) {
+                                        return (
+                                            <div 
+                                                key={card.cardid} 
+                                                className="ss-result-card"
+                                                onClick={() => onCardClick(card.cardid)}
+                                                style={{
+                                                    position: 'relative',
+                                                    height: '240px',
+                                                    borderRadius: '16px',
+                                                    overflow: 'hidden',
+                                                    cursor: 'pointer',
+                                                    boxShadow: `0 4px 20px ${glow}`,
+                                                    border: `1px solid ${border}`,
+                                                    animation: `ss-fadein 0.35s ease ${idx * 0.04}s both`,
+                                                    padding: 0
+                                                }}
+                                            >
+                                                <img 
+                                                    src={cardImgUrl} 
+                                                    alt={card.player?.playername || 'Player'} 
+                                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }} 
+                                                />
+                                                
+                                                {/* Top Left OVR & Position Stack */}
+                                                <div style={{ position: 'absolute', top: '8px', left: '8px', width: '46px', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3 }}>
+                                                    <div style={{ fontSize: '2em', fontWeight: '900', color: '#fff', lineHeight: 0.9, textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.85)', fontFamily: "'Outfit', 'Impact', sans-serif", textAlign: 'center' }}>
+                                                        {card.baseoverallrating || card.maxoverallrating || '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.9em', fontWeight: '900', color: '#fff', lineHeight: 1, marginTop: '2px', textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', textAlign: 'center' }}>
+                                                        {card.positioncode || card.player?.primaryposition || 'N/A'}
+                                                    </div>
+                                                </div>
+
+                                                {/* Top Right Tier Badge */}
+                                                <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(24, 28, 36, 0.9)', color: color || '#f97316', border: `1px solid ${border}`, padding: '2px 7px', borderRadius: '6px', fontWeight: '900', fontSize: '0.7em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.7)' }}>
+                                                    {card.cardtype || 'S+'}
+                                                </div>
+
+                                                {/* Player Name */}
+                                                <div style={{ position: 'absolute', bottom: '16px', left: '6px', right: '6px', textAlign: 'center', color: '#fff', fontSize: '1.05em', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', fontWeight: '900', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {card.player?.playername || card.playername || 'Unknown'}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
                                     return (
                                         <div key={card.cardid} className="ss-result-card"
                                             onClick={() => onCardClick(card.cardid)}

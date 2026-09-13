@@ -33,6 +33,192 @@ axios.interceptors.response.use(
     }
 );
 
+const CardTileItem = ({ card, onClick, cardType }) => {
+    const cardImgUrl = card.cardimageurl || card.imageurl || card.player?.cardimageurl || card.player?.imageurl;
+    
+    let typeClass = 'card-tile-standard';
+    let badgeBg = 'rgba(0,200,255,0.1)';
+    let badgeColor = '#00f2fe';
+    let badgeBorder = '1px solid rgba(0,200,255,0.25)';
+    let textColor = '#00f2fe';
+    let typeLabel = card.cardtype || 'STANDARD';
+
+    if (cardType === 'Legendary' || card.cardtype === 'Legendary') {
+        typeClass = 'card-tile-legendary';
+        badgeBg = 'rgba(255,200,0,0.15)';
+        badgeColor = '#FFD700';
+        badgeBorder = '1px solid rgba(255,200,0,0.3)';
+        textColor = '#FFD700';
+        typeLabel = 'LEGENDARY';
+    } else if (cardType === 'POTW' || card.cardtype === 'POTW') {
+        typeClass = 'card-tile-potw';
+        badgeBg = 'rgba(0,255,135,0.12)';
+        badgeColor = '#00FF87';
+        badgeBorder = '1px solid rgba(0,255,135,0.3)';
+        textColor = '#00FF87';
+        typeLabel = 'POTW';
+    }
+
+    if (cardImgUrl) {
+        return (
+            <div 
+                className={`card-tile ${typeClass}`} 
+                onClick={onClick}
+                style={{ 
+                    position: 'relative', 
+                    height: '255px', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    padding: 0,
+                    maxWidth: '190px',
+                    width: '100%'
+                }}
+            >
+                {/* Full Cover Card Background Image */}
+                <img 
+                    src={cardImgUrl} 
+                    alt={card.player?.playername || 'Player'} 
+                    style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        zIndex: 1 
+                    }} 
+                />
+
+                {/* Top Left OVR & Position Stack — styled exactly like PlayerCardView Image 1 */}
+                <div style={{ 
+                    position: 'absolute', 
+                    top: '8px', 
+                    left: '8px', 
+                    width: '46px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    zIndex: 3 
+                }}>
+                    <h1 style={{ 
+                        fontSize: '2.1em', 
+                        margin: 0, 
+                        lineHeight: 0.9, 
+                        color: '#fff', 
+                        textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.85)', 
+                        fontWeight: '900', 
+                        letterSpacing: '-1px', 
+                        fontFamily: "'Outfit', 'Impact', sans-serif", 
+                        textAlign: 'center' 
+                    }}>
+                        {card.baseoverallrating || card.maxoverallrating || '—'}
+                    </h1>
+                    <h3 style={{ 
+                        margin: '2px 0 0 0', 
+                        fontSize: '0.95em', 
+                        color: '#fff', 
+                        textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', 
+                        fontWeight: '900', 
+                        letterSpacing: '0.8px', 
+                        lineHeight: 1, 
+                        textAlign: 'center' 
+                    }}>
+                        {card.positioncode || card.player?.primaryposition || 'N/A'}
+                    </h3>
+                </div>
+
+                {/* Top Right Tier Badge */}
+                <div style={{ 
+                    position: 'absolute', 
+                    top: '10px', 
+                    right: '10px', 
+                    background: 'rgba(24, 28, 36, 0.9)', 
+                    color: '#f97316', 
+                    border: '1px solid rgba(249, 115, 22, 0.4)', 
+                    padding: '2px 7px', 
+                    borderRadius: '6px', 
+                    fontWeight: '900', 
+                    fontSize: '0.7em', 
+                    zIndex: 3, 
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.7)', 
+                    letterSpacing: '0.5px' 
+                }}>
+                    S+
+                </div>
+
+                {/* Player Name near bottom */}
+                <h2 style={{ 
+                    position: 'absolute', 
+                    bottom: '42px', 
+                    left: '8px', 
+                    right: '8px', 
+                    margin: 0, 
+                    fontSize: '1.05em', 
+                    textAlign: 'center', 
+                    color: '#fff', 
+                    zIndex: 3, 
+                    textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', 
+                    fontWeight: '900', 
+                    lineHeight: 1.15, 
+                    whiteSpace: 'nowrap', 
+                    overflow: 'hidden', 
+                    textOverflow: 'ellipsis' 
+                }}>
+                    {card.player?.playername || card.playername || 'Unknown Player'}
+                </h2>
+
+                {/* Bottom Booster Badge Pill */}
+                <div style={{ 
+                    position: 'absolute', 
+                    bottom: '8px', 
+                    left: '50%', 
+                    transform: 'translateX(-50%)', 
+                    display: 'flex', 
+                    gap: '4px', 
+                    alignItems: 'center', 
+                    zIndex: 3, 
+                    background: 'rgba(15, 23, 42, 0.85)', 
+                    padding: '2px 8px', 
+                    borderRadius: '10px', 
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    fontSize: '0.65em',
+                    color: '#e2e8f0',
+                    fontWeight: 'bold'
+                }}>
+                    <span style={{ color: '#00f2fe' }}>⚡ eFootball</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`card-tile ${typeClass}`} onClick={onClick} style={{ maxWidth: '100%' }}>
+            <div className="card-tile-inner">
+                <span className="card-tile-type-badge" style={{ background: badgeBg, color: badgeColor, border: badgeBorder }}>
+                    {typeLabel}
+                </span>
+                <div className="card-tile-ovr" style={{ color: textColor, textShadow: `0 0 20px ${textColor}60` }}>
+                    {card.baseoverallrating || '—'}
+                </div>
+                <div className="card-tile-pos" style={{ color: textColor }}>
+                    {card.positioncode || card.player?.primaryposition || 'N/A'}
+                </div>
+                <div className="card-tile-name">
+                    {card.player?.playername || 'Unknown Player'}
+                </div>
+                <div className="card-tile-footer" style={{ borderTop: `1px solid ${textColor}25`, color: textColor }}>
+                    <span>View Stats</span>
+                    <span><FaLongArrowAltRight /></span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 function App() {
     const [view, setView] = useState('login')
     const [formData, setFormData] = useState({ username: '', email: '', password: '', role: 'USER' })
@@ -1295,18 +1481,7 @@ function App() {
                                                         </div>
                                                         <div className="card-scroll-row">
                                                             {allCards.filter(c => c.cardtype === 'Legendary').map((card, idx) => (
-                                                                <div key={card.cardid || `leg-${idx}`} className="card-tile card-tile-legendary" onClick={() => handleCardClick(card.cardid)}>
-                                                                    <div className="card-tile-inner">
-                                                                        <span className="card-tile-type-badge" style={{ background: 'rgba(255,200,0,0.15)', color: '#FFD700', border: '1px solid rgba(255,200,0,0.3)' }}>LEGENDARY</span>
-                                                                        <div className="card-tile-ovr" style={{ color: '#FFD700', textShadow: '0 0 20px rgba(255,200,0,0.4)' }}>{card.baseoverallrating || '—'}</div>
-                                                                        <div className="card-tile-pos" style={{ color: '#FFD700' }}>{card.positioncode || card.player?.primaryposition || 'N/A'}</div>
-                                                                        <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
-                                                                        <div className="card-tile-footer" style={{ borderTop: '1px solid rgba(255,200,0,0.15)', color: '#FFD700' }}>
-                                                                            <span>View Stats</span>
-                                                                            <span><FaLongArrowAltRight /></span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                <CardTileItem key={card.cardid || `leg-${idx}`} card={card} cardType="Legendary" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
                                                     </div>
@@ -1322,18 +1497,7 @@ function App() {
                                                         </div>
                                                         <div className="card-scroll-row">
                                                             {allCards.filter(c => c.cardtype === 'POTW').map((card, idx) => (
-                                                                <div key={card.cardid || `potw-${idx}`} className="card-tile card-tile-potw" onClick={() => handleCardClick(card.cardid)}>
-                                                                    <div className="card-tile-inner">
-                                                                        <span className="card-tile-type-badge" style={{ background: 'rgba(0,255,135,0.12)', color: '#00FF87', border: '1px solid rgba(0,255,135,0.3)' }}>POTW</span>
-                                                                        <div className="card-tile-ovr" style={{ color: '#00FF87', textShadow: '0 0 20px rgba(0,255,135,0.4)' }}>{card.baseoverallrating || '—'}</div>
-                                                                        <div className="card-tile-pos" style={{ color: '#00FF87' }}>{card.positioncode || card.player?.primaryposition || 'N/A'}</div>
-                                                                        <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
-                                                                        <div className="card-tile-footer" style={{ borderTop: '1px solid rgba(0,255,135,0.15)', color: '#00FF87' }}>
-                                                                            <span>View Stats</span>
-                                                                            <span>→</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                <CardTileItem key={card.cardid || `potw-${idx}`} card={card} cardType="POTW" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
                                                     </div>
@@ -1349,18 +1513,7 @@ function App() {
                                                         </div>
                                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: '16px' }}>
                                                             {allCards.filter(c => c.cardtype === 'Standard' || (!c.cardtype && c.cardid)).map((card, idx) => (
-                                                                <div key={card.cardid || `std-${idx}`} className="card-tile card-tile-standard" onClick={() => handleCardClick(card.cardid)} style={{ maxWidth: '100%' }}>
-                                                                    <div className="card-tile-inner">
-                                                                        <span className="card-tile-type-badge" style={{ background: 'rgba(0,200,255,0.1)', color: '#00f2fe', border: '1px solid rgba(0,200,255,0.25)' }}>STANDARD</span>
-                                                                        <div className="card-tile-ovr" style={{ color: '#00f2fe', textShadow: '0 0 20px rgba(0,242,254,0.4)' }}>{card.baseoverallrating || '—'}</div>
-                                                                        <div className="card-tile-pos" style={{ color: '#00f2fe' }}>{card.positioncode || card.player?.primaryposition || 'N/A'}</div>
-                                                                        <div className="card-tile-name">{card.player?.playername || 'Unknown Player'}</div>
-                                                                        <div className="card-tile-footer" style={{ borderTop: '1px solid rgba(0,242,254,0.15)', color: '#00f2fe' }}>
-                                                                            <span>View Stats</span>
-                                                                            <span> <FaLongArrowAltRight /></span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                <CardTileItem key={card.cardid || `std-${idx}`} card={card} cardType="Standard" onClick={() => handleCardClick(card.cardid)} />
                                                             ))}
                                                         </div>
                                                     </div>
