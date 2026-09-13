@@ -153,7 +153,7 @@ const CardTileItem = ({ card, onClick, cardType }) => {
                 {/* Player Name near bottom */}
                 <h2 style={{ 
                     position: 'absolute', 
-                    bottom: '18px', 
+                    bottom: '48px', 
                     left: '8px', 
                     right: '8px', 
                     margin: 0, 

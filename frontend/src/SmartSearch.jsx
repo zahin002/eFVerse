@@ -566,7 +566,7 @@ export default function SmartSearch({ onCardClick }) {
                                                 </div>
 
                                                 {/* Player Name */}
-                                                <div style={{ position: 'absolute', bottom: '16px', left: '6px', right: '6px', textAlign: 'center', color: '#fff', fontSize: '1.05em', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', fontWeight: '900', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <div style={{ position: 'absolute', bottom: '48px', left: '6px', right: '6px', textAlign: 'center', color: '#fff', fontSize: '1.05em', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', fontWeight: '900', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {card.player?.playername || card.playername || 'Unknown'}
                                                 </div>
                                             </div>
