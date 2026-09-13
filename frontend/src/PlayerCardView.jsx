@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import html2canvas from 'html2canvas';
 import ComparePlayers from './ComparePlayers';
 import SmartSearch from './SmartSearch';
 import PositionRatingsPitch from './PositionRatingsPitch';
@@ -55,6 +56,49 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const [compareMode, setCompareMode] = useState(false);
     const [compareCardId, setCompareCardId] = useState(null);
     const [isSaved, setIsSaved] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [capturing, setCapturing] = useState(false);
+
+    const fullPageRef = useRef(null);
+
+    const handleShareLink = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(window.location.href);
+        } else {
+            const dummy = document.createElement('input');
+            document.body.appendChild(dummy);
+            dummy.value = window.location.href;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleDownloadScreenshot = async () => {
+        if (!fullPageRef.current || capturing) return;
+
+        try {
+            setCapturing(true);
+            const canvas = await html2canvas(fullPageRef.current, {
+                useCORS: true,
+                backgroundColor: '#0a0d14',
+                scale: 2,
+                logging: false,
+            });
+
+            const image = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = image;
+            link.download = `eFVerse_${(player.playername || 'player').replace(/\s+/g, '_')}.png`;
+            link.click();
+        } catch (err) {
+            console.error('Screenshot generation failed:', err);
+        } finally {
+            setCapturing(false);
+        }
+    };
 
     // Manager and Booster selection states
     const [managersList, setManagersList] = useState([]);
@@ -550,9 +594,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     }
 
     return (
-        <div style={{ background: '#0a0d14', color: 'white', padding: '25px 35px', borderRadius: '16px', maxWidth: '1250px', margin: '0 auto', fontFamily: "'Outfit', sans-serif" }}>
+        <div ref={fullPageRef} style={{ background: '#0a0d14', color: 'white', padding: '25px 35px', borderRadius: '16px', maxWidth: '1250px', margin: '0 auto', fontFamily: "'Outfit', sans-serif" }}>
 
-            <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '16px', marginBottom: '25px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', flexWrap: 'wrap', width: '100%' }}>
+            <div data-html2canvas-ignore="true" style={{ display: 'flex', alignItems: 'center', paddingBottom: '16px', marginBottom: '25px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', flexWrap: 'wrap', width: '100%' }}>
                 <button
                     onClick={onBack}
                     style={{
@@ -579,8 +623,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('mine')}>MY BUILDS</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('community')}>COMMUNITY BUILDS</span>
                     <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }} onClick={() => handleOpenBuildsModal('save')}>SAVE BUILD</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }}>SHARE</span>
-                    <span style={{ color: '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px' }}>SCREENSHOT</span>
+                    <span style={{ color: copied ? '#4ade80' : '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '0.5px', transition: 'color 0.2s ease' }} onClick={handleShareLink}>
+                        {copied ? 'COPIED!' : 'SHARE'}
+                    </span>
+                    <span style={{ color: capturing ? '#4ade80' : '#fff', fontSize: '0.85em', fontWeight: 'bold', cursor: capturing ? 'wait' : 'pointer', letterSpacing: '0.5px', transition: 'color 0.2s ease' }} onClick={handleDownloadScreenshot}>
+                        {capturing ? 'CAPTURING...' : 'SCREENSHOT'}
+                    </span>
                 </div>
             </div>
 
@@ -916,7 +964,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 <PlayerSkillsPanel cardData={data} playerBio={player} stats={stats} />
 
                                 {/* OTHER VERSIONS OF THIS PLAYER SECTION */}
-                                <div style={{ marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+                                <div data-html2canvas-ignore="true" style={{ marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '14px' }}>
                                         <h3 style={{ margin: 0, fontSize: '1.25em', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
                                             Other Versions of {player.playername}
