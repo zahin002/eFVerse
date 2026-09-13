@@ -783,6 +783,13 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                     <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em' }}>S+</div>
                                     <h1 style={{ fontSize: '3.8em', margin: 0, lineHeight: 1, color: getStatColor(boostedOvr) }}>{boostedOvr}</h1>
                                     <h3 style={{ margin: '4px 0', fontSize: '1.3em', color: '#fff' }}>{primaryposition}</h3>
+                                    {(data?.cardimageurl || data?.imageurl || player?.cardimageurl || player?.imageurl) && (
+                                        <img 
+                                            src={data?.cardimageurl || data?.imageurl || player?.cardimageurl || player?.imageurl} 
+                                            alt={player.playername} 
+                                            style={{ width: '80px', height: '80px', objectFit: 'contain', margin: '4px auto 0 auto', display: 'block', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.6))' }} 
+                                        />
+                                    )}
                                     <h2 style={{ margin: '8px 0 2px 0', fontSize: '1.5em', textAlign: 'center', color: '#fff' }}>{player.playername}</h2>
                                     <div style={{ fontSize: '0.85em', margin: '4px 0' }}>{starsString}</div>
                                     <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: '#22c55e', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em' }}>B</div>
