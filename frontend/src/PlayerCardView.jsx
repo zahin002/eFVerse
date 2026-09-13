@@ -814,29 +814,82 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </>
                                             )}
 
-                                            <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>S+</div>
+                                            {/* Top Right Tier Badge */}
+                                            <div style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(24, 28, 36, 0.9)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.4)', padding: '2px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '0.8em', zIndex: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.7)', letterSpacing: '0.5px' }}>
+                                                S+
+                                            </div>
 
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', zIndex: 3, paddingLeft: '4px' }}>
-                                                <h1 style={{ fontSize: '3.6em', margin: 0, lineHeight: 0.95, color: getStatColor(boostedOvr), textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 15px rgba(0,0,0,0.8)', fontWeight: '900', transition: 'all 0.2s ease' }}>
+                                            {/* Top Left OVR & Position Stack (Directly centered above national flag) */}
+                                            <div style={{ position: 'absolute', top: '14px', left: '12px', width: '66px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3, textAlign: 'center' }}>
+                                                <h1 style={{ 
+                                                    fontSize: boostedOvr >= 100 ? '2.5em' : '2.8em', 
+                                                    margin: 0, 
+                                                    lineHeight: 0.9, 
+                                                    color: '#fff', 
+                                                    textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 16px rgba(0,0,0,0.9)', 
+                                                    fontWeight: '900', 
+                                                    letterSpacing: '-1px',
+                                                    fontFamily: "'Outfit', 'Impact', sans-serif",
+                                                    transition: 'all 0.2s ease' 
+                                                }}>
                                                     {boostedOvr}
                                                 </h1>
 
-                                                <h3 style={{ margin: '3px 0 0 2px', fontSize: '1.25em', color: '#fff', textShadow: '0 2px 6px rgba(0,0,0,0.9)', fontWeight: '800', letterSpacing: '1px' }}>
+                                                <h3 style={{ 
+                                                    margin: '4px 0 0 0', 
+                                                    fontSize: '1.2em', 
+                                                    color: '#fff', 
+                                                    textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.9)', 
+                                                    fontWeight: '900', 
+                                                    letterSpacing: '1.5px',
+                                                    lineHeight: 1
+                                                }}>
                                                     {primaryposition}
                                                 </h3>
                                             </div>
 
-                                            <div style={{ flex: 1, minHeight: '40px', zIndex: 3 }} />
-
-                                            <h2 style={{ margin: '4px 0 2px 0', fontSize: '1.4em', textAlign: 'center', color: '#fff', zIndex: 3, textShadow: '0 2px 8px rgba(0,0,0,0.95)', fontWeight: '800', lineHeight: 1.15 }}>
+                                            {/* Player Name */}
+                                            <h2 style={{ 
+                                                position: 'absolute', 
+                                                bottom: cardImgUrl ? '42px' : '50px', 
+                                                left: '10px', 
+                                                right: '10px', 
+                                                margin: 0, 
+                                                fontSize: '1.35em', 
+                                                textAlign: 'center', 
+                                                color: '#fff', 
+                                                zIndex: 3, 
+                                                textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', 
+                                                fontWeight: '900', 
+                                                lineHeight: 1.15,
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}>
                                                 {player.playername}
                                             </h2>
 
-                                            <div style={{ fontSize: '0.85em', margin: '2px 0 4px 0', zIndex: 3, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))' }}>
-                                                {starsString}
-                                            </div>
+                                            {/* Star Ratings (only if standard card) */}
+                                            {!cardImgUrl && (
+                                                <div style={{ position: 'absolute', bottom: '26px', left: '10px', right: '10px', textAlign: 'center', fontSize: '0.85em', zIndex: 3, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.9))' }}>
+                                                    {starsString}
+                                                </div>
+                                            )}
 
-                                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: '#22c55e', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>B</div>
+                                            {/* Bottom Right Condition Badge */}
+                                            <div style={{ 
+                                                position: 'absolute', 
+                                                bottom: '10px', 
+                                                right: '14px', 
+                                                color: '#84cc16', 
+                                                fontWeight: '900', 
+                                                fontSize: '1.35em', 
+                                                zIndex: 3, 
+                                                textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.9)',
+                                                lineHeight: 1
+                                            }}>
+                                                B
+                                            </div>
                                         </div>
                                     );
                                 })()}
