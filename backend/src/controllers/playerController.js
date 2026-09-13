@@ -5,10 +5,10 @@ const pool = require('../db');
 const getHelpers = async (req, res) => {
     try {
         console.log("Fetching helper lists...");
-        const leagues = await pool.query('SELECT * FROM league');
-        const clubs = await pool.query('SELECT * FROM club');
-        const nations = await pool.query('SELECT * FROM nationality');
-        const positions = await pool.query('SELECT * FROM Positions'); 
+        const leagues = await pool.query('SELECT * FROM league ORDER BY leaguename ASC');
+        const clubs = await pool.query('SELECT * FROM club ORDER BY clubname ASC');
+        const nations = await pool.query('SELECT * FROM nationality ORDER BY countryname ASC');
+        const positions = await pool.query('SELECT * FROM Positions ORDER BY positioncode ASC'); 
         
         res.json({ 
             leagues: leagues.rows, 
