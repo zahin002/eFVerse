@@ -820,9 +820,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             </div>
 
                                             {/* Top Left OVR & Position Stack (Directly centered above national flag) */}
-                                            <div style={{ position: 'absolute', top: '14px', left: '12px', width: '66px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3, textAlign: 'center' }}>
+                                            <div style={{ position: 'absolute', top: '12px', left: '6px', width: '52px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3, textAlign: 'center' }}>
                                                 <h1 style={{ 
-                                                    fontSize: boostedOvr >= 100 ? '2.5em' : '2.8em', 
+                                                    fontSize: boostedOvr >= 100 ? '2.4em' : '2.7em', 
                                                     margin: 0, 
                                                     lineHeight: 0.9, 
                                                     color: '#fff', 
