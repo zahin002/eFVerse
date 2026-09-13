@@ -43,14 +43,29 @@ const CardTileItem = ({ card, onClick, cardType }) => {
     let textColor = '#00f2fe';
     let typeLabel = card.cardtype || 'STANDARD';
 
-    if (cardType === 'Legendary' || card.cardtype === 'Legendary') {
+    const typeUpper = (cardType || card.cardtype || '').toUpperCase();
+    if (typeUpper === 'LEGENDARY' || typeUpper === 'EPIC' || typeUpper === 'LEGEND') {
         typeClass = 'card-tile-legendary';
         badgeBg = 'rgba(255,200,0,0.15)';
         badgeColor = '#FFD700';
         badgeBorder = '1px solid rgba(255,200,0,0.3)';
         textColor = '#FFD700';
         typeLabel = 'LEGENDARY';
-    } else if (cardType === 'POTW' || card.cardtype === 'POTW') {
+    } else if (typeUpper === 'SHOWTIME' || typeUpper === 'SHOW TIME') {
+        typeClass = 'card-tile-showtime';
+        badgeBg = 'rgba(0,210,255,0.15)';
+        badgeColor = '#00d2ff';
+        badgeBorder = '1px solid rgba(0,210,255,0.4)';
+        textColor = '#00d2ff';
+        typeLabel = 'SHOWTIME';
+    } else if (typeUpper === 'BIG TIME' || typeUpper === 'BIGTIME') {
+        typeClass = 'card-tile-bigtime';
+        badgeBg = 'rgba(255,69,0,0.15)';
+        badgeColor = '#ff4500';
+        badgeBorder = '1px solid rgba(255,69,0,0.4)';
+        textColor = '#ff4500';
+        typeLabel = 'BIG TIME';
+    } else if (typeUpper === 'POTW' || typeUpper === 'TRENDING') {
         typeClass = 'card-tile-potw';
         badgeBg = 'rgba(0,255,135,0.12)';
         badgeColor = '#00FF87';
@@ -1050,6 +1065,22 @@ function App() {
     }
     .card-tile-legendary:hover {
         box-shadow: 0 16px 48px rgba(255,180,0,0.4), 0 0 0 1px rgba(255,200,0,0.5);
+    }
+    .card-tile-showtime {
+        background: linear-gradient(160deg, #0a192f 0%, #0f2a4a 40%, #0a192f 100%);
+        border: 1px solid rgba(0, 210, 255, 0.4);
+        box-shadow: 0 4px 24px rgba(0,210,255,0.2), inset 0 1px 0 rgba(0,210,255,0.1);
+    }
+    .card-tile-showtime:hover {
+        box-shadow: 0 16px 48px rgba(0,210,255,0.45), 0 0 0 1px rgba(0,210,255,0.5);
+    }
+    .card-tile-bigtime {
+        background: linear-gradient(160deg, #2b0404 0%, #4a0808 40%, #2b0404 100%);
+        border: 1px solid rgba(255, 69, 0, 0.4);
+        box-shadow: 0 4px 24px rgba(255,69,0,0.2), inset 0 1px 0 rgba(255,69,0,0.1);
+    }
+    .card-tile-bigtime:hover {
+        box-shadow: 0 16px 48px rgba(255,69,0,0.45), 0 0 0 1px rgba(255,69,0,0.5);
     }
     .card-tile-potw {
         background: linear-gradient(160deg, #001a0f 0%, #002818 40%, #001a0f 100%);

@@ -529,6 +529,14 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
             case 'Legend':
             case 'Epic':
                 return { ...baseStyle, background: 'linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%)', border: '3px solid #fffacd', boxShadow: '0 0 25px rgba(255, 215, 0, 0.7)', color: '#3e2723', textShadow: 'none' };
+            case 'Showtime':
+            case 'Show Time':
+            case 'ShowTime':
+                return { ...baseStyle, background: 'linear-gradient(135deg, #0f1b4c 0%, #1e3c72 40%, #2a5298 75%, #00d2ff 100%)', border: '3px solid #00f2fe', boxShadow: '0 0 25px rgba(0, 242, 254, 0.7)', color: '#ffffff' };
+            case 'Big Time':
+            case 'Bigtime':
+            case 'BigTime':
+                return { ...baseStyle, background: 'linear-gradient(135deg, #3a0007 0%, #7a0010 40%, #b8001f 75%, #ff4500 100%)', border: '3px solid #ff4500', boxShadow: '0 0 25px rgba(255, 69, 0, 0.7)', color: '#ffffff' };
             case 'POTW':
             case 'Trending':
                 return { ...baseStyle, background: 'linear-gradient(135deg, #134e5e 0%, #71b280 50%, #00ff00 100%)', border: '3px solid #00ff00', boxShadow: '0 0 25px rgba(0, 255, 0, 0.6)' };

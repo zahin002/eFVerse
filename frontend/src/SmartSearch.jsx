@@ -34,6 +34,9 @@ const CARD_TYPES = [
     
     { label: 'Legendary', value: 'Legendary', color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
     { label: 'Epic',      value: 'Epic',      color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+
+    { label: 'Showtime',  value: 'Showtime',  color: '#00d2ff', bg: 'rgba(0,210,255,0.15)', border: 'rgba(0,210,255,0.4)' },
+    { label: 'Big Time',  value: 'Big Time',  color: '#ff4500', bg: 'rgba(255,69,0,0.15)', border: 'rgba(255,69,0,0.4)' },
     
     { label: 'POTW',      value: 'POTW',      color: '#00FF87', bg: 'rgba(0,255,135,0.12)', border: 'rgba(0,255,135,0.3)' },
     { label: 'Trending',  value: 'Trending',  color: '#ccff00', bg: 'rgba(204,255,0,0.12)', border: 'rgba(204,255,0,0.3)' },
@@ -46,6 +49,16 @@ const getCardColors = (cardtype) => {
             return { color: '#FFD700', bg: 'linear-gradient(160deg,#1a1200,#2c1f00)', border: 'rgba(255,215,0,0.35)', glow: 'rgba(255,180,0,0.25)' };
         case 'Epic':
             return { color: '#fbbf24', bg: 'linear-gradient(160deg,#2e1065,#3b0764)', border: 'rgba(251,191,36,0.4)', glow: 'rgba(168,85,247,0.3)' };
+
+        // Showtime & Big Time Pair
+        case 'Showtime':
+        case 'Show Time':
+        case 'ShowTime':
+            return { color: '#00d2ff', bg: 'linear-gradient(160deg,#0a192f,#0f2a4a)', border: 'rgba(0,210,255,0.4)', glow: 'rgba(0,210,255,0.3)' };
+        case 'Big Time':
+        case 'Bigtime':
+        case 'BigTime':
+            return { color: '#ff4500', bg: 'linear-gradient(160deg,#2b0404,#4a0808)', border: 'rgba(255,69,0,0.4)', glow: 'rgba(255,69,0,0.3)' };
 
         // Neon Green & Electric Lime Pair
         case 'POTW':

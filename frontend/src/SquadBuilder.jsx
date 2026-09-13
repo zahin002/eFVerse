@@ -1051,6 +1051,14 @@ export default function SquadBuilder({ currentUser, onBack }) {
             case 'Legend':
             case 'Epic':
                 return { accent: '#FFD700', bg: 'linear-gradient(145deg, #261e06 0%, #171203 100%)', border: 'rgba(255, 215, 0, 0.6)', shadow: '0 0 16px rgba(255, 215, 0, 0.35)' };
+            case 'Showtime':
+            case 'Show Time':
+            case 'ShowTime':
+                return { accent: '#00d2ff', bg: 'linear-gradient(145deg, #071f30 0%, #030f1c 100%)', border: 'rgba(0, 210, 255, 0.6)', shadow: '0 0 16px rgba(0, 210, 255, 0.35)' };
+            case 'Big Time':
+            case 'Bigtime':
+            case 'BigTime':
+                return { accent: '#ff4500', bg: 'linear-gradient(145deg, #2b0404 0%, #170202 100%)', border: 'rgba(255, 69, 0, 0.6)', shadow: '0 0 16px rgba(255, 69, 0, 0.35)' };
             case 'POTW':
             case 'Trending':
                 return { accent: '#00FF87', bg: 'linear-gradient(145deg, #052413 0%, #03140a 100%)', border: 'rgba(0, 255, 135, 0.6)', shadow: '0 0 16px rgba(0, 255, 135, 0.35)' };

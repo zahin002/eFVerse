@@ -84,6 +84,28 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
                     badgeBorder: '1px solid rgba(255,200,0,0.4)',
                     glow: '0 8px 32px rgba(255,215,0,0.18)'
                 };
+            case 'Showtime':
+            case 'Show Time':
+            case 'ShowTime':
+                return {
+                    accent: '#00d2ff',
+                    bg: 'linear-gradient(145deg, rgba(0,210,255,0.12) 0%, rgba(5,20,30,0.7) 100%)',
+                    border: '1px solid rgba(0,210,255,0.35)',
+                    badgeBg: 'rgba(0,210,255,0.18)',
+                    badgeBorder: '1px solid rgba(0,210,255,0.4)',
+                    glow: '0 8px 32px rgba(0,210,255,0.18)'
+                };
+            case 'Big Time':
+            case 'Bigtime':
+            case 'BigTime':
+                return {
+                    accent: '#ff4500',
+                    bg: 'linear-gradient(145deg, rgba(255,69,0,0.12) 0%, rgba(30,5,5,0.7) 100%)',
+                    border: '1px solid rgba(255,69,0,0.35)',
+                    badgeBg: 'rgba(255,69,0,0.18)',
+                    badgeBorder: '1px solid rgba(255,69,0,0.4)',
+                    glow: '0 8px 32px rgba(255,69,0,0.18)'
+                };
             case 'POTW':
             case 'Trending':
                 return {
