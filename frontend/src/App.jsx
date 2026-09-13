@@ -153,7 +153,7 @@ const CardTileItem = ({ card, onClick, cardType }) => {
                 {/* Player Name near bottom */}
                 <h2 style={{ 
                     position: 'absolute', 
-                    bottom: '42px', 
+                    bottom: '18px', 
                     left: '8px', 
                     right: '8px', 
                     margin: 0, 
@@ -170,27 +170,6 @@ const CardTileItem = ({ card, onClick, cardType }) => {
                 }}>
                     {card.player?.playername || card.playername || 'Unknown Player'}
                 </h2>
-
-                {/* Bottom Booster Badge Pill */}
-                <div style={{ 
-                    position: 'absolute', 
-                    bottom: '8px', 
-                    left: '50%', 
-                    transform: 'translateX(-50%)', 
-                    display: 'flex', 
-                    gap: '4px', 
-                    alignItems: 'center', 
-                    zIndex: 3, 
-                    background: 'rgba(15, 23, 42, 0.85)', 
-                    padding: '2px 8px', 
-                    borderRadius: '10px', 
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    fontSize: '0.65em',
-                    color: '#e2e8f0',
-                    fontWeight: 'bold'
-                }}>
-                    <span style={{ color: '#00f2fe' }}>⚡ eFootball</span>
-                </div>
             </div>
         );
     }
