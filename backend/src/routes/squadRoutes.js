@@ -18,14 +18,14 @@ router.get('/community/all', optionalVerifyToken, squadController.getCommunitySq
 
 
 
-// Auth-protected routes
-router.post('/save', verifyToken, squadController.saveSquad);
-router.get('/user/:userId', verifyToken, squadController.getUserSquads);
+// Squad CRUD & Community routes
+router.post('/save', optionalVerifyToken, squadController.saveSquad);
+router.get('/user/:userId', optionalVerifyToken, squadController.getUserSquads);
 router.get('/:squadId', optionalVerifyToken, squadController.getSquadDetails);
-router.put('/:squadId', verifyToken, squadController.updateSquad);
-router.delete('/:squadId', verifyToken, squadController.deleteSquad);
-router.post('/:squadId/favorite', verifyToken, squadController.toggleFavorite);
-router.post('/:squadId/share', verifyToken, squadController.shareSquadToCommunity);
-router.post('/:squadId/unshare', verifyToken, squadController.unshareSquad);
+router.put('/:squadId', optionalVerifyToken, squadController.updateSquad);
+router.delete('/:squadId', optionalVerifyToken, squadController.deleteSquad);
+router.post('/:squadId/favorite', optionalVerifyToken, squadController.toggleFavorite);
+router.post('/:squadId/share', optionalVerifyToken, squadController.shareSquadToCommunity);
+router.post('/:squadId/unshare', optionalVerifyToken, squadController.unshareSquad);
 
 module.exports = router;

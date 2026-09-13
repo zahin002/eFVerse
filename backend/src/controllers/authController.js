@@ -131,6 +131,7 @@ const login = async (req, res) => {
             console.log("✅ Admin Login Successful via ENV credentials");
             return res.json({
                 message: "Admin Login Successful!",
+                token,
                 user: adminUser
             });
         }
@@ -165,6 +166,7 @@ const login = async (req, res) => {
 
             res.json({
                 message: "Login Successful!",
+                token,
                 user: {
                     userid: user.userid,
                     username: user.username,
@@ -225,6 +227,7 @@ const googleAuth = async (req, res) => {
 
         res.json({
             message: "Google Sign-In Successful!",
+            token,
             user: {
                 userid: user.userid,
                 username: user.username,

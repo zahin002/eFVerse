@@ -138,6 +138,7 @@ export default function CardTrainer({ card, onBack, onComplete }) {
     };
 
     useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         fetchBuildLists();
     }, [card]);
 

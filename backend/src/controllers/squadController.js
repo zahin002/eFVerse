@@ -246,15 +246,18 @@ const saveSquad = async (req, res) => {
             }
             
             const playerInsertSql = `
-                INSERT INTO squadplayer (squadid, cardid, assignedposition, isstartingxi)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO squadplayer (squadid, cardid, assignedposition, isstartingxi, slotindex, coord_top, coord_left)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
             `;
             
             await client.query(playerInsertSql, [
                 newSquadId, 
                 p.cardId, 
                 p.position, 
-                p.isStarting !== false
+                p.isStarting !== false,
+                p.slotIndex !== undefined && p.slotIndex !== null ? parseInt(p.slotIndex, 10) : i,
+                p.top !== undefined && p.top !== null ? parseFloat(p.top) : null,
+                p.left !== undefined && p.left !== null ? parseFloat(p.left) : null
             ]);
             
             console.log(`✅ Player ${i + 1} added to squad`);
@@ -264,6 +267,12 @@ const saveSquad = async (req, res) => {
 
         await client.query('COMMIT');
         console.log("✅ Transaction COMMITTED successfully");
+
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
 
         res.status(201).json({ 
             success: true, 
@@ -315,6 +324,11 @@ const getUserSquads = async (req, res) => {
         `;
 
         const result = await pool.query(query, [userId]);
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.json(result.rows);
     } catch (err) { 
         console.error("❌ Get User Squads Error:", err);
@@ -348,6 +362,9 @@ const getSquadDetails = async (req, res) => {
                 sp.cardid,
                 sp.assignedposition,
                 sp.isstartingxi,
+                sp.slotindex,
+                sp.coord_top,
+                sp.coord_left,
                 c.cardtype,
                 c.positioncode as naturalposition,
                 c.baseoverallrating,
@@ -384,7 +401,7 @@ const getSquadDetails = async (req, res) => {
             LEFT JOIN player p ON c.playerid = p.playerid
             LEFT JOIN playerstats ps ON c.cardid = ps.cardid
             WHERE s.squadid = $1
-            ORDER BY sp.isstartingxi DESC, sp.cardid
+            ORDER BY sp.isstartingxi DESC, COALESCE(sp.slotindex, 999), sp.cardid
         `;
         
         const result = await pool.query(sql, [squadId]);
@@ -411,6 +428,9 @@ const getSquadDetails = async (req, res) => {
                 .filter(row => row.cardid)
                 .map(row => ({
                     cardId: row.cardid,
+                    slotIndex: row.slotindex !== undefined && row.slotindex !== null ? parseInt(row.slotindex, 10) : null,
+                    coordTop: row.coord_top !== undefined && row.coord_top !== null ? parseFloat(row.coord_top) : null,
+                    coordLeft: row.coord_left !== undefined && row.coord_left !== null ? parseFloat(row.coord_left) : null,
                     playerId: row.playerid,
                     playerName: row.playername,
                     age: row.age,
@@ -445,6 +465,12 @@ const getSquadDetails = async (req, res) => {
                     }
                 }))
         };
+
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
 
         res.json(squadInfo);
     } catch (error) {
@@ -507,24 +533,39 @@ const updateSquad = async (req, res) => {
         await client.query('DELETE FROM squadplayer WHERE squadid = $1', [parsedSquadId]);
         console.log("✅ Old players deleted");
 
-        for (let p of players) {
+        for (let i = 0; i < players.length; i++) {
+            const p = players[i];
             if (!p.cardId || !p.position) {
                 throw new Error("Invalid player data: missing cardId or position");
             }
             await client.query(`
-                INSERT INTO squadplayer (squadid, cardid, assignedposition, isstartingxi)
-                VALUES ($1, $2, $3, $4)
-            `, [parsedSquadId, parseInt(p.cardId, 10), p.position, p.isStarting !== false]);
+                INSERT INTO squadplayer (squadid, cardid, assignedposition, isstartingxi, slotindex, coord_top, coord_left)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [
+                parsedSquadId, 
+                parseInt(p.cardId, 10), 
+                p.position, 
+                p.isStarting !== false,
+                p.slotIndex !== undefined && p.slotIndex !== null ? parseInt(p.slotIndex, 10) : i,
+                p.top !== undefined && p.top !== null ? parseFloat(p.top) : null,
+                p.left !== undefined && p.left !== null ? parseFloat(p.left) : null
+            ]);
         }
         console.log("✅ Added", players.length, "new players");
 
         await client.query('COMMIT');
         console.log("✅ Transaction COMMITTED successfully");
 
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
         res.json({ 
             success: true, 
             message: "✅ Squad updated successfully!", 
-            squadId
+            squadId: parsedSquadId
         });
 
     } catch (err) {
@@ -622,7 +663,7 @@ const toggleFavorite = async (req, res) => {
 
 const shareSquadToCommunity = async (req, res) => {
     const { squadId } = req.params;
-    const userId = req.user?.userId || req.user?.userid;
+    const userId = req.user?.userId || req.user?.userid || req.body?.userId;
 
     if (!squadId) {
         return res.status(400).json({ error: "Squad ID required" });
@@ -639,7 +680,7 @@ const shareSquadToCommunity = async (req, res) => {
             return res.status(404).json({ error: "Squad not found" });
         }
 
-        if (String(ownerCheck.rows[0].userid) !== String(userId)) {
+        if (userId && String(ownerCheck.rows[0].userid) !== String(userId)) {
             return res.status(403).json({ error: "You can only share your own squads" });
         }
 
@@ -648,7 +689,12 @@ const shareSquadToCommunity = async (req, res) => {
             [squadId]
         );
 
-        console.log(`✅ Squad ${squadId} shared to community by user ${userId}`);
+        console.log(`✅ Squad ${squadId} shared to community by user ${userId || 'unknown'}`);
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.json({
             success: true,
             message: "🌍 Squad shared to the community!",
@@ -665,7 +711,7 @@ const shareSquadToCommunity = async (req, res) => {
 
 const unshareSquad = async (req, res) => {
     const { squadId } = req.params;
-    const userId = req.user?.userId || req.user?.userid;
+    const userId = req.user?.userId || req.user?.userid || req.body?.userId;
 
     if (!squadId) {
         return res.status(400).json({ error: "Squad ID required" });
@@ -681,7 +727,7 @@ const unshareSquad = async (req, res) => {
             return res.status(404).json({ error: "Squad not found" });
         }
 
-        if (String(ownerCheck.rows[0].userid) !== String(userId)) {
+        if (userId && String(ownerCheck.rows[0].userid) !== String(userId)) {
             return res.status(403).json({ error: "You can only unshare your own squads" });
         }
 
@@ -690,7 +736,12 @@ const unshareSquad = async (req, res) => {
             [squadId]
         );
 
-        console.log(`✅ Squad ${squadId} unshared from community by user ${userId}`);
+        console.log(`✅ Squad ${squadId} unshared from community by user ${userId || 'unknown'}`);
+        res.set({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.json({
             success: true,
             message: "🔒 Squad removed from community.",

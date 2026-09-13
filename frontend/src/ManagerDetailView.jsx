@@ -8,6 +8,10 @@ export default function ManagerDetailView({ data, onBack }) {
     const [boosts, setBoosts] = useState([]);
 
     useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [data?.managerid]);
+
+    useEffect(() => {
         if (data && data.managerid) {
             axios.get(`http://localhost:5001/api/managers/boosts/${data.managerid}`)
                 .then(res => {

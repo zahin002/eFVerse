@@ -9,6 +9,7 @@ export default function ComparePlayers({ cardId1, cardId2, onBack }) {
     const [showGkStats, setShowGkStats] = useState(false);
 
     useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         fetchComparison();
     }, [cardId1, cardId2]);
 

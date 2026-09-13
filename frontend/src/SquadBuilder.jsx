@@ -165,6 +165,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
     // Sync squad builder view with browser URL & history
     useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         const initialPath = window.location.pathname.toLowerCase();
         if (initialPath.includes('/squad-builder/pitch') || initialPath.includes('/squad-builder/edit')) {
             setView('builder');
@@ -451,18 +452,25 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const refreshData = useCallback(async () => {
         if (!currentUser) return;
         setLoading(true);
-        const userId = currentUser.userid || currentUser.id;
+        const userId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
+        if (!userId) {
+            console.warn("No userId found on currentUser:", currentUser);
+            setLoading(false);
+            return;
+        }
+        const cacheBust = `_t=${Date.now()}`;
 
         try {
             const [squadsRes, managersRes, cardsRes, penaltiesRes, positionsRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/squads/user/${userId}`),
-                axios.get(`${API_BASE_URL}/managers/list`),
-                axios.get(`${API_BASE_URL}/squads/cards`),
-                axios.get(`${API_BASE_URL}/squads/penalties-all`),
-                axios.get(`${API_BASE_URL}/squads/positions`)
+                axios.get(`${API_BASE_URL}/squads/user/${userId}?${cacheBust}`),
+                axios.get(`${API_BASE_URL}/managers/list?${cacheBust}`),
+                axios.get(`${API_BASE_URL}/squads/cards?${cacheBust}`),
+                axios.get(`${API_BASE_URL}/squads/penalties-all?${cacheBust}`),
+                axios.get(`${API_BASE_URL}/squads/positions?${cacheBust}`)
             ]);
 
-            setMySquads(squadsRes.data || []);
+            const loadedSquads = squadsRes.data || [];
+            setMySquads(loadedSquads);
             const normalizedManagers = (managersRes.data || []).map(m => ({
                 ManagerID: m.ManagerID || m.managerid || m.id,
                 ManagerName: m.ManagerName || m.managername || m.name || 'Unknown Manager',
@@ -472,8 +480,10 @@ export default function SquadBuilder({ currentUser, onBack }) {
             setMyCards(cardsRes.data || []);
             setPenalties(penaltiesRes.data || []);
             setPositions(positionsRes.data || []);
+            return loadedSquads;
         } catch (err) {
             console.error("Failed to load squad data:", err);
+            return [];
         } finally {
             setLoading(false);
         }
@@ -507,56 +517,107 @@ export default function SquadBuilder({ currentUser, onBack }) {
             setSquadName(squadname || 'My Dream Team');
             setFormation(form);
 
-            const res = await axios.get(`${API_BASE_URL}/squads/${squadId}`);
+            const res = await axios.get(`${API_BASE_URL}/squads/${squadId}?_t=${Date.now()}`);
             const fullSquad = res.data;
 
             const finalManagerId = managerid || fullSquad?.manager?.managerId || fullSquad?.managerId;
             setSelectedManager(finalManagerId ? finalManagerId.toString() : '');
 
-            let newLineup = getInitialLineup(form);
+            const baseForm = (form && FORMATIONS[form]) ? form : '4-3-3';
+            let newLineup = getInitialLineup(baseForm);
 
             if (fullSquad.players && Array.isArray(fullSquad.players)) {
-                const positionCountFilled = {};
+                const getCardData = (player) => {
+                    const matchedCard = myCards.find(c => {
+                        const cCardId = safeGet(c, 'CardID', 'cardid');
+                        return cCardId === player.cardId || (cCardId && player.cardId && cCardId.toString() === player.cardId.toString());
+                    });
 
+                    return matchedCard || {
+                        CardID: player.cardId,
+                        PlayerID: player.playerId,
+                        PositionCode: player.naturalPosition || 'GK',
+                        PlayerName: player.playerName || 'Unknown',
+                        CurrentOverallRating: player.currentOverallRating || 0,
+                        BaseOverallRating: player.baseOverallRating || 0,
+                        CardType: player.cardType || 'Standard',
+                        ClubName: player.clubName || 'N/A'
+                    };
+                };
+
+                const getZone = (pos) => {
+                    const p = (pos || '').toUpperCase();
+                    if (p === 'GK') return 'GK';
+                    if (['CB', 'LB', 'RB'].includes(p)) return 'DEF';
+                    if (['DMF', 'CMF', 'AMF', 'LMF', 'RMF'].includes(p)) return 'MID';
+                    if (['CF', 'SS', 'LWF', 'RWF'].includes(p)) return 'FWD';
+                    return 'UNKNOWN';
+                };
+
+                const unplacedPlayers = [];
+
+                // Pass 1: Place players with saved valid slotIndex
                 fullSquad.players.forEach(player => {
-                    const assignedPos = player.assignedPosition;
-                    if (!positionCountFilled[assignedPos]) {
-                        positionCountFilled[assignedPos] = 0;
-                    }
-
-                    let count = 0;
-                    let slotIndex = -1;
-                    for (let i = 0; i < newLineup.length; i++) {
-                        if (newLineup[i].position === assignedPos) {
-                            if (count === positionCountFilled[assignedPos]) {
-                                slotIndex = i;
-                                break;
-                            }
-                            count++;
-                        }
-                    }
-                    positionCountFilled[assignedPos]++;
-
-                    if (slotIndex !== -1) {
-                        const matchedCard = myCards.find(c => {
-                            const cCardId = safeGet(c, 'CardID', 'cardid');
-                            return cCardId === player.cardId || (cCardId && player.cardId && cCardId.toString() === player.cardId.toString());
-                        });
-
-                        const cardData = matchedCard || {
-                            CardID: player.cardId,
-                            PlayerID: player.playerId,
-                            PositionCode: player.naturalPosition || 'GK',
-                            PlayerName: player.playerName || 'Unknown',
-                            CurrentOverallRating: player.currentOverallRating || 0,
-                            BaseOverallRating: player.baseOverallRating || 0,
-                            CardType: player.cardType || 'Standard',
-                            ClubName: player.clubName || 'N/A'
+                    const sIdx = player.slotIndex;
+                    if (sIdx !== undefined && sIdx !== null && sIdx >= 0 && sIdx < newLineup.length && !newLineup[sIdx].card) {
+                        newLineup[sIdx] = {
+                            ...newLineup[sIdx],
+                            position: player.assignedPosition || newLineup[sIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : newLineup[sIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : newLineup[sIdx].left,
+                            card: getCardData(player)
                         };
+                    } else {
+                        unplacedPlayers.push(player);
+                    }
+                });
 
-                        newLineup[slotIndex] = {
-                            ...newLineup[slotIndex],
-                            card: cardData
+                // Pass 2: Exact position match on remaining empty slots (for older squads)
+                const stillUnplaced = [];
+                unplacedPlayers.forEach(player => {
+                    const assignedPos = player.assignedPosition;
+                    const emptyExactIdx = newLineup.findIndex(slot => !slot.card && slot.position === assignedPos);
+                    if (emptyExactIdx !== -1) {
+                        newLineup[emptyExactIdx] = {
+                            ...newLineup[emptyExactIdx],
+                            position: assignedPos,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : newLineup[emptyExactIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : newLineup[emptyExactIdx].left,
+                            card: getCardData(player)
+                        };
+                    } else {
+                        stillUnplaced.push(player);
+                    }
+                });
+
+                // Pass 3: Same-zone match (e.g. forward into forward slot, midfielder into midfielder slot)
+                const finalUnplaced = [];
+                stillUnplaced.forEach(player => {
+                    const playerZone = getZone(player.assignedPosition);
+                    const emptyZoneIdx = newLineup.findIndex(slot => !slot.card && getZone(slot.position) === playerZone);
+                    if (emptyZoneIdx !== -1) {
+                        newLineup[emptyZoneIdx] = {
+                            ...newLineup[emptyZoneIdx],
+                            position: player.assignedPosition || newLineup[emptyZoneIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : newLineup[emptyZoneIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : newLineup[emptyZoneIdx].left,
+                            card: getCardData(player)
+                        };
+                    } else {
+                        finalUnplaced.push(player);
+                    }
+                });
+
+                // Pass 4: Fallback to any remaining empty slot so NO player is EVER dropped
+                finalUnplaced.forEach(player => {
+                    const emptyIdx = newLineup.findIndex(slot => !slot.card);
+                    if (emptyIdx !== -1) {
+                        newLineup[emptyIdx] = {
+                            ...newLineup[emptyIdx],
+                            position: player.assignedPosition || newLineup[emptyIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : newLineup[emptyIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : newLineup[emptyIdx].left,
+                            card: getCardData(player)
                         };
                     }
                 });
@@ -572,7 +633,15 @@ export default function SquadBuilder({ currentUser, onBack }) {
         } finally {
             setLoading(false);
         }
-    }, [getInitialLineup, myCards, safeGet, notify]);
+    }, [getInitialLineup, myCards, safeGet, notify, FORMATIONS]);
+
+    // Automatically load squad if page was loaded or refreshed on /squad-builder/edit/:squadId
+    useEffect(() => {
+        const match = window.location.pathname.match(/\/squad-builder\/edit\/(\d+)/i);
+        if (match && match[1] && !editingSquadId && myCards.length > 0) {
+            handleEditSquad({ squadid: match[1] });
+        }
+    }, [myCards, editingSquadId, handleEditSquad]);
 
     const handleFormationChange = useCallback((newFormation) => {
         setFormation(newFormation);
@@ -625,12 +694,18 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
 
         const playersPayload = lineup
-            .filter(slot => slot && slot.card)
-            .map(slot => ({
-                cardId: safeGet(slot.card, 'CardID', 'cardid'),
-                position: slot.position,
-                isStarting: true
-            }));
+            .map((slot, index) => {
+                if (!slot || !slot.card) return null;
+                return {
+                    slotIndex: index,
+                    cardId: safeGet(slot.card, 'CardID', 'cardid'),
+                    position: slot.position,
+                    top: slot.top,
+                    left: slot.left,
+                    isStarting: true
+                };
+            })
+            .filter(Boolean);
 
         // Strict duplicate validation
         const cardIds = playersPayload.map(p => p.cardId);
@@ -644,7 +719,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             if (editingSquadId) {
                 await axios.put(`${API_BASE_URL}/squads/${editingSquadId}`, {
                     squadName: squadName.trim(),
-                    formation: formation === 'custom' ? '4-3-3' : formation,
+                    formation: formation || '4-3-3',
                     players: playersPayload,
                     teamStrength: totalStrength,
                     managerId: selectedManager
@@ -655,13 +730,14 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     userId: currentUser.userid || currentUser.id,
                     managerId: selectedManager,
                     squadName: squadName.trim(),
-                    formation: formation === 'custom' ? '4-3-3' : formation,
+                    formation: formation || '4-3-3',
                     players: playersPayload,
                     teamStrength: totalStrength
                 });
                 notify('success', `Squad "${squadName.trim()}" saved to your account!`);
             }
 
+            // Immediately refresh data with cache busting
             await refreshData();
             setEditingSquadId(null);
             setView('list');
@@ -676,28 +752,13 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
     }, [currentUser, selectedManager, playersInSquad, lineup, squadName, formation, totalStrength, refreshData, safeGet, editingSquadId, notify, validateZoneCaps]);
 
-    const handleDeleteSquad = useCallback(async (squadId) => {
-        if (!window.confirm("Are you sure you want to permanently delete this squad?")) return;
-        try {
-            setLoading(true);
-            await axios.delete(`${API_BASE_URL}/squads/${squadId}`);
-            await refreshData();
-            notify('info', "Tactical squad deleted successfully.");
-        } catch (err) {
-            console.error("Delete error:", err);
-            notify('error', "Error deleting squad: " + (err.response?.data?.error || err.message));
-        } finally {
-            setLoading(false);
-        }
-    }, [refreshData, notify]);
-
     // ============================================
     // COMMUNITY SHARING HANDLERS
     // ============================================
     const fetchCommunitySquads = useCallback(async () => {
         try {
             setCommunityLoading(true);
-            const res = await axios.get(`${API_BASE_URL}/squads/community/all`);
+            const res = await axios.get(`${API_BASE_URL}/squads/community/all?_t=${Date.now()}`);
             setCommunitySquads(res.data || []);
         } catch (err) {
             console.error("Failed to load community squads:", err);
@@ -707,15 +768,38 @@ export default function SquadBuilder({ currentUser, onBack }) {
         }
     }, [notify]);
 
+    const handleDeleteSquad = useCallback(async (squadId) => {
+        if (!window.confirm("Are you sure you want to permanently delete this squad?")) return;
+        try {
+            setLoading(true);
+            await axios.delete(`${API_BASE_URL}/squads/${squadId}`);
+            setCommunityViewSquad(prev => {
+                if (!prev) return null;
+                const prevId = safeGet(prev, 'SquadID', 'squadid', 'squadId');
+                return (prevId && String(prevId) === String(squadId)) ? null : prev;
+            });
+            await refreshData();
+            await fetchCommunitySquads();
+            notify('info', "Tactical squad deleted successfully.");
+        } catch (err) {
+            console.error("Delete error:", err);
+            notify('error', "Error deleting squad: " + (err.response?.data?.error || err.message));
+        } finally {
+            setLoading(false);
+        }
+    }, [refreshData, fetchCommunitySquads, safeGet, notify]);
+
     const handleShareSquad = useCallback(async (squadId) => {
         if (!currentUser) {
             notify('warning', "Please sign in to share squads.");
             return;
         }
+        const userId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
         try {
             setLoading(true);
-            await axios.post(`${API_BASE_URL}/squads/${squadId}/share`);
+            await axios.post(`${API_BASE_URL}/squads/${squadId}/share`, { userId });
             await refreshData();
+            await fetchCommunitySquads();
             notify('success', "Squad shared to the community!");
         } catch (err) {
             console.error("Share error:", err);
@@ -723,14 +807,21 @@ export default function SquadBuilder({ currentUser, onBack }) {
         } finally {
             setLoading(false);
         }
-    }, [currentUser, refreshData, notify]);
+    }, [currentUser, refreshData, fetchCommunitySquads, safeGet, notify]);
 
     const handleUnshareSquad = useCallback(async (squadId) => {
         if (!currentUser) return;
+        const userId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
         try {
             setLoading(true);
-            await axios.post(`${API_BASE_URL}/squads/${squadId}/unshare`);
+            await axios.post(`${API_BASE_URL}/squads/${squadId}/unshare`, { userId });
+            setCommunityViewSquad(prev => {
+                if (!prev) return null;
+                const prevId = safeGet(prev, 'SquadID', 'squadid', 'squadId');
+                return (prevId && String(prevId) === String(squadId)) ? null : prev;
+            });
             await refreshData();
+            await fetchCommunitySquads();
             notify('info', "Squad removed from community.");
         } catch (err) {
             console.error("Unshare error:", err);
@@ -738,7 +829,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
         } finally {
             setLoading(false);
         }
-    }, [currentUser, refreshData, notify]);
+    }, [currentUser, refreshData, fetchCommunitySquads, safeGet, notify]);
 
     const handleShareCurrentSquad = useCallback(async () => {
         if (!editingSquadId) {
@@ -1259,52 +1350,103 @@ export default function SquadBuilder({ currentUser, onBack }) {
         if (communityViewSquad) {
             const sq = communityViewSquad;
             const formKey = sq.formation || '4-3-3';
-            const initialSlots = getInitialLineup(formKey);
+            const baseForm = (formKey && FORMATIONS[formKey]) ? formKey : '4-3-3';
+            const initialSlots = getInitialLineup(baseForm);
             const communityLineup = initialSlots.map(s => ({ ...s }));
 
-            // Map saved players to formation slots
+            // Map saved players to formation slots with exact slotIndex, custom coordinates & assigned roles
             if (sq.players && Array.isArray(sq.players)) {
-                const positionCountFilled = {};
+                const getCardData = (player) => {
+                    const matchedCard = myCards.find(c => {
+                        const cCardId = safeGet(c, 'CardID', 'cardid');
+                        return cCardId === player.cardId || (cCardId && player.cardId && cCardId.toString() === player.cardId.toString());
+                    });
 
+                    return matchedCard || {
+                        CardID: player.cardId,
+                        PlayerID: player.playerId,
+                        PositionCode: player.naturalPosition || player.assignedPosition || 'GK',
+                        PlayerName: player.playerName || 'Unknown',
+                        CurrentOverallRating: player.currentOverallRating || player.baseOverallRating || 0,
+                        BaseOverallRating: player.baseOverallRating || 0,
+                        CardType: player.cardType || 'Standard',
+                        ClubName: player.clubName || 'N/A'
+                    };
+                };
+
+                const getZone = (pos) => {
+                    const p = (pos || '').toUpperCase();
+                    if (p === 'GK') return 'GK';
+                    if (['CB', 'LB', 'RB'].includes(p)) return 'DEF';
+                    if (['DMF', 'CMF', 'AMF', 'LMF', 'RMF'].includes(p)) return 'MID';
+                    if (['CF', 'SS', 'LWF', 'RWF'].includes(p)) return 'FWD';
+                    return 'UNKNOWN';
+                };
+
+                const unplacedPlayers = [];
+
+                // Pass 1: Place players with saved valid slotIndex and restore custom coordinates
                 sq.players.forEach(player => {
-                    const assignedPos = player.assignedPosition;
-                    if (!positionCountFilled[assignedPos]) {
-                        positionCountFilled[assignedPos] = 0;
-                    }
-
-                    let count = 0;
-                    let slotIndex = -1;
-                    for (let i = 0; i < communityLineup.length; i++) {
-                        if (communityLineup[i].position === assignedPos) {
-                            if (count === positionCountFilled[assignedPos]) {
-                                slotIndex = i;
-                                break;
-                            }
-                            count++;
-                        }
-                    }
-                    positionCountFilled[assignedPos]++;
-
-                    // Fallback to first empty slot if position count exceeded or mismatch
-                    if (slotIndex === -1) {
-                        slotIndex = communityLineup.findIndex(s => !s.card);
-                    }
-
-                    if (slotIndex !== -1) {
-                        const cardData = {
-                            CardID: player.cardId,
-                            PlayerID: player.playerId,
-                            PositionCode: player.naturalPosition || player.assignedPosition || 'GK',
-                            PlayerName: player.playerName || 'Unknown',
-                            CurrentOverallRating: player.currentOverallRating || player.baseOverallRating || 0,
-                            BaseOverallRating: player.baseOverallRating || 0,
-                            CardType: player.cardType || 'Standard',
-                            ClubName: player.clubName || 'N/A'
+                    const sIdx = player.slotIndex;
+                    if (sIdx !== undefined && sIdx !== null && sIdx >= 0 && sIdx < communityLineup.length && !communityLineup[sIdx].card) {
+                        communityLineup[sIdx] = {
+                            ...communityLineup[sIdx],
+                            position: player.assignedPosition || communityLineup[sIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : communityLineup[sIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : communityLineup[sIdx].left,
+                            card: getCardData(player)
                         };
+                    } else {
+                        unplacedPlayers.push(player);
+                    }
+                });
 
-                        communityLineup[slotIndex] = {
-                            ...communityLineup[slotIndex],
-                            card: cardData
+                // Pass 2: Exact position match on remaining empty slots (for older squads)
+                const stillUnplaced = [];
+                unplacedPlayers.forEach(player => {
+                    const assignedPos = player.assignedPosition;
+                    const emptyExactIdx = communityLineup.findIndex(slot => !slot.card && slot.position === assignedPos);
+                    if (emptyExactIdx !== -1) {
+                        communityLineup[emptyExactIdx] = {
+                            ...communityLineup[emptyExactIdx],
+                            position: assignedPos,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : communityLineup[emptyExactIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : communityLineup[emptyExactIdx].left,
+                            card: getCardData(player)
+                        };
+                    } else {
+                        stillUnplaced.push(player);
+                    }
+                });
+
+                // Pass 3: Same-zone match (e.g. forward into forward slot, midfielder into midfielder slot)
+                const finalUnplaced = [];
+                stillUnplaced.forEach(player => {
+                    const playerZone = getZone(player.assignedPosition);
+                    const emptyZoneIdx = communityLineup.findIndex(slot => !slot.card && getZone(slot.position) === playerZone);
+                    if (emptyZoneIdx !== -1) {
+                        communityLineup[emptyZoneIdx] = {
+                            ...communityLineup[emptyZoneIdx],
+                            position: player.assignedPosition || communityLineup[emptyZoneIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : communityLineup[emptyZoneIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : communityLineup[emptyZoneIdx].left,
+                            card: getCardData(player)
+                        };
+                    } else {
+                        finalUnplaced.push(player);
+                    }
+                });
+
+                // Pass 4: Fallback to any remaining empty slot so NO player is dropped
+                finalUnplaced.forEach(player => {
+                    const emptyIdx = communityLineup.findIndex(slot => !slot.card);
+                    if (emptyIdx !== -1) {
+                        communityLineup[emptyIdx] = {
+                            ...communityLineup[emptyIdx],
+                            position: player.assignedPosition || communityLineup[emptyIdx].position,
+                            top: (player.coordTop !== null && player.coordTop !== undefined && !isNaN(player.coordTop)) ? Number(player.coordTop) : communityLineup[emptyIdx].top,
+                            left: (player.coordLeft !== null && player.coordLeft !== undefined && !isNaN(player.coordLeft)) ? Number(player.coordLeft) : communityLineup[emptyIdx].left,
+                            card: getCardData(player)
                         };
                     }
                 });
@@ -1361,12 +1503,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 }
 
                 // Filled slot - authentic card with tier color, position, penalty, and rating
-                const cardType = card.CardType || card.cardType || 'Standard';
+                const cardType = safeGet(card, 'CardType', 'cardtype', 'cardType') || 'Standard';
                 const tier = getCardTierColor(cardType);
-                const cardPos = (card.PositionCode || 'GK').toString().toUpperCase();
+                const cardPos = (safeGet(card, 'PositionCode', 'positioncode', 'naturalPosition', 'naturalposition') || 'GK').toString().toUpperCase();
                 const penalty = getPositionPenalty(cardPos, (position || '').toUpperCase());
                 const effectiveRating = getEffectiveRating(card, position);
-                const playerName = card.PlayerName || 'Unknown';
+                const playerName = safeGet(card, 'PlayerName', 'playername', 'playerName') || 'Unknown';
 
                 return (
                     <div
@@ -1463,31 +1605,87 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 );
             };
 
+            const currentUserId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
+            const currentUsername = safeGet(currentUser, 'Username', 'username', 'email');
+            const viewSquadId = safeGet(sq, 'SquadID', 'squadid', 'squadId');
+            const isOwner = Boolean(
+                currentUser && (
+                    (currentUserId && (sq.userId || sq.userid) && String(sq.userId || sq.userid) === String(currentUserId)) ||
+                    (currentUsername && sq.username && currentUsername.toLowerCase() === sq.username.toLowerCase())
+                )
+            );
+
             return (
                 <div style={{ animation: 'sbSlideIn 0.4s ease-out' }}>
-                    {/* Back Button */}
-                    <button
-                        onClick={() => setCommunityViewSquad(null)}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: '#94a3b8',
-                            borderRadius: '999px',
-                            padding: '8px 18px',
-                            fontSize: '0.85em',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            marginBottom: '16px',
-                            transition: 'all 0.25s ease'
-                        }}
-                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)'; e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)'; e.currentTarget.style.color = '#a78bfa'; }}
-                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
-                    >
-                        ← Back to Community
-                    </button>
+                    {/* Header Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                        <button
+                            onClick={() => setCommunityViewSquad(null)}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#94a3b8',
+                                borderRadius: '999px',
+                                padding: '8px 18px',
+                                fontSize: '0.85em',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                transition: 'all 0.25s ease'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)'; e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)'; e.currentTarget.style.color = '#a78bfa'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
+                        >
+                            ← Back to Community
+                        </button>
+
+                        {isOwner && (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <button
+                                    onClick={() => {
+                                        setCommunityViewSquad(null);
+                                        handleEditSquad(sq);
+                                    }}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                                        color: '#000',
+                                        fontWeight: '800',
+                                        fontSize: '0.82em',
+                                        padding: '8px 16px',
+                                        borderRadius: '999px',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <FiEdit3 size={14} /> Open & Edit
+                                </button>
+                                <button
+                                    onClick={() => handleUnshareSquad(viewSquadId)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: 'rgba(167, 139, 250, 0.15)',
+                                        color: '#c4b5fd',
+                                        fontWeight: '700',
+                                        fontSize: '0.82em',
+                                        padding: '8px 14px',
+                                        borderRadius: '999px',
+                                        border: '1px solid rgba(167, 139, 250, 0.3)',
+                                        cursor: 'pointer'
+                                    }}
+                                    title="Remove from Community"
+                                >
+                                    <FiLock size={14} /> Remove from Community
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Squad Header Info */}
                     <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -1645,19 +1843,46 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                                             <div>
-                                                <span style={{
-                                                    fontSize: '0.72em',
-                                                    fontWeight: '800',
-                                                    padding: '3px 8px',
-                                                    borderRadius: '4px',
-                                                    background: 'rgba(167, 139, 250, 0.12)',
-                                                    color: '#a78bfa',
-                                                    border: '1px solid rgba(167, 139, 250, 0.25)',
-                                                    letterSpacing: '0.8px',
-                                                    textTransform: 'uppercase'
-                                                }}>
-                                                    {form} FORMATION
-                                                </span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{
+                                                        fontSize: '0.72em',
+                                                        fontWeight: '800',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '4px',
+                                                        background: 'rgba(167, 139, 250, 0.12)',
+                                                        color: '#a78bfa',
+                                                        border: '1px solid rgba(167, 139, 250, 0.25)',
+                                                        letterSpacing: '0.8px',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {form} FORMATION
+                                                    </span>
+                                                    {(() => {
+                                                        const currentUserId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
+                                                        const currentUsername = safeGet(currentUser, 'Username', 'username', 'email');
+                                                        const isOwner = Boolean(
+                                                            currentUser && (
+                                                                (currentUserId && sq.userid && String(sq.userid) === String(currentUserId)) ||
+                                                                (currentUsername && sq.username && currentUsername.toLowerCase() === sq.username.toLowerCase())
+                                                            )
+                                                        );
+                                                        return isOwner ? (
+                                                            <span style={{
+                                                                fontSize: '0.68em',
+                                                                fontWeight: '800',
+                                                                padding: '3px 8px',
+                                                                borderRadius: '4px',
+                                                                background: 'rgba(0, 242, 254, 0.15)',
+                                                                color: '#00f2fe',
+                                                                border: '1px solid rgba(0, 242, 254, 0.35)',
+                                                                letterSpacing: '0.8px',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                Your Build
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
+                                                </div>
                                                 <h3 style={{ margin: '8px 0 0 0', fontSize: '1.25em', fontWeight: '900', color: '#fff' }}>
                                                     {name}
                                                 </h3>
@@ -1703,29 +1928,119 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     </div>
 
                                     <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                                        <button
-                                            onClick={() => handleViewCommunitySquad(squadId)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 16px',
-                                                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                fontWeight: '800',
-                                                cursor: 'pointer',
-                                                fontSize: '0.88em',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '6px',
-                                                transition: 'opacity 0.2s'
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                                        >
-                                            <FiEye size={15} /> View Squad
-                                        </button>
+                                        {(() => {
+                                            const currentUserId = safeGet(currentUser, 'UserID', 'userid', 'userId', 'id');
+                                            const currentUsername = safeGet(currentUser, 'Username', 'username', 'email');
+                                            const isOwner = Boolean(
+                                                currentUser && (
+                                                    (currentUserId && sq.userid && String(sq.userid) === String(currentUserId)) ||
+                                                    (currentUsername && sq.username && currentUsername.toLowerCase() === sq.username.toLowerCase())
+                                                )
+                                            );
+
+                                            if (isOwner) {
+                                                return (
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <button
+                                                            onClick={() => handleViewCommunitySquad(squadId)}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding: '10px 10px',
+                                                                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                                                                color: '#fff',
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                fontWeight: '800',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.82em',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '5px',
+                                                                transition: 'opacity 0.2s'
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                                            title="View on Pitch"
+                                                        >
+                                                            <FiEye size={14} /> View
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditSquad(sq)}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding: '10px 10px',
+                                                                background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                                                                color: '#000',
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                fontWeight: '800',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.82em',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '5px',
+                                                                transition: 'opacity 0.2s'
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                                            title="Open & Edit this Squad"
+                                                        >
+                                                            <FiEdit3 size={14} /> Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUnshareSquad(squadId)}
+                                                            style={{
+                                                                padding: '10px 14px',
+                                                                background: 'rgba(167, 139, 250, 0.12)',
+                                                                color: '#c4b5fd',
+                                                                border: '1px solid rgba(167, 139, 250, 0.3)',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.82em',
+                                                                fontWeight: '700',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(167, 139, 250, 0.22)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(167, 139, 250, 0.12)'}
+                                                            title="Remove from Community"
+                                                        >
+                                                            <FiLock size={15} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <button
+                                                    onClick={() => handleViewCommunitySquad(squadId)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px 16px',
+                                                        background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '800',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.88em',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px',
+                                                        transition: 'opacity 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                                >
+                                                    <FiEye size={15} /> View Squad
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             );

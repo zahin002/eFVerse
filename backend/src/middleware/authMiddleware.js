@@ -1,8 +1,11 @@
 const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {
-  
-    const token = req.cookies ? req.cookies.token : null; 
+    let token = req.cookies ? req.cookies.token : null;
+    if (!token && req.headers.authorization) {
+        const parts = req.headers.authorization.split(' ');
+        token = parts.length === 2 ? parts[1] : parts[0];
+    } 
 
     if (!token) {
         console.warn(" [Auth] No token found in request cookies.");
@@ -27,7 +30,11 @@ const verifyToken = (req, res, next) => {
 };
 
 const optionalVerifyToken = (req, res, next) => {
-    const token = req.cookies ? req.cookies.token : null; 
+    let token = req.cookies ? req.cookies.token : null;
+    if (!token && req.headers.authorization) {
+        const parts = req.headers.authorization.split(' ');
+        token = parts.length === 2 ? parts[1] : parts[0];
+    }
     if (!token) {
         req.user = null;
         return next();

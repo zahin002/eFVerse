@@ -144,6 +144,10 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const managerDropdownRef = useRef(null);
 
     useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [cardid, playerid]);
+
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (managerDropdownRef.current && !managerDropdownRef.current.contains(event.target)) {
                 setShowManagerDropdown(false);

@@ -11,12 +11,23 @@ import { FaLongArrowAltRight } from "react-icons/fa";
 
 axios.defaults.withCredentials = true;
 
+axios.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             console.warn("Unauthorized API call:", error.response.config?.url);
-            localStorage.removeItem('user');
+            if (error.response.config?.url?.includes('/api/auth/profile')) {
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+            }
         }
         return Promise.reject(error);
     }
@@ -174,7 +185,9 @@ function App() {
 
         if (view === 'login') {
             const userData = response.data.user || response.data;
-
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+            }
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
             setShowAuthModal(false);
@@ -324,14 +337,27 @@ function App() {
             } else {
                 window.history.pushState({ path }, '', path);
             }
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         }
     }, []);
 
     const applyRoute = useCallback(async (pathname) => {
         const path = (pathname || window.location.pathname || '/').toLowerCase();
 
-        // 1. Squad Builder (/squad-builder, /squad-builder/pitch, /squad-builder/edit/:id)
-        if (path === '/squad-builder' || path.startsWith('/squad-builder/')) {
+        // 1. Squad Builder (/squad-builder, /squad_builder, /squadbuilder, /squad-builder/pitch, /squad-builder/edit/:id)
+        if (
+            path === '/squad-builder' ||
+            path.startsWith('/squad-builder/') ||
+            path === '/squad_builder' ||
+            path.startsWith('/squad_builder/') ||
+            path === '/squadbuilder' ||
+            path.startsWith('/squadbuilder/')
+        ) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            if (path.includes('squad_builder') || path.includes('squadbuilder')) {
+                const normalized = path.replace('squad_builder', 'squad-builder').replace('squadbuilder', 'squad-builder');
+                window.history.replaceState({ path: normalized }, '', normalized);
+            }
             const savedUser = localStorage.getItem('user');
             if (!savedUser) {
                 setAuthModalPrompt("Please sign in to build and save custom tactical squads.");
@@ -351,6 +377,7 @@ function App() {
 
         // 2. Player Card View (/card/:id or /card/:id/compare/:otherId)
         if (path.startsWith('/card/')) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
             const cardId = path.split('/card/')[1]?.split('/')[0];
             if (cardId) {
                 setShowSquadBuilder(false);
@@ -369,6 +396,7 @@ function App() {
 
         // 3. Manager Detail View (/manager/:id)
         if (path.startsWith('/manager/')) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
             const mgrId = path.split('/manager/')[1]?.split('/')[0];
             if (mgrId) {
                 setShowSquadBuilder(false);
@@ -390,6 +418,7 @@ function App() {
 
         // 4. Card Trainer (/train/:id)
         if (path.startsWith('/train/')) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
             const cardId = path.split('/train/')[1]?.split('/')[0];
             if (cardId) {
                 setShowSquadBuilder(false);
@@ -459,6 +488,7 @@ function App() {
             alert("This player does not have a configured card registry entry.");
             return;
         }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         try {
             const res = await axios.get(`http://localhost:5001/api/players/view-card/${cardId}`);
             setSelectedCard(res.data);
@@ -470,6 +500,7 @@ function App() {
 
     const handleManagerClick = (mgr) => {
         if (!mgr || !mgr.managerid) return;
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         setSelectedManager(mgr);
         navigate(`/manager/${mgr.managerid}`);
     };
