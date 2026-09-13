@@ -882,15 +882,15 @@ function App() {
         overflow: hidden;
         text-align: center;
         box-sizing: border-box;
+        background: url('/images/landing_hero_bg.png') center center / cover no-repeat;
     }
     .hero-section::before {
         content: '';
         position: absolute;
         inset: 0;
-        background:
-            radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,242,254,0.12) 0%, transparent 70%),
-            radial-gradient(ellipse 60% 50% at 20% 100%, rgba(79,172,254,0.08) 0%, transparent 60%),
-            radial-gradient(ellipse 60% 50% at 80% 100%, rgba(167,139,250,0.08) 0%, transparent 60%);
+        background: 
+            linear-gradient(180deg, rgba(10, 16, 28, 0.4) 0%, rgba(10, 16, 28, 0.55) 50%, rgba(10, 16, 28, 0.8) 100%),
+            radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0, 242, 254, 0.08) 0%, transparent 80%);
         pointer-events: none;
         z-index: 0;
     }
