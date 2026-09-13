@@ -1,99 +1,18 @@
 import React from 'react';
-
-// Maps primary position codes to default primary dual positions if custom ones aren't defined
-const defaultPrimaryPositionsMap = {
-    'AMF': ['AMF', 'CMF'],
-    'CMF': ['CMF', 'AMF', 'DMF'],
-    'CF':  ['CF', 'SS'],
-    'SS':  ['SS', 'CF', 'AMF'],
-    'LWF': ['LWF', 'RWF', 'SS'],
-    'RWF': ['RWF', 'LWF', 'SS'],
-    'LMF': ['LMF', 'RMF', 'AMF'],
-    'RMF': ['RMF', 'LMF', 'AMF'],
-    'DMF': ['DMF', 'CMF'],
-    'CB':  ['CB'],
-    'LB':  ['LB', 'RB'],
-    'RB':  ['RB', 'LB'],
-    'GK':  ['GK']
-};
-
-const defaultFullAffinityMap = {
-    'AMF': ['LMF', 'RMF', 'SS'],
-    'CMF': ['LMF', 'RMF', 'LB', 'RB'],
-    'CF':  ['LWF', 'RWF'],
-    'SS':  ['LWF', 'RWF'],
-    'LWF': ['CF', 'LMF'],
-    'RWF': ['CF', 'RMF'],
-    'LMF': ['LWF', 'CMF', 'LB'],
-    'RMF': ['RWF', 'CMF', 'RB'],
-    'DMF': ['CB', 'LB', 'RB'],
-    'CB':  ['LB', 'RB', 'DMF'],
-    'LB':  ['LMF', 'CB'],
-    'RB':  ['RMF', 'CB'],
-    'GK':  []
-};
-
-const defaultPartialAffinityMap = {
-    'AMF': ['CF', 'LWF', 'RWF', 'DMF'],
-    'CMF': ['CF', 'CB'],
-    'CF':  ['AMF', 'LMF', 'RMF'],
-    'SS':  ['CMF'],
-    'LWF': ['AMF', 'CMF'],
-    'RWF': ['AMF', 'CMF'],
-    'LMF': ['CF', 'DMF'],
-    'RMF': ['CF', 'DMF'],
-    'DMF': ['AMF'],
-    'CB':  ['GK'],
-    'LB':  ['CMF'],
-    'RB':  ['CMF'],
-    'GK':  []
-};
-
-const penalties = {
-    'AMF': { 'AMF': 0, 'LMF': 0, 'RMF': 0, 'LWF': 0, 'RWF': 0, 'SS': 1, 'CMF': 2, 'CF': 4, 'LB': 4, 'RB': 4, 'DMF': 7, 'CB': 13, 'GK': 55 },
-    'CMF': { 'CMF': 0, 'AMF': 0, 'LMF': 1, 'RMF': 1, 'DMF': 2, 'SS': 3, 'CF': 6, 'LB': 6, 'RB': 6, 'CB': 12, 'GK': 55 },
-    'CF':  { 'CF': 0, 'SS': 0, 'LWF': 1, 'RWF': 1, 'AMF': 4, 'LMF': 5, 'RMF': 5, 'CMF': 8, 'DMF': 15, 'LB': 15, 'RB': 15, 'CB': 20, 'GK': 55 },
-    'SS':  { 'SS': 0, 'CF': 0, 'AMF': 0, 'LWF': 1, 'RWF': 1, 'CMF': 3, 'LMF': 3, 'RMF': 3, 'DMF': 10, 'CB': 20, 'GK': 55 },
-    'LWF': { 'LWF': 0, 'RWF': 0, 'SS': 0, 'CF': 1, 'LMF': 1, 'AMF': 2, 'CMF': 6, 'GK': 55 },
-    'RWF': { 'RWF': 0, 'LWF': 0, 'SS': 0, 'CF': 1, 'RMF': 1, 'AMF': 2, 'CMF': 6, 'GK': 55 },
-    'DMF': { 'DMF': 0, 'CMF': 1, 'CB': 3, 'AMF': 6, 'LB': 6, 'RB': 6, 'CF': 20, 'GK': 55 },
-    'LMF': { 'LMF': 0, 'RMF': 0, 'AMF': 0, 'LWF': 1, 'CMF': 2, 'LB': 4, 'GK': 55 },
-    'RMF': { 'RMF': 0, 'LMF': 0, 'AMF': 0, 'RWF': 1, 'CMF': 2, 'RB': 4, 'GK': 55 },
-    'CB':  { 'CB': 0, 'LB': 4, 'RB': 4, 'DMF': 4, 'CMF': 12, 'GK': 50 },
-    'LB':  { 'LB': 0, 'RB': 0, 'CB': 4, 'LMF': 3, 'CMF': 8, 'GK': 55 },
-    'RB':  { 'RB': 0, 'LB': 0, 'CB': 4, 'RMF': 3, 'CMF': 8, 'GK': 55 },
-    'GK':  { 'GK': 0, 'CB': 45, 'CF': 48 }
-};
+import { calculateEffectivePositionOVR, getAffinityTier as getEngineAffinityTier } from './progressionEngine';
 
 export default function PositionRatingsPitch({ 
     baseOvr, 
     primaryPosition, 
     playstyle, 
     customPrimaryPositions, 
-    customSecondaryPositions 
+    customSecondaryPositions,
+    trainedStats = {}
 }) {
     const cardPos = (primaryPosition || 'AMF').toUpperCase().trim();
 
-    // Determine position affinity tier (PRIMARY, FULL, PARTIAL, NONE)
     const getAffinityTier = (targetPos) => {
-        const t = (targetPos || '').toUpperCase().trim();
-
-        // 1. Check custom admin-defined primary positions first
-        if (customPrimaryPositions && Array.isArray(customPrimaryPositions) && customPrimaryPositions.length > 0) {
-            if (customPrimaryPositions.map(p => p.toUpperCase().trim()).includes(t)) return 'PRIMARY';
-        } else if (defaultPrimaryPositionsMap[cardPos]?.includes(t)) {
-            return 'PRIMARY';
-        }
-
-        // 2. Check custom admin-defined secondary position boosters
-        if (customSecondaryPositions && Array.isArray(customSecondaryPositions) && customSecondaryPositions.length > 0) {
-            if (customSecondaryPositions.map(p => p.toUpperCase().trim()).includes(t)) return 'FULL';
-        } else if (defaultFullAffinityMap[cardPos]?.includes(t)) {
-            return 'FULL';
-        }
-
-        if (defaultPartialAffinityMap[cardPos]?.includes(t)) return 'PARTIAL';
-        return 'NONE';
+        return getEngineAffinityTier(cardPos, targetPos, customPrimaryPositions, customSecondaryPositions);
     };
 
     const getPositionRating = (targetPos) => {
@@ -101,17 +20,16 @@ export default function PositionRatingsPitch({
         const tPos = targetPos.toUpperCase().trim();
         if (tPos === cardPos) return baseOvr;
 
-        const exactPenalty = penalties[cardPos]?.[tPos];
-        if (exactPenalty !== undefined) {
-            return Math.max(40, baseOvr - exactPenalty);
-        }
-
-        const affinity = getAffinityTier(tPos);
-        if (affinity === 'PRIMARY') return baseOvr;
-        if (affinity === 'FULL') return Math.max(40, baseOvr - 1);
-
-        return Math.max(40, baseOvr - 25);
+        return calculateEffectivePositionOVR({
+            trainedStats,
+            primaryPosition: cardPos,
+            targetPosition: tPos,
+            baseOvr,
+            customPrimaryPositions,
+            customSecondaryPositions
+        });
     };
+
 
     const renderPosBlock = (code) => {
         const affinity  = getAffinityTier(code);
