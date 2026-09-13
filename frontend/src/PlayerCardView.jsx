@@ -816,13 +816,15 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                                             <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#f97316', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', fontSize: '0.75em', zIndex: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>S+</div>
 
-                                            <h1 style={{ fontSize: '3.8em', margin: 0, lineHeight: 1, color: getStatColor(boostedOvr), zIndex: 3, textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 15px rgba(0,0,0,0.8)', fontWeight: '900', transition: 'all 0.2s ease' }}>
-                                                {boostedOvr}
-                                            </h1>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', zIndex: 3, paddingLeft: '4px' }}>
+                                                <h1 style={{ fontSize: '3.6em', margin: 0, lineHeight: 0.95, color: getStatColor(boostedOvr), textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 0 15px rgba(0,0,0,0.8)', fontWeight: '900', transition: 'all 0.2s ease' }}>
+                                                    {boostedOvr}
+                                                </h1>
 
-                                            <h3 style={{ margin: '2px 0 0 0', fontSize: '1.3em', color: '#fff', zIndex: 3, textShadow: '0 2px 6px rgba(0,0,0,0.9)', fontWeight: '800', letterSpacing: '1px' }}>
-                                                {primaryposition}
-                                            </h3>
+                                                <h3 style={{ margin: '3px 0 0 2px', fontSize: '1.25em', color: '#fff', textShadow: '0 2px 6px rgba(0,0,0,0.9)', fontWeight: '800', letterSpacing: '1px' }}>
+                                                    {primaryposition}
+                                                </h3>
+                                            </div>
 
                                             <div style={{ flex: 1, minHeight: '40px', zIndex: 3 }} />
 
