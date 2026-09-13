@@ -1,5 +1,27 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import {
+    FiLayers,
+    FiGlobe,
+    FiPlus,
+    FiUsers,
+    FiUser,
+    FiEdit3,
+    FiLock,
+    FiTrash2,
+    FiCalendar,
+    FiEye,
+    FiLayout,
+    FiSave,
+    FiRefreshCw,
+    FiCheckCircle,
+    FiAlertCircle,
+    FiInfo,
+    FiAlertTriangle,
+    FiX,
+    FiShare2,
+    FiSearch
+} from 'react-icons/fi';
 
 axios.defaults.withCredentials = true;
 
@@ -627,7 +649,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     teamStrength: totalStrength,
                     managerId: selectedManager
                 });
-                notify('success', `✨ Tactical Squad "${squadName.trim()}" successfully updated!`);
+                notify('success', `Squad "${squadName.trim()}" successfully updated!`);
             } else {
                 await axios.post(`${API_BASE_URL}/squads/save`, {
                     userId: currentUser.userid || currentUser.id,
@@ -637,7 +659,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     players: playersPayload,
                     teamStrength: totalStrength
                 });
-                notify('success', `⭐ Tactical Squad "${squadName.trim()}" saved to your account!`);
+                notify('success', `Squad "${squadName.trim()}" saved to your account!`);
             }
 
             await refreshData();
@@ -694,7 +716,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             setLoading(true);
             await axios.post(`${API_BASE_URL}/squads/${squadId}/share`);
             await refreshData();
-            notify('success', "🌍 Squad shared to the community!");
+            notify('success', "Squad shared to the community!");
         } catch (err) {
             console.error("Share error:", err);
             notify('error', "Error sharing squad: " + (err.response?.data?.error || err.message));
@@ -709,7 +731,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             setLoading(true);
             await axios.post(`${API_BASE_URL}/squads/${squadId}/unshare`);
             await refreshData();
-            notify('info', "🔒 Squad removed from community.");
+            notify('info', "Squad removed from community.");
         } catch (err) {
             console.error("Unshare error:", err);
             notify('error', "Error unsharing squad: " + (err.response?.data?.error || err.message));
@@ -756,12 +778,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
         const playerName = safeGet(cardData, 'PlayerName', 'playername') || 'Player';
 
         if (cardId && usedCardMap.has(cardId.toString())) {
-            notify('warning', `⚠️ ${playerName} is already deployed at ${usedCardMap.get(cardId.toString())}! Each card can only be used once.`);
+            notify('warning', `${playerName} is already deployed at ${usedCardMap.get(cardId.toString())}! Each card can only be used once.`);
             return;
         }
 
         if (playerId && usedPlayerMap.has(playerId.toString())) {
-            notify('warning', `⚠️ ${playerName} is already active in your starting XI (${usedPlayerMap.get(playerId.toString())})! A player cannot be selected twice.`);
+            notify('warning', `${playerName} is already active in your starting XI (${usedPlayerMap.get(playerId.toString())})! A player cannot be selected twice.`);
             return;
         }
 
@@ -774,7 +796,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
         setLineup(updatedLineup);
         setModalOpen(false);
         setSearchQuery('');
-        notify('success', `✨ Added ${playerName} to ${slotPosition}!`);
+        notify('success', `Added ${playerName} to ${slotPosition}!`);
     }, [currentSlot, lineup, usedCardMap, usedPlayerMap, safeGet, notify]);
 
     const handleRemovePlayer = useCallback((slotIndex) => {
@@ -854,21 +876,21 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
         // 1. Zone total cap (only if moving to a different zone)
         if (currentZone !== targetZone && zoneCount >= ZONE_MAX[targetZone]) {
-            return `⚠️ ${ZONE_LABELS[targetZone]} zone is full! Maximum ${ZONE_MAX[targetZone]} players allowed.`;
+            return `${ZONE_LABELS[targetZone]} zone is full! Maximum ${ZONE_MAX[targetZone]} players allowed.`;
         }
 
         // 2. Sub-position cap (check even within the same zone — e.g. moving a CB to LB)
         if (newPos !== currentPos) {
             // Individual position caps (LWF, RWF, LMF, RMF, LB, RB, AMF)
             if (SUB_POS_MAX[newPos] !== undefined && (counts[newPos] || 0) >= SUB_POS_MAX[newPos]) {
-                return `⚠️ Maximum ${SUB_POS_MAX[newPos]} ${newPos} allowed!`;
+                return `Maximum ${SUB_POS_MAX[newPos]} ${newPos} allowed!`;
             }
 
             // Forward central cap: CF + SS ≤ 3
             if (newPos === 'CF' || newPos === 'SS') {
                 const centralFwdCount = (counts['CF'] || 0) + (counts['SS'] || 0);
                 if (centralFwdCount >= 3) {
-                    return `⚠️ Maximum 3 central forwards (CF + SS) allowed!`;
+                    return `Maximum 3 central forwards (CF + SS) allowed!`;
                 }
             }
 
@@ -876,7 +898,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             if (newPos === 'CMF' || newPos === 'DMF') {
                 const centralMidCount = (counts['CMF'] || 0) + (counts['DMF'] || 0);
                 if (centralMidCount >= 5) {
-                    return `⚠️ Maximum 5 central midfielders (CMF + DMF) allowed!`;
+                    return `Maximum 5 central midfielders (CMF + DMF) allowed!`;
                 }
             }
         }
@@ -951,19 +973,19 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 <div style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     background: 'rgba(0,242,254,0.08)',
                     border: '1px solid rgba(0,242,254,0.25)',
                     borderRadius: '999px',
-                    padding: '6px 18px',
+                    padding: '6px 16px',
                     fontSize: '0.8em',
                     fontWeight: '800',
                     color: '#00f2fe',
                     textTransform: 'uppercase',
-                    letterSpacing: '1px',
+                    letterSpacing: '0.8px',
                     marginBottom: '12px'
                 }}>
-                    🏟️ TACTICAL MASTERPIECE STUDIO
+                    <FiLayers size={13} /> SQUAD MANAGEMENT
                 </div>
                 <div>
                     <h1 key="squad-list-title" className="sb-heading-cyan" style={{
@@ -972,11 +994,11 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         margin: '0 0 8px 0',
                         letterSpacing: '-0.5px'
                     }}>
-                        Your Tactical Roster
+                        My Squads
                     </h1>
                 </div>
                 <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
-                    Manage, edit, and optimize your saved custom matchday squads
+                    Manage and customize your saved squads
                 </p>
             </div>
 
@@ -1060,11 +1082,29 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                         fontSize: '0.82em',
                                         color: '#94a3b8'
                                     }}>
-                                        <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            👥 <strong style={{ color: '#fff' }}>{playerCount}/11</strong> Starters
+                                        <div style={{
+                                            background: 'rgba(255,255,255,0.04)',
+                                            padding: '6px 12px',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}>
+                                            <FiUsers size={14} color="#00f2fe" />
+                                            <span><strong style={{ color: '#fff' }}>{playerCount}/11</strong> Starters</span>
                                         </div>
-                                        <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            👔 <strong style={{ color: '#fff' }}>{managerName}</strong>
+                                        <div style={{
+                                            background: 'rgba(255,255,255,0.04)',
+                                            padding: '6px 12px',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}>
+                                            <FiUser size={14} color="#94a3b8" />
+                                            <strong style={{ color: '#fff' }}>{managerName}</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -1091,7 +1131,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                         onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
                                         onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                                     >
-                                        ✏️ Open & Edit
+                                        <FiEdit3 size={15} /> Open & Edit
                                     </button>
                                     {/* Share/Unshare Toggle */}
                                     {(() => {
@@ -1113,13 +1153,14 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                                     transition: 'all 0.2s',
                                                     display: 'flex',
                                                     alignItems: 'center',
+                                                    justifyContent: 'center',
                                                     gap: '4px'
                                                 }}
                                                 onMouseEnter={e => e.currentTarget.style.background = isShared ? 'rgba(167, 139, 250, 0.2)' : 'rgba(167, 139, 250, 0.15)'}
                                                 onMouseLeave={e => e.currentTarget.style.background = isShared ? 'rgba(167, 139, 250, 0.12)' : 'rgba(167, 139, 250, 0.08)'}
                                                 title={isShared ? 'Remove from Community' : 'Share to Community'}
                                             >
-                                                {isShared ? '🔒' : '🌍'}
+                                                {isShared ? <FiLock size={15} /> : <FiGlobe size={15} />}
                                             </button>
                                         );
                                     })()}
@@ -1134,13 +1175,16 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                             cursor: 'pointer',
                                             fontSize: '0.9em',
                                             fontWeight: 'bold',
-                                            transition: 'background 0.2s'
+                                            transition: 'background 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
                                         }}
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 77, 77, 0.2)'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 77, 77, 0.1)'}
                                         title="Delete Squad"
                                     >
-                                        🗑️
+                                        <FiTrash2 size={15} />
                                     </button>
                                 </div>
                             </div>
@@ -1172,7 +1216,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         fontSize: '2.5em',
                         margin: '0 auto 20px'
                     }}>
-                        🏟️
+                        <FiLayers size={36} color="#00f2fe" />
                     </div>
                     <h2 style={{ fontSize: '1.8em', fontWeight: '900', color: '#fff', margin: '0 0 10px 0' }}>
                         No Saved Squads Yet
@@ -1200,7 +1244,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                         onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                     >
-                        ✨ Create Your First Squad
+                        <FiPlus size={16} /> Create Your First Squad
                     </button>
                 </div>
             )}
@@ -1451,20 +1495,20 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             {sq.squadName}
                         </h2>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.82em', color: '#94a3b8' }}>
-                            <span style={{ background: 'rgba(167,139,250,0.12)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.3)', color: '#c4b5fd', fontWeight: '800' }}>
-                                📐 {sq.formation}
+                            <span style={{ background: 'rgba(167,139,250,0.12)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.3)', color: '#c4b5fd', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <FiLayout size={13} /> {sq.formation}
                             </span>
                             <span style={{ background: 'rgba(0,242,254,0.08)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(0,242,254,0.3)', color: '#00f2fe', fontWeight: '800' }}>
-                                💪 {sq.teamStrength} OVR
+                                {sq.teamStrength} OVR
                             </span>
                             {sq.manager && sq.manager.managerName && (
-                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', fontWeight: '700' }}>
-                                    👔 {sq.manager.managerName}
+                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <FiUser size={13} /> {sq.manager.managerName}
                                 </span>
                             )}
                             {sq.username && (
-                                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}>
-                                    👤 {sq.username}
+                                <span style={{ background: 'rgba(255,255,255,0.04)', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <FiUser size={13} /> {sq.username}
                                 </span>
                             )}
                         </div>
@@ -1506,7 +1550,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         justifyContent: 'center',
                         gap: '6px'
                     }}>
-                        <span style={{ color: '#a78bfa' }}>👁️</span> Community Squad Build · Read-Only View
+                        <FiEye size={14} style={{ color: '#a78bfa' }} /> Community Squad Build · Read-Only View
                     </div>
                 </div>
             );
@@ -1519,19 +1563,19 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     <div style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         background: 'rgba(167,139,250,0.08)',
                         border: '1px solid rgba(167,139,250,0.25)',
                         borderRadius: '999px',
-                        padding: '6px 18px',
+                        padding: '6px 16px',
                         fontSize: '0.8em',
                         fontWeight: '800',
                         color: '#a78bfa',
                         textTransform: 'uppercase',
-                        letterSpacing: '1px',
+                        letterSpacing: '0.8px',
                         marginBottom: '12px'
                     }}>
-                        🌍 COMMUNITY HUB
+                        <FiGlobe size={13} /> COMMUNITY SQUADS
                     </div>
                     <div>
                         <h1 key="community-title" className="sb-heading-purple" style={{
@@ -1540,17 +1584,19 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             margin: '0 0 8px 0',
                             letterSpacing: '-0.5px'
                         }}>
-                            Community Squad Builds
+                            Community Squads
                         </h1>
                     </div>
                     <p style={{ margin: 0, color: '#94a3b8', fontSize: '1em' }}>
-                        Browse tactical squads shared by the community
+                        Browse squads shared by the community
                     </p>
                 </div>
 
                 {communityLoading ? (
                     <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-                        <div style={{ fontSize: '2em', marginBottom: '12px', animation: 'sbGlow 1.5s ease-in-out infinite' }}>⏳</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                            <FiRefreshCw size={24} style={{ animation: 'spin 1.5s linear infinite' }} />
+                        </div>
                         Loading community squads...
                     </div>
                 ) : communitySquads.length > 0 ? (
@@ -1635,18 +1681,22 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                             fontSize: '0.82em',
                                             color: '#94a3b8'
                                         }}>
-                                            <div style={{ background: 'rgba(167,139,250,0.08)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.15)' }}>
-                                                👤 <strong style={{ color: '#c4b5fd' }}>{username}</strong>
+                                            <div style={{ background: 'rgba(167,139,250,0.08)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.15)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                <FiUser size={13} color="#a78bfa" />
+                                                <strong style={{ color: '#c4b5fd' }}>{username}</strong>
                                             </div>
-                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                👥 <strong style={{ color: '#fff' }}>{playerCount}/11</strong> Starters
+                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                <FiUsers size={13} color="#00f2fe" />
+                                                <span><strong style={{ color: '#fff' }}>{playerCount}/11</strong> Starters</span>
                                             </div>
-                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                👔 <strong style={{ color: '#fff' }}>{managerName}</strong>
+                                            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                <FiUser size={13} color="#94a3b8" />
+                                                <strong style={{ color: '#fff' }}>{managerName}</strong>
                                             </div>
                                             {sharedAt && (
-                                                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                    📅 {sharedAt}
+                                                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    <FiCalendar size={13} color="#94a3b8" />
+                                                    <span>{sharedAt}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -1674,7 +1724,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                             onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
                                             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                                         >
-                                            👁️ View Squad
+                                            <FiEye size={15} /> View Squad
                                         </button>
                                     </div>
                                 </div>
@@ -1705,13 +1755,13 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             fontSize: '2.5em',
                             margin: '0 auto 20px'
                         }}>
-                            🌍
+                            <FiGlobe size={36} color="#a78bfa" />
                         </div>
                         <h2 style={{ fontSize: '1.8em', fontWeight: '900', color: '#fff', margin: '0 0 10px 0' }}>
                             No Community Squads Yet
                         </h2>
                         <p style={{ color: '#94a3b8', fontSize: '0.95em', lineHeight: 1.6, marginBottom: '32px' }}>
-                            Be the first to share your squad build with the community! Open any of your saved squads and click the 🌍 Share button.
+                            Be the first to share your squad with the community! Open any of your saved squads and click the Share button.
                         </p>
                     </div>
                 )}
@@ -1876,7 +1926,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     }}
                     title="Remove Player"
                 >
-                    ✕
+                    <FiX size={9} />
                 </button>
 
                 {/* Top: Position & Penalty */}
@@ -1957,8 +2007,8 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     fontSize: '0.82em',
                     color: '#fff'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>🔄</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FiRefreshCw size={13} color="#00FF87" />
                         <span>Editing: <strong style={{ color: '#00FF87' }}>"{squadName}"</strong> — save will replace in place</span>
                     </div>
                     <button
@@ -1968,12 +2018,15 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             border: '1px solid rgba(255,255,255,0.12)',
                             color: '#94a3b8',
                             borderRadius: '6px',
-                            padding: '3px 10px',
+                            padding: '4px 10px',
                             fontSize: '0.85em',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px'
                         }}
                     >
-                        ➕ New
+                        <FiPlus size={13} /> New
                     </button>
                 </div>
             )}
@@ -2079,7 +2132,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         textAlign: 'center'
                     }}>
                         <div style={{ fontSize: '0.6em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>STR</div>
-                        <div style={{ fontSize: '1.05em', fontWeight: '900', color: '#00f2fe' }}>💪 {totalStrength}</div>
+                        <div style={{ fontSize: '1.05em', fontWeight: '900', color: '#00f2fe' }}>{totalStrength}</div>
                     </div>
 
                     <div style={{
@@ -2110,10 +2163,14 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             cursor: playersInSquad === 0 || loading ? 'not-allowed' : 'pointer',
                             boxShadow: playersInSquad === 0 || loading ? 'none' : '0 0 16px rgba(0,255,135,0.35)',
                             transition: 'all 0.25s ease',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
                         }}
                     >
-                        {loading ? '⏳...' : editingSquadId ? '💾 Update' : '💾 Save'}
+                        <FiSave size={14} />
+                        {loading ? 'Saving...' : editingSquadId ? 'Update' : 'Save'}
                     </button>
 
                     {/* Share to Community Button — only show when editing an existing saved squad */}
@@ -2143,10 +2200,10 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     whiteSpace: 'nowrap',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '5px'
+                                    gap: '6px'
                                 }}
                             >
-                                {isShared ? '🔒 Unshare' : '🌍 Share'}
+                                {isShared ? <><FiLock size={13} /> Unshare</> : <><FiShare2 size={13} /> Share</>}
                             </button>
                         );
                     })()}
@@ -2302,7 +2359,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,77,0.2)'; e.currentTarget.style.color = '#ff4d4d'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
                     >
-                        ✕
+                        <FiX size={16} />
                     </button>
                 </div>
 
@@ -2311,7 +2368,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     <input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="🔍 Search players by name..."
+                        placeholder="Search players by name..."
                         style={{
                             width: '100%',
                             background: 'rgba(15, 23, 42, 0.8)',
@@ -2362,7 +2419,9 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 <div style={{ padding: '12px 22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {filteredCards.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '36px 20px', color: '#475569' }}>
-                            <div style={{ fontSize: '2em', marginBottom: '8px', opacity: 0.5 }}>🔍</div>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <FiSearch size={28} style={{ marginBottom: '8px', opacity: 0.4 }} />
+                            </div>
                             <div style={{ fontWeight: '700' }}>No available players found</div>
                             <div style={{ fontSize: '0.82em', marginTop: '4px' }}>All matching cards are already in your XI</div>
                         </div>
@@ -2447,7 +2506,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                                 {effectiveRating}
                                             </div>
                                             <div style={{ fontSize: '0.62em', fontWeight: '800', color: penalty > 0 ? '#ff6b6b' : '#00FF87' }}>
-                                                {penalty > 0 ? `-${penalty}` : '✨ SYNC'}
+                                                {penalty > 0 ? `-${penalty}` : 'SYNC'}
                                             </div>
                                         </div>
 
@@ -2534,7 +2593,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     onMouseOver={e => { e.currentTarget.style.background = 'rgba(0,242,254,0.1)'; e.currentTarget.style.borderColor = 'rgba(0,242,254,0.4)'; e.currentTarget.style.color = '#00f2fe'; }}
                     onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
                 >
-                    {view === 'builder' ? '← Tactical Roster' : view === 'community' ? '← My Squads' : '← Home'}
+                    {view === 'builder' ? '← My Squads' : view === 'community' ? '← My Squads' : '← Home'}
                 </button>
 
                 {/* Tab Pill Buttons */}
@@ -2556,7 +2615,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
+                            gap: '6px',
                             background: view === 'list' ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255,255,255,0.03)',
                             color: view === 'list' ? '#00f2fe' : '#64748b',
                             border: `1px solid ${view === 'list' ? 'rgba(0, 242, 254, 0.35)' : 'rgba(255,255,255,0.08)'}`,
@@ -2568,7 +2627,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             transition: 'all 0.2s'
                         }}
                     >
-                        📋 Squads ({mySquads.length})
+                        <FiLayers size={14} /> Squads ({mySquads.length})
                     </button>
                     <button
                         onClick={() => {
@@ -2579,7 +2638,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
+                            gap: '6px',
                             background: view === 'community' ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255,255,255,0.03)',
                             color: view === 'community' ? '#a78bfa' : '#64748b',
                             border: `1px solid ${view === 'community' ? 'rgba(167, 139, 250, 0.4)' : 'rgba(255,255,255,0.08)'}`,
@@ -2591,14 +2650,14 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             transition: 'all 0.2s'
                         }}
                     >
-                        🌍 Community
+                        <FiGlobe size={14} /> Community
                     </button>
                     <button
                         onClick={startNewSquad}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
+                            gap: '6px',
                             background: view === 'builder' ? 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)' : 'rgba(255,255,255,0.03)',
                             color: view === 'builder' ? '#000' : '#94a3b8',
                             border: view === 'builder' ? 'none' : '1px solid rgba(255,255,255,0.08)',
@@ -2611,7 +2670,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             transition: 'all 0.2s'
                         }}
                     >
-                        ➕ New XI
+                        <FiPlus size={15} /> New XI
                     </button>
                 </div>
             </div>
@@ -2659,14 +2718,16 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     maxWidth: '85vw',
                     animation: 'sbToastIn 0.35s ease-out'
                 }}>
-                    <span style={{ fontSize: '1.15em' }}>
-                        {notification.type === 'success'
-                            ? '✅'
-                            : notification.type === 'error'
-                                ? '❌'
-                                : notification.type === 'info'
-                                    ? 'ℹ️'
-                                    : '⚠️'}
+                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                        {notification.type === 'success' ? (
+                            <FiCheckCircle size={17} color="#00FF87" />
+                        ) : notification.type === 'error' ? (
+                            <FiAlertCircle size={17} color="#ef4444" />
+                        ) : notification.type === 'info' ? (
+                            <FiInfo size={17} color="#00f2fe" />
+                        ) : (
+                            <FiAlertTriangle size={17} color="#ffd166" />
+                        )}
                     </span>
                     <span>{notification.message}</span>
                     <button
@@ -2676,13 +2737,13 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             border: 'none',
                             color: 'rgba(255,255,255,0.6)',
                             cursor: 'pointer',
-                            fontSize: '0.9em',
-                            fontWeight: '900',
                             padding: '0 0 0 8px',
-                            marginLeft: '4px'
+                            marginLeft: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
                         }}
                     >
-                        ✕
+                        <FiX size={15} />
                     </button>
                 </div>
             )}

@@ -491,6 +491,16 @@ function App() {
         else if (tab === 'managers') navigate('/managers');
     };
 
+    const handleBrowseCards = () => {
+        handleTabChange('cards');
+        setTimeout(() => {
+            const el = document.getElementById('database-section');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 50);
+    };
+
     const handleStatSelect = (mode) => {
         setStatMode(mode);
         navigate(`/stats/${mode}`);
@@ -504,6 +514,7 @@ function App() {
         setStatMode(null);
         setUserTab('cards');
         navigate('/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
 
@@ -664,10 +675,17 @@ function App() {
     /* HERO SECTION */
     .hero-section {
         position: relative;
-        padding: 80px 5vw 60px;
+        min-height: calc(100vh - 71px);
+        min-height: calc(100dvh - 71px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 40px 5vw 50px;
         margin: -40px -5vw 0;
         overflow: hidden;
         text-align: center;
+        box-sizing: border-box;
     }
     .hero-section::before {
         content: '';
@@ -694,7 +712,7 @@ function App() {
         font-weight: 700;
         color: #00f2fe;
         letter-spacing: 0.5px;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
         text-transform: uppercase;
     }
 
@@ -702,7 +720,7 @@ function App() {
         font-size: clamp(2.4em, 5vw, 4em);
         font-weight: 900;
         line-height: 1.1;
-        margin: 0 auto 20px;
+        margin: 0 auto 16px;
         max-width: 820px;
         background: linear-gradient(135deg, #ffffff 0%, #c8e6ff 50%, #00f2fe 100%);
         -webkit-background-clip: text;
@@ -714,7 +732,7 @@ function App() {
     .hero-subtitle {
         font-size: 1.15em;
         color: #94a3b8;
-        margin: 0 auto 36px;
+        margin: 0 auto 30px;
         max-width: 560px;
         line-height: 1.6;
         font-weight: 400;
@@ -725,7 +743,7 @@ function App() {
         gap: 16px;
         justify-content: center;
         flex-wrap: wrap;
-        margin-bottom: 56px;
+        margin-bottom: 40px;
     }
 
     /* STAT TICKER */
@@ -739,6 +757,7 @@ function App() {
         border-radius: 16px;
         overflow: hidden;
         max-width: 820px;
+        width: 100%;
         margin: 0 auto;
     }
     .stat-ticker-item {
@@ -981,6 +1000,11 @@ function App() {
         0%, 100% { opacity: 0.5; }
         50%       { opacity: 1; }
     }
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+        40% { transform: translateX(-50%) translateY(5px); }
+        60% { transform: translateX(-50%) translateY(3px); }
+    }
     .animate-fadeinup { animation: fadeInUp 0.6s ease both; }
     .animate-fadein   { animation: fadeIn 0.4s ease both; }
   `;
@@ -1091,7 +1115,7 @@ function App() {
                                     </p>
 
                                     <div className="hero-ctas">
-                                        <button className="glowing-btn" style={{ fontSize: '1em', padding: '16px 36px', borderRadius: '14px' }} onClick={() => handleTabChange('cards')}>
+                                        <button className="glowing-btn" style={{ fontSize: '1em', padding: '16px 36px', borderRadius: '14px' }} onClick={handleBrowseCards}>
                                              Browse All Cards
                                         </button>
                                         <button className="glowing-btn-ghost" onClick={handleOpenSquadBuilder}>
@@ -1113,15 +1137,39 @@ function App() {
                                             <div className="stat-ticker-value" style={{ color: '#00ff87' }}>{allCards.filter(c => c.cardtype === 'POTW').length}</div>
                                             <div className="stat-ticker-label"> POTW</div>
                                         </div>
-                                        {/* <div className="stat-ticker-item">
-                                            <div className="stat-ticker-value" style={{ color: '#a78bfa' }}>{allCards.length > 0 ? Math.max(...allCards.map(c => parseInt(c.baseoverallrating) || 0)) : '—'}</div>
-                                            <div className="stat-ticker-label"> Top OVR</div>
-                                        </div> */}
+                                    </div>
+
+                                    {/* Subtle Scroll Down Indicator */}
+                                    <div 
+                                        onClick={handleBrowseCards}
+                                        style={{ 
+                                            position: 'absolute', 
+                                            bottom: '18px', 
+                                            left: '50%', 
+                                            transform: 'translateX(-50%)', 
+                                            cursor: 'pointer', 
+                                            color: '#64748b', 
+                                            fontSize: '0.75em', 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            alignItems: 'center', 
+                                            gap: '4px',
+                                            transition: 'all 0.25s ease',
+                                            zIndex: 2,
+                                            animation: 'bounce 2.5s infinite'
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = '#00f2fe'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
+                                    >
+                                        <span style={{ letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', fontSize: '0.75em' }}>Explore Cards</span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
                                     </div>
                                 </div>
 
                                 {/* ===================== PILL NAVIGATION ===================== */}
-                                <div style={{ display: 'flex', gap: '12px', margin: '48px 0 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', flexWrap: 'wrap' }}>
+                                <div id="database-section" style={{ display: 'flex', gap: '12px', margin: '48px 0 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', flexWrap: 'wrap' }}>
                                     <button className={`nav-pill ${userTab === 'cards' ? 'active' : 'inactive'}`} onClick={() => handleTabChange('cards')}>Player Database</button>
                                     <button className={`nav-pill ${userTab === 'managers' ? 'active' : 'inactive'}`} onClick={() => handleTabChange('managers')}>Manager Registry</button>
                                 </div>
