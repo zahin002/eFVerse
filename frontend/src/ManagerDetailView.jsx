@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getManagerPhotoUrl } from './badgeAssetEngine';
+import { CiFlag1 } from "react-icons/ci";
 
 axios.defaults.withCredentials = true;
 
@@ -146,7 +147,7 @@ export default function ManagerDetailView({ data, onBack }) {
                                 borderRadius: '999px',
                                 marginBottom: '8px'
                             }}>
-                                🎯 Tactical Profile
+                                 Tactical Profile
                             </div>
 
                             <h1 style={{
@@ -170,7 +171,7 @@ export default function ManagerDetailView({ data, onBack }) {
                                     alignItems: 'center',
                                     gap: '4px'
                                 }}>
-                                    🌍 {data.countryname || 'International'}
+                                     {data.countryname || 'International'}
                                 </span>
                                 <span style={{ color: '#475569' }}>•</span>
                                 <span style={{
@@ -202,7 +203,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             transition: 'all 0.2s ease'
                         }}>
                             <div style={{ color: '#64748b', fontSize: '0.74em', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
-                                🎯 Tactical Playstyle
+                                 Tactical Playstyle
                             </div>
                             <div style={{ fontSize: '1.15em', fontWeight: '800', color: '#00f2fe' }}>
                                 {data.playstyle}
@@ -216,8 +217,8 @@ export default function ManagerDetailView({ data, onBack }) {
                             padding: '16px 18px',
                             transition: 'all 0.2s ease'
                         }}>
-                            <div style={{ color: '#64748b', fontSize: '0.74em', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
-                                🌍 Primary Nationality
+                            <div style={{ color: '#64748b', fontSize: '.78em', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
+                                 Primary Nationality
                             </div>
                             <div style={{ fontSize: '1.15em', fontWeight: '800', color: '#fff' }}>
                                 {data.countryname || 'International'}
@@ -232,7 +233,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             transition: 'all 0.2s ease'
                         }}>
                             <div style={{ color: '#64748b', fontSize: '0.74em', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
-                                🛡️ Current Club
+                                 Current Club
                             </div>
                             <div style={{ fontSize: '1.15em', fontWeight: '800', color: '#fff' }}>
                                 {data.clubname || 'Unattached'}
@@ -247,7 +248,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             transition: 'all 0.2s ease'
                         }}>
                             <div style={{ color: '#64748b', fontSize: '0.74em', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
-                                🏆 League Association
+                                 League Association
                             </div>
                             <div style={{ fontSize: '1.15em', fontWeight: '800', color: '#fff' }}>
                                 {data.leaguename || 'None'}
@@ -264,7 +265,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             marginBottom: '14px'
                         }}>
                             <div style={{ color: '#94a3b8', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-                                📊 Tactical Playstyle Proficiencies
+                                 Tactical Playstyle Proficiencies
                             </div>
                             <div style={{ fontSize: '0.75em', color: '#64748b' }}>
                                 High proficiency boosts team overall chemistry
@@ -347,7 +348,7 @@ export default function ManagerDetailView({ data, onBack }) {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                🔗 Link-Up Philosophy: <span style={{ color: '#fff' }}>{data.linkup_type}</span>
+                                 Link-Up Philosophy: <span style={{ color: '#fff' }}>{data.linkup_type}</span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                                 <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -375,7 +376,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             marginBottom: '14px'
                         }}>
                             <div style={{ color: '#94a3b8', fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-                                ⚡ Active Stat Boosters
+                                 Active Stat Boosters
                             </div>
                             <div style={{ fontSize: '0.75em', color: '#64748b' }}>
                                 Applied to starting squad members
@@ -437,7 +438,7 @@ export default function ManagerDetailView({ data, onBack }) {
                                                     borderRadius: '6px',
                                                     marginBottom: '8px'
                                                 }}>
-                                                    ⚡ Booster {index + 1}
+                                                     Booster {index + 1}
                                                 </div>
                                                 <div style={{
                                                     fontSize: '1.25em',
@@ -501,7 +502,7 @@ export default function ManagerDetailView({ data, onBack }) {
                                 justifyContent: 'center',
                                 gap: '6px'
                             }}>
-                                <span>💡</span> The above player stats will automatically receive boosts when this manager leads your starting lineup.
+                                <span></span> The above player stats will automatically receive boosts when this manager leads your starting lineup.
                             </p>
                         )}
                     </div>

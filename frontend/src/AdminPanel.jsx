@@ -1165,10 +1165,10 @@ const handleCardSelectForStats = async (e) => {
                                     <label style={{ fontSize: '0.7em', color: '#aaa' }}>Current OVR</label>
                                     <input type="number" value={editForm.currentoverallrating} onChange={e => setEditForm({...editForm, currentoverallrating: parseInt(e.target.value)})} style={inputStyle} />
                                 </div>
-                                <div>
+                                {/* <div>
                                     <label style={{ fontSize: '0.7em', color: '#aaa' }}>Max OVR</label>
                                     <input type="number" value={editForm.maxoverallrating} onChange={e => setEditForm({...editForm, maxoverallrating: parseInt(e.target.value)})} style={inputStyle} />
-                                </div>
+                                </div> */}
                                 <div>
                                     <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>Level Cap</label>
                                     <input type="number" value={editForm.maxlevel} onChange={e => setEditForm({...editForm, maxlevel: parseInt(e.target.value)})} style={{ ...inputStyle, border: '1px solid #00f2fe' }} placeholder="32" />
