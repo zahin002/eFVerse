@@ -58,8 +58,20 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const [isSaved, setIsSaved] = useState(false);
     const [copied, setCopied] = useState(false);
     const [capturing, setCapturing] = useState(false);
+    const [showManagerDropdown, setShowManagerDropdown] = useState(false);
 
     const fullPageRef = useRef(null);
+    const managerDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (managerDropdownRef.current && !managerDropdownRef.current.contains(event.target)) {
+                setShowManagerDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleShareLink = () => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -875,33 +887,151 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
 
 
-                                {/* MANAGER SELECTOR — functional dropdown */}
-                                <div style={{ marginTop: '14px', background: '#111722', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '12px', padding: '10px 14px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)' }}>
-                                    <div style={{ fontSize: '0.65em', color: '#a78bfa', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '6px' }}>👔 Manager Boost</div>
-                                    <select
-                                        value={selectedManagerId}
-                                        onChange={(e) => setSelectedManagerId(e.target.value)}
-                                        style={{ width: '100%', background: '#0d1117', color: selectedManagerId ? '#a78bfa' : '#64748b', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8em', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="">-- No Manager --</option>
-                                        {managersList.map(mgr => (
-                                            <option key={mgr.managerid} value={mgr.managerid.toString()}>
-                                                {mgr.managername} ({mgr.playstyle})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {selectedManager && (
-                                        <div style={{ marginTop: '6px', fontSize: '0.72em', color: '#94a3b8' }}>
-                                            Boosts: {selectedManager.effects?.length > 0
-                                                ? selectedManager.effects.map(e => {
-                                                    const name = (e.statName || e.statname || 'Unknown');
-                                                    const label = name.charAt(0).toUpperCase() + name.slice(1);
-                                                    return `${label} +${e.boost}`;
-                                                }).join(', ')
-                                                : 'No stat effects assigned'}
+                                {/* MANAGER SELECTOR — custom manager card UI */}
+                                {(() => {
+                                    const selectedManager = managersList.find(m => m.managerid?.toString() === selectedManagerId?.toString());
+                                    return (
+                                        <div 
+                                            ref={managerDropdownRef}
+                                            style={{ marginTop: '14px', background: '#111722', border: '1px solid rgba(167,139,250,0.25)', borderRadius: '14px', padding: '12px 14px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', position: 'relative' }}
+                                        >
+                                            <div style={{ fontSize: '0.65em', color: '#a78bfa', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>Manager Boost</div>
+                                            
+                                            {/* MANAGER CARD ROW (CLICKABLE TRIGGER) */}
+                                            <div 
+                                                onClick={() => setShowManagerDropdown(!showManagerDropdown)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#0d1117', border: `1px solid ${showManagerDropdown ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '10px', padding: '8px 10px', position: 'relative', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: showManagerDropdown ? '0 0 12px rgba(167,139,250,0.3)' : 'none' }}
+                                            >
+                                                {/* MANAGER AVATAR FRAME */}
+                                                <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', border: '1px solid rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                                                    {selectedManager?.imageurl ? (
+                                                        <img src={selectedManager.imageurl} alt={selectedManager.managername} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                            <circle cx="12" cy="7" r="4"></circle>
+                                                        </svg>
+                                                    )}
+                                                </div>
+
+                                                {/* MANAGER NAME & PLAYSTYLE INFO */}
+                                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                                    <div style={{ fontSize: '0.9em', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {selectedManager ? selectedManager.managername : 'Select Manager'}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75em', color: selectedManager ? '#a78bfa' : '#64748b', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {selectedManager ? selectedManager.playstyle : 'Tap to select manager'}
+                                                    </div>
+                                                </div>
+
+                                                {/* DROPDOWN CHEVRON */}
+                                                <div style={{ color: showManagerDropdown ? '#a78bfa' : '#64748b', fontSize: '0.75em', transition: 'transform 0.2s ease', transform: showManagerDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                                    ▼
+                                                </div>
+                                            </div>
+
+                                            {/* CUSTOM DARK DROPDOWN MENU — ALWAYS OPENS BELOW */}
+                                            {showManagerDropdown && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    right: 0,
+                                                    marginTop: '6px',
+                                                    background: '#0d1117',
+                                                    border: '1px solid rgba(167, 139, 250, 0.4)',
+                                                    borderRadius: '12px',
+                                                    padding: '6px',
+                                                    maxHeight: '230px',
+                                                    overflowY: 'auto',
+                                                    zIndex: 9999,
+                                                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
+                                                    fontFamily: "'Outfit', sans-serif"
+                                                }}>
+                                                    {/* NO MANAGER OPTION */}
+                                                    <div
+                                                        onClick={() => {
+                                                            setSelectedManagerId('');
+                                                            setShowManagerDropdown(false);
+                                                        }}
+                                                        style={{
+                                                            padding: '8px 10px',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.82em',
+                                                            fontWeight: '700',
+                                                            color: !selectedManagerId ? '#a78bfa' : '#94a3b8',
+                                                            background: !selectedManagerId ? 'rgba(167, 139, 250, 0.15)' : 'transparent',
+                                                            marginBottom: '4px',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(167, 139, 250, 0.12)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = !selectedManagerId ? 'rgba(167, 139, 250, 0.15)' : 'transparent'}
+                                                    >
+                                                        -- No Manager --
+                                                    </div>
+
+                                                    {/* MANAGER OPTIONS LIST */}
+                                                    {managersList.map(mgr => {
+                                                        const isSelected = selectedManagerId?.toString() === mgr.managerid?.toString();
+                                                        return (
+                                                            <div
+                                                                key={mgr.managerid}
+                                                                onClick={() => {
+                                                                    setSelectedManagerId(mgr.managerid.toString());
+                                                                    setShowManagerDropdown(false);
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '10px',
+                                                                    padding: '8px 10px',
+                                                                    borderRadius: '8px',
+                                                                    cursor: 'pointer',
+                                                                    background: isSelected ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                                                                    border: isSelected ? '1px solid rgba(167, 139, 250, 0.4)' : '1px solid transparent',
+                                                                    marginBottom: '4px',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                                onMouseEnter={e => {
+                                                                    if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                                                }}
+                                                                onMouseLeave={e => {
+                                                                    if (!isSelected) e.currentTarget.style.background = 'transparent';
+                                                                }}
+                                                            >
+                                                                <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontSize: '0.8em', flexShrink: 0 }}>
+                                                                    {mgr.imageurl ? <img src={mgr.imageurl} alt="" style={{ width: '100%', height: '100%', borderRadius: '6px', objectFit: 'cover' }} /> : '👔'}
+                                                                </div>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                                                    <span style={{ fontSize: '0.85em', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                        {mgr.managername}
+                                                                    </span>
+                                                                    <span style={{ fontSize: '0.7em', color: '#a78bfa', fontWeight: '600' }}>
+                                                                        {mgr.playstyle}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* BOOST EFFECTS DISPLAY */}
+                                            {selectedManager && (
+                                                <div style={{ marginTop: '8px', fontSize: '0.72em', color: '#a78bfa', fontWeight: '600' }}>
+                                                    Boosts: {selectedManager.effects?.length > 0
+                                                        ? selectedManager.effects.map(e => {
+                                                            const name = (e.statName || e.statname || 'Unknown');
+                                                            const label = name.charAt(0).toUpperCase() + name.slice(1);
+                                                            return `${label} +${e.boost}`;
+                                                        }).join(', ')
+                                                        : 'No stat effects assigned'}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    );
+                                })()}
                             </div>
                         </div>
 
@@ -940,7 +1070,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             justifyContent: 'center',
                                             gap: '6px'
                                         }}>
-                                            ⚡ PLAYER PROGRESSION
+                                            PLAYER PROGRESSION
                                         </div>
 
                                         <ProgressionSlidersPanel

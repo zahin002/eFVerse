@@ -153,9 +153,47 @@ export const POSITION_WEIGHTS = {
     }
 };
 
+export const DEFAULT_BASE_STATS = {
+    offensiveawareness: 60,
+    ballcontrol: 60,
+    dribbling: 60,
+    tightpossession: 60,
+    lowpass: 60,
+    loftedpass: 55,
+    finishing: 60,
+    heading: 65,
+    placekicking: 68,
+    curl: 72,
+    defensiveawareness: 40,
+    defensiveengagement: 50,
+    tackling: 40,
+    aggression: 40,
+    gkawareness: 40,
+    gkcatching: 40,
+    gkparrying: 40,
+    gkreflexes: 40,
+    gkreach: 40,
+    speed: 60,
+    acceleration: 60,
+    kickingpower: 60,
+    jump: 60,
+    physicalcontact: 60,
+    balance: 60,
+    stamina: 60
+};
+
 // 5. Calculate Stats given Base Stats + Group Level Allocations
 export const calculateAllocatedStats = (baseStats = {}, allocations = {}) => {
-    const calculated = { ...(baseStats || {}) };
+    const calculated = { ...DEFAULT_BASE_STATS, ...(baseStats || {}) };
+
+    Object.keys(DEFAULT_BASE_STATS).forEach(key => {
+        const raw = calculated[key];
+        if (raw === undefined || raw === null || isNaN(raw)) {
+            calculated[key] = DEFAULT_BASE_STATS[key];
+        } else {
+            calculated[key] = typeof raw === 'number' ? raw : (parseInt(raw, 10) || DEFAULT_BASE_STATS[key]);
+        }
+    });
 
     Object.keys(allocations || {}).forEach(groupKey => {
         const levels = allocations[groupKey] || 0;
@@ -163,8 +201,7 @@ export const calculateAllocatedStats = (baseStats = {}, allocations = {}) => {
         if (!groupObj || levels <= 0) return;
 
         groupObj.effects.forEach(({ stat, weight = 1.0 }) => {
-            const rawVal = calculated[stat];
-            const currentVal = typeof rawVal === 'number' ? rawVal : (parseInt(rawVal, 10) || 60);
+            const currentVal = calculated[stat] !== undefined ? calculated[stat] : (DEFAULT_BASE_STATS[stat] || 60);
             calculated[stat] = currentVal + Math.round(levels * weight);
         });
     });
