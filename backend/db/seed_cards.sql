@@ -364,4 +364,58 @@ BEGIN
     INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
     VALUES (v_card_id, 40, 40, 62, 64, 77, 80, 59, 56, 64, 57, 56, 59, 62, 60, 66, 86, 80, 83, 85, 86, 60, 77, 80, 55, 64, 64, 64);
 
+    -- ------------------------------------------------------------
+    -- 20. Marcel Desailly (Bigtime CB)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Marcel Desailly', 32, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Premier League' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Chelsea' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'France' LIMIT 1),
+        185, 85, 'Right', 'The Destroyer', 'Rarely', 'High', 'Unwavering', 7, 9, 7, 7, 9, 7, 13, 7, 2, 2, 2)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, primarypositions, secondarypositions, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Bigtime', 'CB', 89, 89, 99, 52, 0, 5, ARRAY['Fortress', 'Heading', 'Man Marking', 'Interception', 'Captaincy', 'Fighting Spirit', 'Blocker', 'Aerial Superiority', 'Sliding Tackle', 'Aerial Fort'], ARRAY['Speeding Bullet', 'Early Crosser'], 'S+', 'B', 'Duelling +3', ARRAY['CB'], ARRAY['DMF', 'LB', 'RB', 'CMF'], 27, 52)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 52, 53, 67, 68, 68, 74, 82, 81, 81, 66, 80, 77, 82, 85, 82, 40, 40, 40, 40, 40, 69, 68, 69, 71, 49, 52, 80);
+
+    -- ------------------------------------------------------------
+    -- 21. Franz Beckenbauer (Bigtime CB)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Franz Beckenbauer', 30, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Bundesliga' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Bayern Munich' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'Germany' LIMIT 1),
+        181, 77, 'Right', 'Build Up', 'Occasionally', 'High', 'Unwavering', 5, 9, 7, 5, 10, 5, 6, 8, 5, 6, 7)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, primarypositions, secondarypositions, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Bigtime', 'CB', 89, 89, 99, 64, 0, 5, ARRAY['Through Passing', 'One-touch Pass', 'Outside Curler', 'Low Lofted Pass', 'Man Marking', 'Interception', 'Captaincy', 'Blocker', 'Phenomenal Pass', 'Long-reach Tackle'], ARRAY['Mazing Run', 'Incisive Run'], 'S+', 'B', 'Stealing +3', ARRAY['CB'], ARRAY['DMF', 'CMF', 'AMF', 'LB', 'RB'], 33, 64)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 57, 72, 74, 73, 82, 77, 78, 78, 78, 73, 81, 80, 79, 82, 77, 40, 40, 40, 40, 40, 79, 82, 78, 70, 66, 70, 82);
+
+    -- ------------------------------------------------------------
+    -- 22. Lilian Thuram (Bigtime RB)
+    -- ------------------------------------------------------------
+    INSERT INTO public.player (playername, age, leagueid, clubid, nationalityid, height, weight, preferredfoot, playstyle, weakfootusage, weakfootaccuracy, formconsistency, armlength, shoulderwidth, necklength, chestmeasurement, necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize)
+    VALUES ('Lilian Thuram', 26, 
+        (SELECT leagueid FROM public.league WHERE leaguename = 'Serie A' LIMIT 1),
+        (SELECT clubid FROM public.club WHERE clubname = 'Juventus' LIMIT 1),
+        (SELECT nationalityid FROM public.nationality WHERE countryname = 'France' LIMIT 1),
+        182, 70, 'Right', 'Defensive Full-Back', 'Occasionally', 'High', 'Unwavering', 6, 6, 7, 6, 8, 6, 12, 7, 6, 6, 7)
+    RETURNING playerid INTO v_player_id;
+
+    INSERT INTO public.card (playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, totalprogressionpoints, gpcost, starrating, skills, comskills, tierbadge, livecondition, booster1, primarypositions, secondarypositions, maxlevel, progressionpoints)
+    VALUES (v_player_id, 'Bigtime', 'RB', 90, 90, 99, 64, 0, 5, ARRAY['Pinpoint Crossing', 'Fortress', 'Heading', 'Man Marking', 'Interception', 'Fighting Spirit', 'Blocker', 'Aerial Superiority', 'Sliding Tackle', 'Long-reach Tackle'], ARRAY['Trickster', 'Speeding Bullet', 'Early Crosser'], 'S+', 'B', 'Stealing +3', ARRAY['RB'], ARRAY['CB', 'LB', 'DMF', 'RMF'], 33, 64)
+    RETURNING cardid INTO v_card_id;
+
+    INSERT INTO public.playerstats (cardid, offensiveawareness, finishing, ballcontrol, dribbling, passing, kickingpower, speed, acceleration, stamina, balance, physicalcontact, jump, defensiveawareness, tackling, aggression, gkawareness, gkcatching, gkparrying, gkreflexes, gkreach, tightpossession, lowpass, loftedpass, heading, placekicking, curl, defensiveengagement)
+    VALUES (v_card_id, 68, 58, 77, 76, 73, 76, 83, 83, 84, 72, 79, 83, 80, 83, 80, 40, 40, 40, 40, 40, 66, 73, 76, 77, 60, 66, 81);
+
 END $$;
