@@ -311,11 +311,10 @@ export const POSITION_TARGET_PROFILES = {
     GK:  { gk1: 8, gk2: 8, gk3: 8 }
 };
 
-// 7. MAX OPTIMAL ALLOCATION SOLVER FOR POSITION
+// 7. MAX OPTIMAL GREEDY OVR SOLVER (Konami Auto Development Logic)
 export const autoAllocatePoints = (baseStats = {}, position = 'AMF', totalPoints = 62) => {
     const posStr = Array.isArray(position) ? position[0] : (typeof position === 'string' ? position : 'AMF');
     const posUpper = (posStr || 'AMF').toUpperCase().trim();
-    const targetProfile = POSITION_TARGET_PROFILES[posUpper] || POSITION_TARGET_PROFILES['AMF'];
 
     const allocations = {
         shooting: 0,
@@ -332,37 +331,56 @@ export const autoAllocatePoints = (baseStats = {}, position = 'AMF', totalPoints
 
     let pointsRemaining = totalPoints;
 
-    // Step 1: Assign levels according to position profile template
-    Object.keys(targetProfile).forEach(groupKey => {
-        const targetLvl = targetProfile[groupKey] || 0;
-        for (let lvl = 1; lvl <= targetLvl; lvl++) {
-            const cost = getLevelCost(lvl);
-            if (pointsRemaining >= cost) {
-                allocations[groupKey] += 1;
-                pointsRemaining -= cost;
+    const isGK = posUpper === 'GK';
+    const validGroups = isGK
+        ? ['gk1', 'gk2', 'gk3', 'passing', 'lowerBody', 'aerial']
+        : ['shooting', 'passing', 'dribbling', 'dexterity', 'lowerBody', 'aerial', 'defending'];
+
+    // Greedy optimization: spend points on category step yielding highest marginal OVR gain per point cost
+    let improved = true;
+    while (pointsRemaining > 0 && improved) {
+        improved = false;
+        let bestGroup = null;
+        let bestGainPerPoint = -1;
+
+        const currentTrainedStats = calculateAllocatedStats(baseStats, allocations);
+        const currentScore = calculatePositionOVR(currentTrainedStats, posUpper, baseStats);
+
+        for (const groupKey of validGroups) {
+            const currentLevel = allocations[groupKey] || 0;
+            if (currentLevel >= 16) continue;
+
+            const cost = getLevelCost(currentLevel + 1);
+            if (pointsRemaining < cost) continue;
+
+            const testAllocations = { ...allocations, [groupKey]: currentLevel + 1 };
+            const testStats = calculateAllocatedStats(baseStats, testAllocations);
+            const testScore = calculatePositionOVR(testStats, posUpper, baseStats);
+
+            const scoreGain = testScore - currentScore;
+            // Primary stat priority bias to break ties among zero-gain or equal-gain steps
+            const weights = POSITION_WEIGHTS[posUpper] || POSITION_WEIGHTS['AMF'];
+            let categoryWeightSum = 0;
+            const groupObj = STAT_GROUPS[groupKey];
+            if (groupObj && groupObj.effects) {
+                groupObj.effects.forEach(({ stat }) => {
+                    categoryWeightSum += (weights[stat] || 0.05);
+                });
+            }
+
+            const gainPerPoint = (scoreGain * 100 + categoryWeightSum) / cost;
+
+            if (gainPerPoint > bestGainPerPoint) {
+                bestGainPerPoint = gainPerPoint;
+                bestGroup = groupKey;
             }
         }
-    });
 
-    // Step 2: Distribute any remaining points to highest priority groups for position
-    const groupPriority = (posUpper === 'GK')
-        ? ['gk1', 'gk2', 'gk3', 'passing', 'lowerBody']
-        : ['dribbling', 'dexterity', 'passing', 'lowerBody', 'shooting', 'defending', 'aerial'];
-
-    let canAllocate = true;
-    while (canAllocate && pointsRemaining > 0) {
-        canAllocate = false;
-        for (const key of groupPriority) {
-            const currentLvl = allocations[key] || 0;
-            if (currentLvl < 16) {
-                const cost = getLevelCost(currentLvl + 1);
-                if (pointsRemaining >= cost) {
-                    allocations[key] += 1;
-                    pointsRemaining -= cost;
-                    canAllocate = true;
-                    break;
-                }
-            }
+        if (bestGroup && bestGainPerPoint > 0) {
+            const cost = getLevelCost(allocations[bestGroup] + 1);
+            allocations[bestGroup] += 1;
+            pointsRemaining -= cost;
+            improved = true;
         }
     }
 
