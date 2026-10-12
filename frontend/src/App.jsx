@@ -1606,7 +1606,7 @@ function App() {
                                                                 {/* Manager Portrait with overlay badges */}
                                                                 <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
                                                                     <img
-                                                                        src={getManagerPhotoUrl(mgr.managername)}
+                                                                        src={getManagerPhotoUrl(mgr.managername, mgr.managerimageurl || mgr.imageurl)}
                                                                         alt={mgr.managername}
                                                                         style={{ width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover', border: '2px solid rgba(255, 255, 255, 0.15)' }}
                                                                         onError={(e) => { e.target.onerror = null; e.target.src = 'https://secure.gravatar.com/avatar/unknown?d=mp'; }}

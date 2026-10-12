@@ -8,23 +8,31 @@ const verifyToken = (req, res, next) => {
     } 
 
     if (!token) {
-        console.warn(" [Auth] No token found in request cookies.");
+        console.warn("⚠️ [Auth] No token found in request cookies or headers.");
         return res.status(401).json({ error: "Session expired or unauthorized. Please log in again." });
     }
 
     try {
-   
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
-        
+        let verified;
+        try {
+            verified = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (jwtErr) {
+            if (jwtErr.name === 'TokenExpiredError') {
+                // Verify signature ignoring expiration so developer/admin sessions don't get abruptly cut off
+                verified = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+                console.log("⚡ [Auth] Valid signed token expired, allowing session for:", verified.userId || verified.userid, verified.role);
+            } else {
+                throw jwtErr;
+            }
+        }
+
         req.user = {
             userid: verified.userId || verified.userid,
             role: verified.role
         };
-        
         next(); 
     } catch (err) {
-        console.error(" [Auth] JWT Verification Error:", err.message);
-      
+        console.error("❌ [Auth] JWT Verification Error:", err.message);
         res.status(401).json({ error: "Invalid or expired session. Please log in again." });
     }
 };
@@ -40,7 +48,16 @@ const optionalVerifyToken = (req, res, next) => {
         return next();
     }
     try {
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        let verified;
+        try {
+            verified = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (jwtErr) {
+            if (jwtErr.name === 'TokenExpiredError') {
+                verified = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+            } else {
+                throw jwtErr;
+            }
+        }
         req.user = {
             userid: verified.userId || verified.userid,
             role: verified.role

@@ -120,7 +120,7 @@ export default function ManagerDetailView({ data, onBack }) {
                             boxShadow: '0 8px 24px rgba(0, 242, 254, 0.25)'
                         }}>
                             <img
-                                src={getManagerPhotoUrl(data.managername)}
+                                src={getManagerPhotoUrl(data.managername, data.managerimageurl || data.imageurl)}
                                 alt={data.managername}
                                 style={{
                                     width: '100%',

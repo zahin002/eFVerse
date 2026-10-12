@@ -1,11 +1,63 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { EFOOTBALL_BOOSTERS } from './efootballBoosters';
+export const ATTACKING_PLAYSTYLES = [
+  'Goal Poacher',
+  'Fox in the Box',
+  'Target Man',
+  'Deep-Lying Forward',
+  'Creative Playmaker',
+  'Roaming Flank',
+  'Prolific Winger',
+  'Cross Specialist',
+  'Classic No. 10',
+  'Hole Player',
+  'Box-to-Box',
+  'Anchor Man',
+  'The Destroyer',
+  'Orchestrator',
+  'Offensive Full-back',
+  'Full-back Finisher',
+  'Defensive Full-back',
+  'Extra Frontman',
+  'Build Up',
+  'Offensive GK',
+  'Defensive GK',
+  'Dummy Runner'
+];
+
+export const DEFENSIVE_PLAYSTYLES = [
+  'Front Line Pressure',
+  'Front Line Poacher',
+  'Attack Outlet',
+  'Pass Disruptor',
+  'Box-to-Box',
+  'All Action Defender',
+  'Anchor Man',
+  'Covering Role',
+  'High Line Master',
+  'The Destroyer',
+  'Sweeper GK',
+  'Offensive GK',
+  'Defensive GK'
+];
+
+import { EFOOTBALL_BOOSTERS, BOOSTER_CATEGORIES, getBoosterByName, formatStatName, getBoosterStatLabels } from './efootballBoosters';
+import { getManagerPhotoUrl } from './badgeAssetEngine';
 import { IoIosExit } from "react-icons/io";
 import { IoMdExit } from "react-icons/io";
 import { IoMdClose } from "react-icons/io";
 
 axios.defaults.withCredentials = true;
+
+
+const parseBoosterHelper = (str, defaultVal = 4) => {
+    if (!str || str.toLowerCase() === 'none') return { name: 'none', val: defaultVal };
+    if (str.toLowerCase() === 'craftable slot') return { name: 'Craftable Slot', val: defaultVal };
+    const match = str.match(/\+(\d+)/);
+    const val = match ? parseInt(match[1], 10) : defaultVal;
+    const clean = str.replace(/\+\d+/, '').trim();
+    return { name: clean, val: val };
+};
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('player'); 
@@ -58,7 +110,20 @@ export default function AdminPanel() {
 
 
   const [playerForm, setPlayerForm] = useState({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '' });
-  const [cardForm, setCardForm] = useState({ playerid: '', cardtype: 'Standard', positioncode: '', baseoverallrating: 75, currentoverallrating: 75, maxoverallrating: 85, gpcost: '', cardimageurl: '' });
+  const [cardForm, setCardForm] = useState({ 
+      playerid: '', 
+      cardtype: 'Standard', 
+      positioncode: '', 
+      baseoverallrating: 75, 
+      currentoverallrating: 75, 
+      maxoverallrating: 85, 
+      gpcost: '', 
+      cardimageurl: '',
+      attacking_playstyle: 'Goal Poacher',
+      defensive_playstyle: '',
+      attacking_playstyle_icon: '',
+      defensive_playstyle_icon: ''
+  });
   const [managerForm, setManagerForm] = useState({
       managername: '',
       playstyle: 'Possession Game',
@@ -102,6 +167,9 @@ export default function AdminPanel() {
 
 
   const [editingCard, setEditingCard] = useState(null);
+  const [isSavingCard, setIsSavingCard] = useState(false);
+  const [editModalError, setEditModalError] = useState('');
+  const [editModalSuccess, setEditModalSuccess] = useState('');
   const [editModalSubTab, setEditModalSubTab] = useState('card');
   const [editForm, setEditForm] = useState({
       cardtype: 'Standard',
@@ -113,6 +181,12 @@ export default function AdminPanel() {
       secondarypositions: '',
       booster1: 'Off the ball +4',
       booster2: 'Technique +3',
+      booster1_name: 'Off the ball',
+      booster1_val: 4,
+      booster1_type: 'ALL',
+      booster2_name: 'Technique',
+      booster2_val: 3,
+      booster2_type: 'ALL',
       tierbadge: 'S+',
       livecondition: 'B',
       gpcost: '',
@@ -123,6 +197,10 @@ export default function AdminPanel() {
       weight: 75,
       preferredfoot: 'Right',
       playstyle: 'Hole Player',
+      attacking_playstyle: 'Goal Poacher',
+      defensive_playstyle: '',
+      attacking_playstyle_icon: '',
+      defensive_playstyle_icon: '',
       armlength: 12,
       shoulderwidth: 5,
       necklength: 4,
@@ -245,6 +323,18 @@ export default function AdminPanel() {
             secondarypositions: Array.isArray(c.secondarypositions) ? c.secondarypositions.join(', ') : '',
             booster1: c.booster1 || 'Off the ball +4',
             booster2: c.booster2 || 'Technique +3',
+            booster1_name: parseBoosterHelper(c.booster1 || 'none', 4).name,
+            booster1_val: parseBoosterHelper(c.booster1 || 'none', 4).val,
+            booster1_type: c.booster1_type || (() => {
+                const b = getBoosterByName(parseBoosterHelper(c.booster1 || 'none', 4).name);
+                return b ? b.category : 'ALL';
+            })(),
+            booster2_name: parseBoosterHelper(c.booster2 || 'none', 3).name,
+            booster2_val: parseBoosterHelper(c.booster2 || 'none', 3).val,
+            booster2_type: c.booster2_type || (() => {
+                const b = getBoosterByName(parseBoosterHelper(c.booster2 || 'none', 3).name);
+                return b ? b.category : 'ALL';
+            })(),
             tierbadge: c.tierbadge || 'S+',
             livecondition: c.livecondition || 'B',
             gpcost: c.gpcost || '',
@@ -255,7 +345,11 @@ export default function AdminPanel() {
             height: p.height || 180,
             weight: p.weight || 75,
             preferredfoot: p.preferredfoot || 'Right',
-            playstyle: p.playstyle || 'Goal Poacher',
+            playstyle: c.attacking_playstyle || p.attacking_playstyle || p.playstyle || 'Goal Poacher',
+            attacking_playstyle: c.attacking_playstyle || p.attacking_playstyle || p.playstyle || 'Goal Poacher',
+            defensive_playstyle: c.defensive_playstyle || p.defensive_playstyle || '',
+            attacking_playstyle_icon: c.attacking_playstyle_icon || p.attacking_playstyle_icon || '',
+            defensive_playstyle_icon: c.defensive_playstyle_icon || p.defensive_playstyle_icon || '',
             armlength: m.armlength || 12,
             shoulderwidth: m.shoulderwidth || 5,
             necklength: m.necklength || 4,
@@ -279,7 +373,23 @@ export default function AdminPanel() {
       if (!editingCard) return;
       try {
           // 1. Update Card attributes & skills & boosters
-          await axios.put(`http://localhost:5001/api/players/update-card/${editingCard.cardid}`, editForm);
+          const b1Formatted = (!editForm.booster1_name || editForm.booster1_name === 'none') 
+              ? 'none' 
+              : `${editForm.booster1_name} +${editForm.booster1_val || 4}`;
+          const b2Formatted = (!editForm.booster2_name || editForm.booster2_name === 'none') 
+              ? 'none' 
+              : (editForm.booster2_name === 'Craftable Slot' 
+                  ? 'Craftable Slot' 
+                  : `${editForm.booster2_name} +${editForm.booster2_val || 3}`);
+          
+          const payload = {
+              ...editForm,
+              booster1: b1Formatted,
+              booster2: b2Formatted,
+              booster1_type: (!editForm.booster1_name || editForm.booster1_name === 'none') ? null : (editForm.booster1_type && editForm.booster1_type !== 'ALL' ? editForm.booster1_type : null),
+              booster2_type: (!editForm.booster2_name || editForm.booster2_name === 'none') ? null : (editForm.booster2_type && editForm.booster2_type !== 'ALL' ? editForm.booster2_type : null)
+          };
+          await axios.put(`http://localhost:5001/api/players/update-card/${editingCard.cardid}`, payload);
           // 2. Update Player 3D model & physics metrics
           if (editingCard.playerid || editingCard.player?.playerid) {
               const pid = editingCard.playerid || editingCard.player?.playerid;
@@ -346,7 +456,12 @@ export default function AdminPanel() {
   
   const fetchCards = () => axios.get('http://localhost:5001/api/players/list-cards').then(res => {
       setCardsList(res.data);
-      if(mgmtResults.length === 0) setMgmtResults(res.data);
+      setMgmtResults(prev => {
+          if (!mgmtSearch.trim() && !mgmtFilters.leagueId && !mgmtFilters.clubId && !mgmtFilters.nationId && !mgmtFilters.cardType) {
+              return res.data;
+          }
+          return prev.length === 0 ? res.data : prev;
+      });
   });
   
   const fetchManagers = () => axios.get('http://localhost:5001/api/managers/list').then(res => setManagersList(res.data));
@@ -437,7 +552,9 @@ export default function AdminPanel() {
   const handleManagerSubmit = async (e) => {
       e.preventDefault();
       try {
-          await axios.post('http://localhost:5001/api/managers/add', managerForm);
+          const token = localStorage.getItem('token');
+          const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+          await axios.post('http://localhost:5001/api/managers/add', managerForm, config);
           setMessage(' Manager Registered successfully!');
           setManagerForm({
               managername: '',
@@ -773,6 +890,7 @@ const handleCardSelectForStats = async (e) => {
                         <option value="Long Ball Counter">Long Ball Counter</option>
                         <option value="Out Wide">Out Wide</option>
                         <option value="Long Ball">Long Ball</option>
+                    <option value="Overload">Overload</option>
                     </select>
                 </div>
 
@@ -993,45 +1111,20 @@ const handleCardSelectForStats = async (e) => {
         </div>
     )}
 
-    {/* MANAGERS FILTER PANEL — same layout as the Players filter above, but "Any Card Type" */}
-    {/* is replaced with "Any Playstyle" since managers don't have card types.                */}
-    {/* Filtering happens instantly client-side (see filteredManagers), so there's no need    */}
-    {/* to hit an "Apply" button — but one is included anyway to match the Players UI/UX.     */}
+    {/* MANAGERS FILTER PANEL - ONLY NAME SEARCH */}
     {mgmtTab === 'managers' && (
-        <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '20px' }}>
-            <input placeholder="Search Name..." value={managerSearch} onChange={e => setManagerSearch(e.target.value)} style={{ ...inputStyle, background: '#222' }} />
-            <div style={{ display: 'flex', gap: '10px' }}>
-                <select value={managerFilters.nationId} onChange={e => setManagerFilters({...managerFilters, nationId: e.target.value})} style={inputStyle}>
-                    <option value="">Any Nationality</option>
-                    {helpers.nations.map(n => <option key={n.nationalityid} value={n.nationalityid}>{n.countryname}</option>)}
-                </select>
-                {/* Playstyle takes the place of "Any Card Type" for managers */}
-                <select value={managerFilters.playstyle} onChange={e => setManagerFilters({...managerFilters, playstyle: e.target.value})} style={inputStyle}>
-                    <option value="">Any Playstyle</option>
-                    <option value="Possession Game">Possession Game</option>
-                    <option value="Quick Counter">Quick Counter</option>
-                    <option value="Long Ball Counter">Long Ball Counter</option>
-                    <option value="Out Wide">Out Wide</option>
-                    <option value="Long Ball">Long Ball</option>
-                </select>
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-                <select value={managerFilters.leagueId} onChange={e => setManagerFilters({...managerFilters, leagueId: e.target.value, clubId: ''})} style={inputStyle}>
-                    <option value="">Any League</option>
-                    {helpers.leagues.map(l => <option key={l.leagueid} value={l.leagueid}>{l.leaguename}</option>)}
-                </select>
-                <select value={managerFilters.clubId} onChange={e => setManagerFilters({...managerFilters, clubId: e.target.value})} style={inputStyle} disabled={!managerFilters.leagueId}>
-                    <option value="">Select Club</option>
-                    {managerFilterClubs.map(c => <option key={c.clubid} value={c.clubid}>{c.clubname}</option>)}
-                </select>
-            </div>
-            {/* No-op button: filtering is already live via filteredManagers as you type/select above. */}
-            <button onClick={() => {}} style={{ ...inputStyle, background: '#00f2fe', fontWeight: 'bold', border: 'none', color: '#000', cursor: 'pointer', padding:'15px' }}>Apply Database Filter</button>
+        <div style={{ marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+            <input 
+                placeholder="Search Manager Name..." 
+                value={managerSearch} 
+                onChange={e => setManagerSearch(e.target.value)} 
+                style={{ ...inputStyle, background: '#222' }} 
+            />
         </div>
     )}
 
     <ul style={{ listStyle: 'none', padding: 0 }}>
-        {mgmtTab === 'database' && mgmtResults.map(item => (
+        {mgmtTab === 'database' && [...mgmtResults].sort((a, b) => (b.cardid || 0) - (a.cardid || 0) || (b.playerid || 0) - (a.playerid || 0)).map(item => (
             <li
                 key={item.cardid || `player-${item.playerid}`}
                 className="hover-card"
@@ -1063,11 +1156,19 @@ const handleCardSelectForStats = async (e) => {
                         className="hover-card"
                         style={{ padding: '14px', borderBottom: '1px solid #333', background: '#252525', marginBottom: '10px', borderRadius: '8px', border: '1px solid #3a3a3c' }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <div>
-                                <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.05em' }}> {item.managername}</div>
-                                <div style={{ fontSize: '0.75em', color: '#00f2fe', marginTop: '2px' }}>
-                                    {item.playstyle} • Pos: {item.possession_game || 50} | QC: {item.quick_counter || 50} | LBC: {item.long_ball_counter || 50} | OW: {item.out_wide || 50} | LB: {item.long_ball || 50}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <img
+                                    src={getManagerPhotoUrl(item.managername, item.managerimageurl || item.imageurl)}
+                                    alt={item.managername}
+                                    style={{ width: '46px', height: '46px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid #00f2fe', background: '#18181b' }}
+                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://secure.gravatar.com/avatar/unknown?d=mp'; }}
+                                />
+                                <div>
+                                    <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.05em' }}>{item.managername}</div>
+                                    <div style={{ fontSize: '0.75em', color: '#00f2fe', marginTop: '2px' }}>
+                                        {item.playstyle} • Pos: {item.possession_game || 50} | QC: {item.quick_counter || 50} | LBC: {item.long_ball_counter || 50} | OW: {item.out_wide || 50} | LB: {item.long_ball || 50}
+                                    </div>
                                 </div>
                             </div>
                             <span style={{ fontSize: '0.7em', color: '#888', background: '#18181b', padding: '2px 6px', borderRadius: '4px' }}>#{item.managerid}</span>
@@ -1154,7 +1255,7 @@ const handleCardSelectForStats = async (e) => {
                     </button>
                 </div>
 
-                <form onSubmit={handleSaveEditCard} style={{ display: 'grid', gap: '14px' }}>
+                <form onSubmit={handleSaveEditCard} noValidate style={{ display: 'grid', gap: '14px' }}>
                     
                     {/* TAB 1: CARD, SKILLS & BOOSTERS */}
                     {editModalSubTab === 'card' && (
@@ -1292,26 +1393,193 @@ const handleCardSelectForStats = async (e) => {
                                 />
                             </div>
 
-                            {/* BOOSTERS */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            {/* BOOSTERS SECTION */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#1c1c20', padding: '12px', borderRadius: '8px', border: '1px solid #333' }}>
+                                {/* BOOSTER 1 */}
                                 <div>
-                                    <label style={{ fontSize: '0.7em', color: '#aaa', textTransform: 'uppercase', fontWeight: 'bold' }}>Booster 1 (+4 Stat Boost)</label>
-                                    <select value={editForm.booster1} onChange={e => setEditForm({...editForm, booster1: e.target.value})} style={inputStyle}>
-                                        <option value="none">-- No Booster 1 --</option>
-                                        {EFOOTBALL_BOOSTERS.map(b => (
-                                            <option key={`adm-b1-${b.name}`} value={`${b.name} +4`}>{b.name} (+4: {b.stats.join(', ')})</option>
-                                        ))}
-                                    </select>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#00f2fe', textTransform: 'uppercase', fontWeight: 'bold' }}>Booster 1</label>
+                                        {editForm.booster1_type && editForm.booster1_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster1_type] && (
+                                            <span style={{ fontSize: '0.62em', color: BOOSTER_CATEGORIES[editForm.booster1_type].color, fontWeight: 'bold', background: 'rgba(0,0,0,0.4)', padding: '1px 5px', borderRadius: '4px' }}>
+                                                {BOOSTER_CATEGORIES[editForm.booster1_type].name}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Booster 1 Type Selector */}
+                                    <div style={{ marginBottom: '6px' }}>
+                                        <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Type</label>
+                                        <select
+                                            value={editForm.booster1_type || 'ALL'}
+                                            onChange={e => {
+                                                const newType = e.target.value;
+                                                const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
+                                                    ? BOOSTER_CATEGORIES[newType].maxBoost 
+                                                    : editForm.booster1_val;
+                                                setEditForm(prev => ({
+                                                    ...prev,
+                                                    booster1_type: newType,
+                                                    booster1_val: defVal || 4
+                                                }));
+                                            }}
+                                            style={{
+                                                ...inputStyle,
+                                                padding: '5px 8px',
+                                                fontSize: '0.75em',
+                                                fontWeight: 'bold',
+                                                borderColor: editForm.booster1_type && editForm.booster1_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster1_type] ? BOOSTER_CATEGORIES[editForm.booster1_type].color : 'rgba(0, 242, 254, 0.4)',
+                                                color: editForm.booster1_type && editForm.booster1_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster1_type] ? BOOSTER_CATEGORIES[editForm.booster1_type].color : '#e2e8f0',
+                                                background: '#121214'
+                                            }}
+                                        >
+                                            <option value="ALL">All Booster Types</option>
+                                            <option value="SPECIAL" style={{ color: '#a855f7' }}>Special / Named</option>
+                                            <option value="STANDARD" style={{ color: '#38bdf8' }}>Standard</option>
+                                            <option value="TOTAL_PACKAGE" style={{ color: '#eab308' }}>Total Package</option>
+                                            <option value="POTW" style={{ color: '#22c55e' }}>POTW</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Booster 1 Name & Boost Value */}
+                                    <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Name & Value</label>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <select 
+                                            value={editForm.booster1_name || 'none'} 
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                const bObj = getBoosterByName(val);
+                                                setEditForm(prev => ({
+                                                    ...prev,
+                                                    booster1_name: val,
+                                                    booster1_type: (prev.booster1_type && prev.booster1_type !== 'ALL') ? prev.booster1_type : (bObj ? bObj.category : 'ALL'),
+                                                    booster1_val: prev.booster1_val || (bObj && BOOSTER_CATEGORIES[bObj.category] ? BOOSTER_CATEGORIES[bObj.category].maxBoost : 4)
+                                                }));
+                                            }} 
+                                            style={{ ...inputStyle, flex: 1, fontSize: '0.8em' }}
+                                        >
+                                            <option value="none">No Booster</option>
+                                            {[...EFOOTBALL_BOOSTERS].sort((a, b) => a.name.localeCompare(b.name)).map(b => (
+                                                <option key={`adm-b1-${b.name}`} value={b.name}>
+                                                    {b.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {editForm.booster1_name && editForm.booster1_name !== 'none' && (
+                                            <select 
+                                                value={editForm.booster1_val || 4} 
+                                                onChange={e => setEditForm({...editForm, booster1_val: parseInt(e.target.value, 10)})} 
+                                                style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: '#00f2fe' }}
+                                                title="Stat Boost Value"
+                                            >
+                                                {[1, 2, 3, 4, 5].map(v => (
+                                                    <option key={`b1-val-${v}`} value={v}>+{v}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                    {editForm.booster1_name && editForm.booster1_name !== 'none' && (() => {
+                                        const b = getBoosterByName(editForm.booster1_name);
+                                        if (!b) return null;
+                                        return (
+                                            <div style={{ fontSize: '0.65em', color: '#94a3b8', marginTop: '3px' }}>
+                                                Stats: {getBoosterStatLabels(b)}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
+
+                                {/* BOOSTER 2 */}
                                 <div>
-                                    <label style={{ fontSize: '0.7em', color: '#aaa', textTransform: 'uppercase', fontWeight: 'bold' }}>Booster 2 (+3 Stat Boost)</label>
-                                    <select value={editForm.booster2} onChange={e => setEditForm({...editForm, booster2: e.target.value})} style={inputStyle}>
-                                        <option value="none">-- No Booster 2 --</option>
-                                        <option value="Craftable Slot"> Open Booster Crafting Slot (User Selected)</option>
-                                        {EFOOTBALL_BOOSTERS.map(b => (
-                                            <option key={`adm-b2-${b.name}`} value={`${b.name} +3`}>{b.name} (+3: {b.stats.join(', ')})</option>
-                                        ))}
-                                    </select>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <label style={{ fontSize: '0.7em', color: '#f97316', textTransform: 'uppercase', fontWeight: 'bold' }}>Booster 2</label>
+                                        {editForm.booster2_type && editForm.booster2_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster2_type] && (
+                                            <span style={{ fontSize: '0.62em', color: BOOSTER_CATEGORIES[editForm.booster2_type].color, fontWeight: 'bold', background: 'rgba(0,0,0,0.4)', padding: '1px 5px', borderRadius: '4px' }}>
+                                                {BOOSTER_CATEGORIES[editForm.booster2_type].name}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Booster 2 Type Selector */}
+                                    <div style={{ marginBottom: '6px' }}>
+                                        <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Type</label>
+                                        <select
+                                            value={editForm.booster2_type || 'ALL'}
+                                            onChange={e => {
+                                                const newType = e.target.value;
+                                                const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
+                                                    ? BOOSTER_CATEGORIES[newType].maxBoost 
+                                                    : editForm.booster2_val;
+                                                setEditForm(prev => ({
+                                                    ...prev,
+                                                    booster2_type: newType,
+                                                    booster2_val: defVal || 3
+                                                }));
+                                            }}
+                                            style={{
+                                                ...inputStyle,
+                                                padding: '5px 8px',
+                                                fontSize: '0.75em',
+                                                fontWeight: 'bold',
+                                                borderColor: editForm.booster2_type && editForm.booster2_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster2_type] ? BOOSTER_CATEGORIES[editForm.booster2_type].color : 'rgba(249, 115, 22, 0.4)',
+                                                color: editForm.booster2_type && editForm.booster2_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster2_type] ? BOOSTER_CATEGORIES[editForm.booster2_type].color : '#e2e8f0',
+                                                background: '#121214'
+                                            }}
+                                        >
+                                            <option value="ALL">All Booster Types</option>
+                                            <option value="SPECIAL" style={{ color: '#a855f7' }}>Special / Named</option>
+                                            <option value="STANDARD" style={{ color: '#38bdf8' }}>Standard</option>
+                                            <option value="TOTAL_PACKAGE" style={{ color: '#eab308' }}>Total Package</option>
+                                            <option value="POTW" style={{ color: '#22c55e' }}>POTW</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Booster 2 Name & Boost Value */}
+                                    <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Name & Value</label>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <select 
+                                            value={editForm.booster2_name || 'none'} 
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                const bObj = getBoosterByName(val);
+                                                setEditForm(prev => ({
+                                                    ...prev,
+                                                    booster2_name: val,
+                                                    booster2_type: (prev.booster2_type && prev.booster2_type !== 'ALL') ? prev.booster2_type : (bObj ? bObj.category : 'ALL'),
+                                                    booster2_val: prev.booster2_val || (bObj && BOOSTER_CATEGORIES[bObj.category] ? BOOSTER_CATEGORIES[bObj.category].maxBoost : 3)
+                                                }));
+                                            }} 
+                                            style={{ ...inputStyle, flex: 1, fontSize: '0.8em' }}
+                                        >
+                                            <option value="none">No Booster</option>
+                                            <option value="Craftable Slot" style={{ color: '#fbbf24', fontWeight: 'bold' }}>Open Booster Crafting Slot</option>
+                                            {[...EFOOTBALL_BOOSTERS].sort((a, b) => a.name.localeCompare(b.name)).map(b => (
+                                                <option key={`adm-b2-${b.name}`} value={b.name}>
+                                                    {b.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {editForm.booster2_name && editForm.booster2_name !== 'none' && editForm.booster2_name !== 'Craftable Slot' && (
+                                            <select 
+                                                value={editForm.booster2_val || 3} 
+                                                onChange={e => setEditForm({...editForm, booster2_val: parseInt(e.target.value, 10)})} 
+                                                style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: '#f97316' }}
+                                                title="Stat Boost Value"
+                                            >
+                                                {[1, 2, 3, 4, 5].map(v => (
+                                                    <option key={`b2-val-${v}`} value={v}>+{v}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                    {editForm.booster2_name && editForm.booster2_name !== 'none' && editForm.booster2_name !== 'Craftable Slot' && (() => {
+                                        const b = getBoosterByName(editForm.booster2_name);
+                                        if (!b) return null;
+                                        return (
+                                            <div style={{ fontSize: '0.65em', color: '#94a3b8', marginTop: '3px' }}>
+                                                Stats: {getBoosterStatLabels(b)}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </>
@@ -1331,22 +1599,39 @@ const handleCardSelectForStats = async (e) => {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div>
+                                <label style={{ fontSize: '0.7em', color: '#aaa' }}>Preferred Foot</label>
+                                <select value={editForm.preferredfoot} onChange={e => setEditForm({...editForm, preferredfoot: e.target.value})} style={inputStyle}>
+                                    <option value="Right">Right</option>
+                                    <option value="Left">Left</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
                                 <div>
-                                    <label style={{ fontSize: '0.7em', color: '#aaa' }}>Preferred Foot</label>
-                                    <select value={editForm.preferredfoot} onChange={e => setEditForm({...editForm, preferredfoot: e.target.value})} style={inputStyle}>
-                                        <option value="Right">Right</option>
-                                        <option value="Left">Left</option>
+                                    <label style={{ fontSize: '0.7em', color: '#f43f5e', fontWeight: 'bold' }}>Attacking Playstyle</label>
+                                    <select 
+                                        value={editForm.attacking_playstyle || editForm.playstyle} 
+                                        onChange={e => setEditForm({...editForm, attacking_playstyle: e.target.value, playstyle: e.target.value})} 
+                                        style={inputStyle}
+                                    >
+                                        {ATTACKING_PLAYSTYLES.map(ps => <option key={ps} value={ps}>{ps}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.7em', color: '#aaa' }}>Playstyle</label>
-                                    <input type="text" value={editForm.playstyle} onChange={e => setEditForm({...editForm, playstyle: e.target.value})} style={inputStyle} placeholder="e.g. Hole Player" />
+                                    <label style={{ fontSize: '0.7em', color: '#06b6d4', fontWeight: 'bold' }}>Defensive Playstyle</label>
+                                    <select 
+                                        value={editForm.defensive_playstyle || ''} 
+                                        onChange={e => setEditForm({...editForm, defensive_playstyle: e.target.value})} 
+                                        style={inputStyle}
+                                    >
+                                        <option value="">-- None --</option>
+                                        {DEFENSIVE_PLAYSTYLES.map(ps => <option key={ps} value={ps}>{ps}</option>)}
+                                    </select>
                                 </div>
                             </div>
-
                             <div style={{ fontSize: '0.75em', color: '#38bdf8', fontWeight: 'bold', marginTop: '10px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
-                                 3D Model Physics & Proportions (cm/index)
+                                3D Model Physics & Proportions (cm/index)
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
@@ -1418,6 +1703,7 @@ const handleCardSelectForStats = async (e) => {
                                 <option value="Long Ball Counter">Long Ball Counter</option>
                                 <option value="Out Wide">Out Wide</option>
                                 <option value="Long Ball">Long Ball</option>
+                    <option value="Overload">Overload</option>
                             </select>
                         </div>
                     </div>

@@ -8,7 +8,7 @@ import PlayerSkillsPanel from './PlayerSkillsPanel';
 import AttributeMatrixPanel from './AttributeMatrixPanel';
 import ProgressionSlidersPanel from './ProgressionSlidersPanel';
 import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl, getTierBadge } from './badgeAssetEngine';
-import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor } from './efootballBoosters';
+import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor, formatStatName, getBoosterStatLabels } from './efootballBoosters';
 import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR, getLevelCost } from './progressionEngine';
 import shootingIcon from './assets/progression_icons/shooting.png';
 import passingIcon from './assets/progression_icons/passing.png';
@@ -211,6 +211,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const [booster2Level, setBooster2Level] = useState(3);
     const [booster2Category, setBooster2Category] = useState('STANDARD');
     const [showBooster2TypeMenu, setShowBooster2TypeMenu] = useState(false);
+    const [showBooster2LevelPicker, setShowBooster2LevelPicker] = useState(false);
     const [otherVersions, setOtherVersions] = useState([]);
 
     const INITIAL_ALLOCATIONS = {
@@ -225,31 +226,31 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const BOOSTER_TYPES = [
         {
             id: 'POTW',
-            name: 'Green Booster (POTW)',
+            name: 'Green Booster - POTW',
             color: '#22c55e',
             maxBoost: 3,
-            desc: 'Form-based, caps at +3 (A form)'
+            desc: 'Form-based, caps at +3 for A form'
         },
         {
             id: 'STANDARD',
-            name: 'Blue Booster (Standard)',
+            name: 'Blue Booster - Standard',
             color: '#38bdf8',
             maxBoost: 3,
-            desc: 'Usually +2 (or +3), always activated'
+            desc: 'Usually +2 or +3, always activated'
         },
         {
             id: 'TOTAL_PACKAGE',
-            name: 'Yellow/Brown (Total Package)',
+            name: 'Yellow/Brown - Total Package',
             color: '#eab308',
             maxBoost: 3,
             desc: 'Boosts all stats up to +3 with full league team'
         },
         {
             id: 'SPECIAL',
-            name: 'Purple Booster (Special/Named)',
+            name: 'Purple Booster - Special / Named',
             color: '#a855f7',
             maxBoost: 4,
-            desc: 'Big Time / Special cards (+4, always activated)'
+            desc: 'Big Time / Special cards +4, always activated'
         }
     ];
 
@@ -265,7 +266,17 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         setShowBooster2TypeMenu(prev => !prev);
     };
 
+    const getEffectiveBooster1Color = () => {
+        const b1Type = data?.booster1_type || player?.booster1_type;
+        if (b1Type && b1Type !== 'ALL') {
+            const matched = BOOSTER_TYPES.find(t => t.id === b1Type);
+            if (matched) return matched.color;
+        }
+        return getBoosterCategoryColor(booster1);
+    };
+
     const getEffectiveBooster2Color = () => {
+        if (booster2 === 'Craftable Slot' || booster2Category === 'CRAFTABLE') return '#fbbf24';
         const matched = BOOSTER_TYPES.find(t => t.id === booster2Category);
         return matched ? matched.color : getBoosterCategoryColor(booster2, true);
     };
@@ -288,7 +299,24 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         const b2 = (data?.booster2 || player?.booster2 || "none").trim();
         setBooster1(b1 || "none");
         setBooster2(b2 || "none");
-    }, [data?.booster1, data?.booster2, player?.booster1, player?.booster2]);
+
+        const b2Type = data?.booster2_type || player?.booster2_type;
+        if (b2Type && b2Type !== 'ALL') {
+            setBooster2Category(b2Type);
+        } else {
+            const bObj = getBoosterByName(b2);
+            if (bObj && bObj.category) {
+                setBooster2Category(bObj.category);
+            } else {
+                setBooster2Category('STANDARD');
+            }
+        }
+
+        const b2ValMatch = b2.match(/\+(\d+)/);
+        if (b2ValMatch) {
+            setBooster2Level(parseInt(b2ValMatch[1], 10));
+        }
+    }, [data?.booster1, data?.booster2, data?.booster1_type, data?.booster2_type, player?.booster1, player?.booster2, player?.booster1_type, player?.booster2_type]);
 
     useEffect(() => {
         if (playerid) {
@@ -631,7 +659,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         }
 
         const applyBoosterToStats = (bStr, forcedVal = null, defaultVal = 3) => {
-            if (!bStr || bStr.toLowerCase() === 'none') return;
+            if (!bStr || bStr.toLowerCase() === 'none' || bStr.toLowerCase() === 'craftable slot') return;
             const match = bStr.match(/\+(\d+)/);
             const val = forcedVal !== null ? forcedVal : (match ? parseInt(match[1], 10) : defaultVal);
             const boosterObj = getBoosterByName(bStr);
@@ -903,97 +931,186 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 })()}
                                 {/* Boosters Row - Compact 220px Width Matching Card (Disabled for POTW / Trending cards) */}
                                 {!isTrendingCard && (
-                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between', background: '#111722', padding: '5px 6px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', width: '220px', boxSizing: 'border-box', position: 'relative' }}>
-                                        <select 
-                                            ref={booster1Ref}
-                                            value={booster1} 
-                                            disabled={isBooster1AdminSet}
-                                            onChange={(e) => setBooster1(e.target.value)} 
-                                            title={isBooster1AdminSet ? "Predefined by admin" : "Select Booster 1"}
-                                            style={{ 
-                                                background: '#0d1117', 
-                                                color: getBoosterCategoryColor(booster1), 
-                                                border: `1px solid ${getBoosterCategoryColor(booster1)}`, 
-                                                borderRadius: '6px', 
-                                                padding: '3px 4px', 
-                                                fontSize: '0.68em', 
-                                                fontWeight: 'bold', 
-                                                outline: 'none', 
-                                                cursor: isBooster1AdminSet ? 'not-allowed' : 'pointer',
-                                                opacity: isBooster1AdminSet ? 0.85 : 1,
-                                                maxWidth: '72px',
-                                                textOverflow: 'ellipsis',
-                                                overflow: 'hidden',
-                                                whiteSpace: 'nowrap'
-                                            }}
-                                        >
-                                            <option value="none">No Boost 1</option>
-                                            {EFOOTBALL_BOOSTERS.map(b => (
-                                                <option key={`b1-${b.name}`} value={`${b.name} +4`}>
-                                                    {b.name} +4
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '6px', 
+                                        background: '#111722', 
+                                        padding: '7px 8px', 
+                                        borderRadius: '10px', 
+                                        border: '1px solid rgba(255,255,255,0.08)', 
+                                        width: '220px', 
+                                        boxSizing: 'border-box', 
+                                        position: 'relative',
+                                        boxShadow: '0 4px 14px rgba(0,0,0,0.45)'
+                                    }}>
+                                        {/* ROW 1: BOOSTER 1 */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                                <HexagonBadge 
+                                                    color={getEffectiveBooster1Color()} 
+                                                    onClick={handleBooster1Click} 
+                                                    title="Booster 1" 
+                                                />
+                                            </div>
+                                            <select 
+                                                ref={booster1Ref}
+                                                value={booster1} 
+                                                disabled={isBooster1AdminSet}
+                                                onChange={(e) => setBooster1(e.target.value)} 
+                                                title="Booster 1"
+                                                style={{ 
+                                                    flex: 1,
+                                                    background: '#0d1117', 
+                                                    color: getEffectiveBooster1Color(), 
+                                                    border: `1px solid ${getEffectiveBooster1Color()}`, 
+                                                    borderRadius: '6px', 
+                                                    padding: '4px 6px', 
+                                                    fontSize: '0.74em', 
+                                                    fontWeight: 'bold', 
+                                                    outline: 'none', 
+                                                    cursor: isBooster1AdminSet ? 'default' : 'pointer',
+                                                    opacity: 1,
+                                                    minWidth: 0
+                                                }}
+                                            >
+                                                <option value="none">No Booster</option>
+                                                {rawAdminB1 && rawAdminB1.toLowerCase() !== 'none' && (
+                                                    <option value={rawAdminB1}>{rawAdminB1}</option>
+                                                )}
+                                                {EFOOTBALL_BOOSTERS.map(b => {
+                                                    const boostVal = rawAdminB1?.match(/\+(\d+)/)?.[1] || '4';
+                                                    const optVal = `${b.name} +${boostVal}`;
+                                                    if (optVal === rawAdminB1) return null;
+                                                    return (
+                                                        <option key={`b1-${b.name}`} value={optVal}>
+                                                            {b.name} (+${boostVal})
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
 
-                                        <DoubleBoosterLogo 
-                                            color1={getBoosterCategoryColor(booster1)} 
-                                            color2={getEffectiveBooster2Color()} 
-                                            onBooster1Click={handleBooster1Click}
-                                            onBooster2Click={handleBooster2Click}
-                                        />
-
-                                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                        {/* ROW 2: BOOSTER 2 (FULL WIDTH DISPLAY LIKE IMAGE 2 + FLOATING LEVEL PICKER WINDOW) */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', position: 'relative' }}>
+                                            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                                                <HexagonBadge 
+                                                    color={getEffectiveBooster2Color()} 
+                                                    onClick={handleBooster2Click} 
+                                                    title="Select Booster 2 Category" 
+                                                />
+                                            </div>
                                             <select 
                                                 ref={booster2Ref}
                                                 value={booster2} 
-                                                onChange={(e) => setBooster2(e.target.value)} 
-                                                title="Select Booster 2"
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setBooster2(val);
+                                                    if (val && val !== 'none' && val !== 'Craftable Slot') {
+                                                        setShowBooster2LevelPicker(true);
+                                                    } else {
+                                                        setShowBooster2LevelPicker(false);
+                                                    }
+                                                }} 
+                                                title="Booster 2"
                                                 style={{ 
+                                                    flex: 1,
                                                     background: '#0d1117', 
                                                     color: getEffectiveBooster2Color(), 
                                                     border: `1px solid ${getEffectiveBooster2Color()}`, 
                                                     borderRadius: '6px', 
-                                                    padding: '3px 4px', 
-                                                    fontSize: '0.68em', 
+                                                    padding: '4px 6px', 
+                                                    fontSize: '0.74em', 
                                                     fontWeight: 'bold', 
                                                     outline: 'none', 
                                                     cursor: 'pointer',
-                                                    opacity: 1,
-                                                    maxWidth: '72px',
-                                                    textOverflow: 'ellipsis',
-                                                    overflow: 'hidden',
-                                                    whiteSpace: 'nowrap'
+                                                    minWidth: 0
                                                 }}
                                             >
-                                                <option value="none">No Boost 2</option>
-                                                {EFOOTBALL_BOOSTERS.map(b => (
-                                                    <option key={`b2-${b.name}`} value={`${b.name} +3`}>{b.name} +{booster2Level}</option>
-                                                ))}
+                                                <option value="none">No Booster</option>
+                                                <option value="Craftable Slot" style={{ color: '#fbbf24', fontWeight: 'bold' }}>
+                                                    Open Booster Crafting Slot
+                                                </option>
+                                                {rawAdminB2 && rawAdminB2.toLowerCase() !== 'none' && rawAdminB2 !== 'Craftable Slot' && (
+                                                    <option value={rawAdminB2}>{rawAdminB2}</option>
+                                                )}
+                                                {EFOOTBALL_BOOSTERS.map(b => {
+                                                    const boostVal = booster2Level || 3;
+                                                    const optVal = `${b.name} +${boostVal}`;
+                                                    if (optVal === rawAdminB2) return null;
+                                                    return (
+                                                        <option key={`b2-${b.name}`} value={optVal}>
+                                                            {b.name} (+${boostVal})
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
 
-                                            {/* 3 DOTS BOOSTER 2 LEVEL SELECTOR (+1, +2, +3) */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center', background: '#0d1117', padding: '3px 2px', borderRadius: '4px' }} title="Booster 2 Level (+1, +2, +3)">
-                                                {[1, 2, 3].map(lvl => (
+                                            {/* FLOATING LEVEL SELECTION WINDOW (+1 TO +5) */}
+                                            {showBooster2LevelPicker && booster2 !== 'none' && (
+                                                <div 
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-46px',
+                                                        right: '0',
+                                                        background: '#0d1117',
+                                                        border: `1.5px solid ${getEffectiveBooster2Color()}`,
+                                                        borderRadius: '8px',
+                                                        padding: '4px 6px',
+                                                        boxShadow: '0 8px 25px rgba(0,0,0,0.95)',
+                                                        zIndex: 300,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        animation: 'fadeIn 0.15s ease'
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '0.65em', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', marginRight: '2px' }}>
+                                                        Level:
+                                                    </span>
+                                                    {[1, 2, 3, 4, 5].map(lvl => (
+                                                        <button
+                                                            key={lvl}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setBooster2Level(lvl);
+                                                                setShowBooster2LevelPicker(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '3px 7px',
+                                                                borderRadius: '4px',
+                                                                border: 'none',
+                                                                background: lvl === booster2Level ? getEffectiveBooster2Color() : '#1e293b',
+                                                                color: lvl === booster2Level ? '#000' : '#fff',
+                                                                fontWeight: '900',
+                                                                fontSize: '0.75em',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s ease'
+                                                            }}
+                                                        >
+                                                            +{lvl}
+                                                        </button>
+                                                    ))}
                                                     <button
-                                                        key={lvl}
                                                         type="button"
-                                                        title={`Set Level +${lvl}`}
-                                                        onClick={() => setBooster2Level(lvl)}
+                                                        onClick={() => setShowBooster2LevelPicker(false)}
                                                         style={{
-                                                            width: '5px',
-                                                            height: '5px',
-                                                            borderRadius: '50%',
+                                                            background: 'none',
                                                             border: 'none',
-                                                            padding: 0,
+                                                            color: '#64748b',
+                                                            fontSize: '0.75em',
                                                             cursor: 'pointer',
-                                                            background: lvl <= booster2Level ? getEffectiveBooster2Color() : 'rgba(255,255,255,0.18)',
-                                                            boxShadow: lvl <= booster2Level ? `0 0 4px ${getEffectiveBooster2Color()}` : 'none',
-                                                            transition: 'all 0.2s ease'
+                                                            marginLeft: '2px',
+                                                            padding: '0 2px'
                                                         }}
-                                                    />
-                                                ))}
-                                            </div>
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
+
                                         {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
                                         {showBooster2TypeMenu && (
                                             <div style={{
@@ -1093,13 +1210,125 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         {/* CENTER SECTION: PLAYER NAME, RATE BUTTON & MANAGER SELECTOR */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingLeft: '10px' }}>
                             <div>
-                                <h1 style={{ margin: '0 0 4px 0', fontSize: '2.5em', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', color: '#fff' }}>
+                                <h1 style={{ margin: '0 0 6px 0', fontSize: '2.5em', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', color: '#fff' }}>
                                     {player.playername}
                                 </h1>
 
-                                <div style={{ color: '#00f2fe', fontSize: '0.9em', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                    {player.playstyle || 'GOAL POACHER'}
+                                {/* EFOOTBALL 27: ATTACKING & DEFENSIVE PLAYING STYLES */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', margin: '4px 0 8px 0' }}>
+                                    {/* ATTACKING PLAYSTYLE */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {player.attacking_playstyle_icon ? (
+                                            <img 
+                                                src={player.attacking_playstyle_icon} 
+                                                alt="Attacking Playstyle" 
+                                                style={{ width: '19px', height: '19px', objectFit: 'contain', borderRadius: '4px' }} 
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                width: '18px',
+                                                height: '18px',
+                                                borderRadius: '4px',
+                                                background: 'rgba(244, 63, 94, 0.2)',
+                                                border: '1.5px solid #f43f5e',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                boxShadow: '0 0 8px rgba(244, 63, 94, 0.45)',
+                                                flexShrink: 0
+                                            }}>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <span style={{ 
+                                            color: '#fff', 
+                                            fontSize: '0.92em', 
+                                            fontWeight: '800', 
+                                            letterSpacing: '0.8px', 
+                                            textTransform: 'uppercase',
+                                            textShadow: '0 2px 4px rgba(0,0,0,0.6)'
+                                        }}>
+                                            {player.attacking_playstyle || player.playstyle || 'GOAL POACHER'}
+                                        </span>
+                                    </div>
+
+                                    {/* DEFENSIVE PLAYSTYLE (SHOWN IF CONFIGURED — EFOOTBALL 27 DUAL PLAYSTYLE) */}
+                                    {player.defensive_playstyle && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {player.defensive_playstyle_icon ? (
+                                                <img 
+                                                    src={player.defensive_playstyle_icon} 
+                                                    alt="Defensive Playstyle" 
+                                                    style={{ width: '19px', height: '19px', objectFit: 'contain', borderRadius: '4px' }} 
+                                                />
+                                            ) : (
+                                                <div style={{
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    borderRadius: '4px',
+                                                    background: 'rgba(6, 182, 212, 0.2)',
+                                                    border: '1.5px solid #06b6d4',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    boxShadow: '0 0 8px rgba(6, 182, 212, 0.45)',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                                    </svg>
+                                                </div>
+                                            )}
+                                            <span 
+                                                title={getDefensivePlaystyleInfo(player.defensive_playstyle)?.overview || player.defensive_playstyle}
+                                                style={{ 
+                                                    color: '#fff', 
+                                                    fontSize: '0.92em', 
+                                                    fontWeight: '800', 
+                                                    letterSpacing: '0.8px', 
+                                                    textTransform: 'uppercase',
+                                                    textShadow: '0 2px 4px rgba(0,0,0,0.6)',
+                                                    cursor: 'help'
+                                                }}
+                                            >
+                                                {player.defensive_playstyle}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* RATE THIS PLAYER BUTTON */}
+                                <button 
+                                    onClick={() => setShowReviews(!showReviews)}
+                                    style={{
+                                        margin: '4px 0 10px 0',
+                                        padding: '7px 18px',
+                                        background: '#161e2e',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        borderRadius: '8px',
+                                        color: '#f8fafc',
+                                        fontWeight: '800',
+                                        fontSize: '0.88em',
+                                        cursor: 'pointer',
+                                        width: 'fit-content',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = '#1e293b';
+                                        e.currentTarget.style.borderColor = '#00f2fe';
+                                        e.currentTarget.style.boxShadow = '0 0 12px rgba(0, 242, 254, 0.3)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = '#161e2e';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                                    }}
+                                >
+                                    Rate this player
+                                </button>
 
 
 
@@ -1260,7 +1489,9 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                             <PositionRatingsPitch 
                                 baseOvr={boostedOvr} 
                                 primaryPosition={primaryposition} 
-                                playstyle={player.playstyle}
+                                playstyle={player.attacking_playstyle || player.playstyle}
+                                attackingPlaystyle={player.attacking_playstyle || player.playstyle}
+                                defensivePlaystyle={player.defensive_playstyle}
                                 boostedStats={boostedStats}
                                 customPrimaryPositions={data.primarypositions}
                                 customSecondaryPositions={data.secondarypositions}
@@ -1453,21 +1684,37 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                         <span style={{ fontSize: '0.7em', fontWeight: 'bold', color: '#fff', background: '#1e293b', padding: '1px 5px', borderRadius: '4px' }}>{vCard.positioncode}</span>
                                                     </div>
 
-                                                    <div style={{
-                                                        width: '78px',
-                                                        height: '92px',
-                                                        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                                                        borderRadius: '8px',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        marginBottom: '8px'
-                                                    }}>
-                                                        <div style={{ fontSize: '0.65em', color: '#a78bfa', fontWeight: 'bold' }}>{vCard.cardtype}</div>
-                                                        <div style={{ fontSize: '0.75em', fontWeight: '900', color: '#fff', textAlign: 'center', margin: '4px 0' }}>{vCard.playername}</div>
-                                                    </div>
+                                                    {(vCard.cardimageurl || vCard.imageurl) ? (
+                                                        <img 
+                                                            src={vCard.cardimageurl || vCard.imageurl} 
+                                                            alt={vCard.playername} 
+                                                            style={{
+                                                                width: '78px',
+                                                                height: '92px',
+                                                                objectFit: 'cover',
+                                                                borderRadius: '8px',
+                                                                border: '1px solid rgba(255,255,255,0.2)',
+                                                                marginBottom: '8px',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                                                            }} 
+                                                        />
+                                                    ) : (
+                                                        <div style={{
+                                                            width: '78px',
+                                                            height: '92px',
+                                                            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            marginBottom: '8px'
+                                                        }}>
+                                                            <div style={{ fontSize: '0.65em', color: '#a78bfa', fontWeight: 'bold' }}>{vCard.cardtype}</div>
+                                                            <div style={{ fontSize: '0.75em', fontWeight: '900', color: '#fff', textAlign: 'center', margin: '4px 0', padding: '0 4px' }}>{vCard.playername}</div>
+                                                        </div>
+                                                    )}
 
                                                     <div style={{ fontSize: '0.75em', fontWeight: 'bold', color: '#cbd5e1', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {vCard.playername}

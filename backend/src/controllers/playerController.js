@@ -1,3 +1,7 @@
+// IN-MEMORY CARD DETAILS CACHE FOR INSTANTANEOUS LOADING
+const cardDetailsCache = new Map();
+const CARD_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 const pool = require('../db');
 
 
@@ -86,7 +90,7 @@ const getCardsList = async (req, res) => {
         } else if (sort === 'name_desc') {
             sql += ` ORDER BY p.PlayerName DESC`;
         } else {
-            sql += ` ORDER BY p.PlayerID DESC, c.CardID DESC`; 
+            sql += ` ORDER BY c.CardID DESC NULLS LAST, p.PlayerID DESC`; 
         }
 
         const result = await pool.query(sql, params);
@@ -112,6 +116,12 @@ const getCardsList = async (req, res) => {
 
 const getCardDetails = async (req, res) => {
     const { id } = req.params;
+    const cacheKey = String(id);
+    const cached = cardDetailsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CARD_CACHE_TTL_MS)) {
+        return res.json(cached.data);
+    }
+
     try {
         const sql = `
             SELECT 
@@ -121,6 +131,10 @@ const getCardDetails = async (req, res) => {
                 p.weight AS player_weight, 
                 p.preferredfoot AS player_preferredfoot, 
                 p.playstyle AS player_playstyle, 
+                p.attacking_playstyle AS player_attacking_playstyle,
+                p.defensive_playstyle AS player_defensive_playstyle,
+                p.attacking_playstyle_icon AS player_attacking_playstyle_icon,
+                p.defensive_playstyle_icon AS player_defensive_playstyle_icon,
                 p.weakfootusage, p.weakfootaccuracy, p.formconsistency, 
                 p.armlength, p.shoulderwidth, p.necklength, p.chestmeasurement, p.necksize, p.shoulderheight, p.leglength, p.thighsize, p.waistsize, p.armsize, p.calfsize, 
                 n.countryname, n.flagurl, 
@@ -140,7 +154,20 @@ const getCardDetails = async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: "Card not found" });
         const row = result.rows[0];
         const posCode = row.card_positioncode || row.positioncode || 'AMF';
+
+        // Dual playstyles support (eFootball 27)
+        const atkStyle = row.attacking_playstyle || row.player_attacking_playstyle || row.player_playstyle || row.playstyle || 'Goal Poacher';
+        const defStyle = (row.defensive_playstyle !== undefined && row.defensive_playstyle !== null && row.defensive_playstyle !== '') 
+            ? row.defensive_playstyle 
+            : (row.player_defensive_playstyle || null);
+        const atkIcon = row.attacking_playstyle_icon || row.player_attacking_playstyle_icon || null;
+        const defIcon = row.defensive_playstyle_icon || row.player_defensive_playstyle_icon || null;
+
         const data = {
+            attacking_playstyle: atkStyle,
+            defensive_playstyle: defStyle,
+            attacking_playstyle_icon: atkIcon,
+            defensive_playstyle_icon: defIcon,
             ...row,
             positioncode: posCode,
             primaryposition: posCode,
@@ -150,13 +177,19 @@ const getCardDetails = async (req, res) => {
             livecondition: row.livecondition || 'B',
             booster1: row.booster1 || 'Off the ball +4',
             booster2: row.booster2 || 'Technique +3',
+            booster1_type: row.booster1_type || null,
+            booster2_type: row.booster2_type || null,
             player: {
                 playername: row.playername, 
                 age: row.age,
                 height: row.player_height || row.height || 180,
                 weight: row.player_weight || row.weight || 75,
                 preferredfoot: row.player_preferredfoot || row.preferredfoot || 'Right',
-                playstyle: row.player_playstyle || row.playstyle || 'Box-to-Box',
+                attacking_playstyle: atkStyle,
+                defensive_playstyle: defStyle,
+                attacking_playstyle_icon: atkIcon,
+                defensive_playstyle_icon: defIcon,
+                playstyle: atkStyle,
                 weakfootusage: row.weakfootusage || 'Occasionally',
                 weakfootaccuracy: row.weakfootaccuracy || 'High',
                 formconsistency: row.formconsistency || 'Unwavering',
@@ -203,6 +236,7 @@ const getCardDetails = async (req, res) => {
                 gkreach: row.gkreach
             }
         };
+        cardDetailsCache.set(cacheKey, { timestamp: Date.now(), data });
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -437,7 +471,7 @@ const smartSearchCards = async (req, res) => {
     const b = req.query; 
     const clean = (val) => (val === '' || val === undefined || val === 'null' ? null : val);
     try {
-        const sql = `SELECT * FROM smart_search_pro($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`;
+        const sql = `SELECT * FROM smart_search_pro($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) ORDER BY cardid DESC NULLS LAST, playerid DESC`;
         const values = [
             clean(b.name), b.leagueId ? parseInt(b.leagueId) : null, b.clubId ? parseInt(b.clubId) : null, b.nationId ? parseInt(b.nationId) : null,
             clean(b.cardType), clean(b.posCode),
@@ -533,7 +567,7 @@ const addPlayer = async (req, res) => {
 
 
 const addCard = async (req, res) => {
-    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, gpcost, cardimageurl, imageurl } = req.body;
+    const { playerid, cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating, gpcost, cardimageurl, imageurl, attacking_playstyle, defensive_playstyle, attacking_playstyle_icon, defensive_playstyle_icon } = req.body;
     
     const client = await pool.connect();
 
@@ -558,6 +592,25 @@ const addCard = async (req, res) => {
             await client.query('UPDATE card SET gpcost = $1 WHERE cardid = $2', [parseInt(gpcost), cardId]);
         }
 
+        // Save eFootball 27 dual playstyles if provided
+        if (cardId && (attacking_playstyle || defensive_playstyle || attacking_playstyle_icon || defensive_playstyle_icon)) {
+            await client.query(`
+                UPDATE card 
+                SET 
+                    attacking_playstyle = $1, 
+                    defensive_playstyle = $2, 
+                    attacking_playstyle_icon = $3, 
+                    defensive_playstyle_icon = $4 
+                WHERE cardid = $5
+            `, [
+                attacking_playstyle ? attacking_playstyle.trim() : null,
+                defensive_playstyle ? defensive_playstyle.trim() : null,
+                attacking_playstyle_icon ? attacking_playstyle_icon.trim() : null,
+                defensive_playstyle_icon ? defensive_playstyle_icon.trim() : null,
+                cardId
+            ]);
+        }
+
         // Save optional cardimageurl if provided
         const imgUrl = (cardimageurl || imageurl || '').trim();
         if (cardId && imgUrl) {
@@ -565,6 +618,18 @@ const addCard = async (req, res) => {
             await client.query('UPDATE card SET cardimageurl = $1 WHERE cardid = $2', [imgUrl, cardId]);
         }
 
+        const { booster1, booster2, booster1_type, booster2_type } = req.body;
+        if (cardId && (booster1 || booster2 || booster1_type || booster2_type)) {
+            await client.query(`
+                UPDATE card
+                SET
+                    booster1 = COALESCE($1, booster1),
+                    booster2 = COALESCE($2, booster2),
+                    booster1_type = COALESCE($3, booster1_type),
+                    booster2_type = COALESCE($4, booster2_type)
+                WHERE cardid = $5
+            `, [booster1 || null, booster2 || null, booster1_type || null, booster2_type || null, cardId]);
+        }
         await client.query('COMMIT');
 
         res.json(result.rows[0]);
@@ -1003,8 +1068,8 @@ const updateCard = async (req, res) => {
     const { id } = req.params;
     const { 
         cardtype, positioncode, baseoverallrating, currentoverallrating, maxoverallrating,
-        primarypositions, secondarypositions, booster1, booster2, tierbadge, livecondition,
-        skills, comskills, maxlevel, progressionpoints, gpcost
+        primarypositions, secondarypositions, booster1, booster2, booster1_type, booster2_type,
+        tierbadge, livecondition, skills, comskills, maxlevel, progressionpoints, gpcost
     } = req.body;
 
     try {
@@ -1060,12 +1125,61 @@ const updateCard = async (req, res) => {
             gpValue !== undefined ? gpValue : null
         ]);
 
+        const { attacking_playstyle, defensive_playstyle, attacking_playstyle_icon, defensive_playstyle_icon } = req.body;
+        if (attacking_playstyle !== undefined || defensive_playstyle !== undefined || attacking_playstyle_icon !== undefined || defensive_playstyle_icon !== undefined) {
+            await pool.query(`
+                UPDATE card 
+                SET 
+                    attacking_playstyle = $1, 
+                    defensive_playstyle = $2, 
+                    attacking_playstyle_icon = $3, 
+                    defensive_playstyle_icon = $4 
+                WHERE cardid = $5
+            `, [
+                attacking_playstyle ? attacking_playstyle.trim() : null,
+                defensive_playstyle ? defensive_playstyle.trim() : null,
+                attacking_playstyle_icon ? attacking_playstyle_icon.trim() : null,
+                defensive_playstyle_icon ? defensive_playstyle_icon.trim() : null,
+                parseInt(id)
+            ]);
+        }
+
         const imgUrl = req.body.cardimageurl !== undefined ? req.body.cardimageurl : req.body.imageurl;
         if (imgUrl !== undefined) {
             await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS cardimageurl VARCHAR(500)');
             await pool.query('UPDATE card SET cardimageurl = $1 WHERE cardid = $2', [imgUrl ? imgUrl.trim() : null, parseInt(id)]);
         }
 
+        
+        // Ensure booster1_type and booster2_type columns exist & persist them
+        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS booster1_type VARCHAR(50)');
+        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS booster2_type VARCHAR(50)');
+
+        const b1TypeVal = booster1_type !== undefined 
+            ? ((booster1 === 'none' || booster1_type === 'ALL') ? null : booster1_type)
+            : undefined;
+        const b2TypeVal = booster2_type !== undefined 
+            ? ((booster2 === 'none' || booster2_type === 'ALL') ? null : booster2_type)
+            : undefined;
+
+        if (b1TypeVal !== undefined || b2TypeVal !== undefined) {
+            await pool.query(`
+                UPDATE card 
+                SET 
+                    booster1_type = CASE WHEN $1::boolean THEN $2 ELSE booster1_type END,
+                    booster2_type = CASE WHEN $3::boolean THEN $4 ELSE booster2_type END
+                WHERE cardid = $5
+            `, [
+                b1TypeVal !== undefined,
+                b1TypeVal || null,
+                b2TypeVal !== undefined,
+                b2TypeVal || null,
+                parseInt(id)
+            ]);
+        }
+
+        cardDetailsCache.delete(String(id));
+        cardDetailsCache.clear();
         res.json({ message: "✅ Card details, skills, booster list, level cap & progression points updated successfully!" });
     } catch (error) {
         console.error("Update Card Error:", error);
@@ -1077,6 +1191,7 @@ const updatePlayerModel = async (req, res) => {
     const { id } = req.params;
     const {
         height, weight, preferredfoot, playstyle,
+        attacking_playstyle, defensive_playstyle, attacking_playstyle_icon, defensive_playstyle_icon,
         armlength, shoulderwidth, necklength, chestmeasurement,
         necksize, shoulderheight, leglength, thighsize, waistsize, armsize, calfsize
     } = req.body;
@@ -1089,6 +1204,7 @@ const updatePlayerModel = async (req, res) => {
                 weight = COALESCE($2, weight),
                 preferredfoot = COALESCE($3, preferredfoot),
                 playstyle = COALESCE($4, playstyle),
+                attacking_playstyle = COALESCE($4, attacking_playstyle),
                 armlength = COALESCE($5, armlength),
                 shoulderwidth = COALESCE($6, shoulderwidth),
                 necklength = COALESCE($7, necklength),
@@ -1099,14 +1215,17 @@ const updatePlayerModel = async (req, res) => {
                 thighsize = COALESCE($12, thighsize),
                 waistsize = COALESCE($13, waistsize),
                 armsize = COALESCE($14, armsize),
-                calfsize = COALESCE($15, calfsize)
-            WHERE playerid = $16
+                calfsize = COALESCE($15, calfsize),
+                defensive_playstyle = $16,
+                attacking_playstyle_icon = $17,
+                defensive_playstyle_icon = $18
+            WHERE playerid = $19
         `;
         await pool.query(sql, [
             height ? parseInt(height) : null,
             weight ? parseInt(weight) : null,
             preferredfoot || null,
-            playstyle || null,
+            (attacking_playstyle || playstyle) || null,
             armlength ? parseInt(armlength) : null,
             shoulderwidth ? parseInt(shoulderwidth) : null,
             necklength ? parseInt(necklength) : null,
@@ -1118,8 +1237,17 @@ const updatePlayerModel = async (req, res) => {
             waistsize ? parseInt(waistsize) : null,
             armsize ? parseInt(armsize) : null,
             calfsize ? parseInt(calfsize) : null,
+            defensive_playstyle !== undefined ? (defensive_playstyle ? defensive_playstyle.trim() : null) : null,
+            attacking_playstyle_icon !== undefined ? (attacking_playstyle_icon ? attacking_playstyle_icon.trim() : null) : null,
+            defensive_playstyle_icon !== undefined ? (defensive_playstyle_icon ? defensive_playstyle_icon.trim() : null) : null,
             parseInt(id)
         ]);
+        
+        // Invalidate card details cache
+        if (typeof cardDetailsCache !== 'undefined') {
+            cardDetailsCache.clear();
+        }
+
         res.json({ message: "✅ Player 3D model and physics metrics updated successfully!" });
     } catch (error) {
         console.error("Update Player Model Error:", error);
@@ -1130,17 +1258,27 @@ const updatePlayerModel = async (req, res) => {
 const getOtherVersions = async (req, res) => {
     const { playerid, cardid } = req.query;
     try {
-        if (!playerid) return res.json([]);
+        if (!playerid && !cardid) return res.json([]);
         const sql = `
-            SELECT c.*, p.playername, n.flagurl, cl.logourl
+            SELECT c.*, p.playername, p.age, n.flagurl, cl.logourl
             FROM card c
             JOIN player p ON c.playerid = p.playerid
             LEFT JOIN nationality n ON p.nationalityid = n.nationalityid
             LEFT JOIN club cl ON p.clubid = cl.clubid
-            WHERE c.playerid = $1 AND c.cardid != $2
-            ORDER BY c.baseoverallrating DESC
+            WHERE (
+                c.playerid = $1 
+                OR LOWER(TRIM(p.playername)) = (
+                    SELECT LOWER(TRIM(p2.playername)) 
+                    FROM player p2 
+                    LEFT JOIN card c2 ON c2.playerid = p2.playerid
+                    WHERE p2.playerid = $1 OR c2.cardid = $2
+                    LIMIT 1
+                )
+            ) 
+            AND c.cardid != $2
+            ORDER BY c.baseoverallrating DESC, c.cardid DESC
         `;
-        const { rows } = await pool.query(sql, [playerid, cardid || 0]);
+        const { rows } = await pool.query(sql, [parseInt(playerid) || 0, parseInt(cardid) || 0]);
         res.json(rows);
     } catch (err) {
         console.error("Error fetching other versions:", err);

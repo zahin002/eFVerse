@@ -14,9 +14,14 @@ const pool = new Pool({
     connectionString: connectionString,
     ssl: connectionString && connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
     max: 20, // Limit maximum client connections in shared pool
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 600000, // 10 minutes idle timeout to prevent slow TLS handshakes
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
 });
+
+// Warm up initial connection immediately
+pool.query('SELECT 1').catch(() => {});
 
 pool.on('error', (err) => {
     console.error('❌ Unexpected DB pool error:', err.message);

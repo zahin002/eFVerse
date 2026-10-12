@@ -1,13 +1,22 @@
 // Complete Official eFootball 2026 Player Boosters System & Categories
 
 export const BOOSTER_CATEGORIES = {
-    POTW: { name: 'POTW (Form Based)', color: '#22c55e', maxBoost: 3 },
-    STANDARD: { name: 'Standard (Always Active)', color: '#38bdf8', maxBoost: 2 },
-    TOTAL_PACKAGE: { name: 'Total Package (Full Team)', color: '#eab308', maxBoost: 3 },
-    SPECIAL: { name: 'Special / Named (Big Time)', color: '#a855f7', maxBoost: 4 }
+    POTW: { name: 'POTW', color: '#22c55e', maxBoost: 3 },
+    STANDARD: { name: 'Standard', color: '#38bdf8', maxBoost: 2 },
+    TOTAL_PACKAGE: { name: 'Total Package', color: '#eab308', maxBoost: 3 },
+    SPECIAL: { name: 'Special / Named', color: '#a855f7', maxBoost: 4 }
 };
 
 export const EFOOTBALL_BOOSTERS = [
+    {
+        name: "Striker's Instinct",
+        category: 'SPECIAL',
+        color: '#00f2fe',
+        useCase: 'Forward',
+        primaryPositions: ["CF","SS"],
+        stats: ["offensiveawareness","ballcontrol","finishing","acceleration"],
+        description: 'Special Booster: Offensive Awareness, Ball Control, Finishing, Acceleration'
+    },
     {
         name: 'Accuracy',
         category: 'STANDARD',
@@ -322,10 +331,10 @@ export const EFOOTBALL_BOOSTERS = [
         name: 'Magical',
         category: 'SPECIAL',
         color: '#a855f7',
-        useCase: 'Big Time Ronaldinho / Legend',
-        primaryPositions: ['LWF', 'AMF', 'SS'],
-        stats: ['dribbling', 'ballcontrol', 'tightpossession', 'balance'],
-        description: 'Special Booster +4: Dribbling, Ball Control, Tight Possession, Balance'
+        useCase: 'Big Time Messi (2015)',
+        primaryPositions: ['RWF', 'LWF', 'SS', 'AMF'],
+        stats: ['attackingawareness', 'dribbling', 'tightpossession', 'acceleration'],
+        description: 'Special Booster +4: Attacking Awareness, Dribbling, Tight Possession, Acceleration'
     }
 ];
 
@@ -356,4 +365,43 @@ export const getBoosterCategoryColor = (name, isBooster2 = false) => {
         return '#eab308'; // Yellow/Brown
     }
     return isBooster2 ? '#f97316' : '#38bdf8';
+};
+
+export const ATTRIBUTE_DISPLAY_NAMES = {
+    offensiveawareness: 'Offensive Awareness',
+    ballcontrol: 'Ball Control',
+    dribbling: 'Dribbling',
+    tightpossession: 'Tight Possession',
+    lowpass: 'Low Pass',
+    loftedpass: 'Lofted Pass',
+    finishing: 'Finishing',
+    heading: 'Heading',
+    placekicking: 'Set Piece Taking',
+    curl: 'Curl',
+    speed: 'Speed',
+    acceleration: 'Acceleration',
+    kickingpower: 'Kicking Power',
+    jump: 'Jumping',
+    physicalcontact: 'Physical Contact',
+    balance: 'Balance',
+    stamina: 'Stamina',
+    defensiveawareness: 'Defensive Awareness',
+    defensiveengagement: 'Defensive Engagement',
+    tackling: 'Tackling',
+    aggression: 'Aggression',
+    gkawareness: 'GK Awareness',
+    gkcatching: 'GK Catching',
+    gkparrying: 'GK Parrying',
+    gkreflexes: 'GK Reflexes',
+    gkreach: 'GK Reach'
+};
+
+export const formatStatName = (key) => {
+    if (!key) return '';
+    return ATTRIBUTE_DISPLAY_NAMES[key.toLowerCase()] || (key.charAt(0).toUpperCase() + key.slice(1));
+};
+
+export const getBoosterStatLabels = (booster) => {
+    if (!booster || !booster.stats) return '';
+    return booster.stats.map(formatStatName).join(', ');
 };

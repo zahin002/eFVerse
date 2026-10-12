@@ -52,7 +52,9 @@ const addManager = async (req, res) => {
         linkup_centerpiece,
         linkup_keyman,
         linkup_positions,
-        boosts
+        boosts,
+        managerimageurl,
+        imageurl
     } = req.body;
     
     if (!managername) {
@@ -71,6 +73,7 @@ const addManager = async (req, res) => {
             boostsStr = boosts;
         }
 
+        const img = (managerimageurl || imageurl || '').trim() || null;
         const sql = `
             INSERT INTO Manager (
                 ManagerName, 
@@ -87,8 +90,10 @@ const addManager = async (req, res) => {
                 linkup_centerpiece,
                 linkup_keyman,
                 linkup_positions,
-                boosts_display
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                boosts_display,
+                managerimageurl,
+                imageurl
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             RETURNING *;
         `;
         const values = [
@@ -106,7 +111,9 @@ const addManager = async (req, res) => {
             linkup_centerpiece || null,
             linkup_keyman || null,
             linkup_positions || null,
-            boostsStr
+            boostsStr,
+            img,
+            img
         ];
 
         const result = await client.query(sql, values);
@@ -292,7 +299,9 @@ const updateManager = async (req, res) => {
         linkup_centerpiece,
         linkup_keyman,
         linkup_positions,
-        boosts
+        boosts,
+        managerimageurl,
+        imageurl
     } = req.body;
 
     if (!managername || !playstyle) {
@@ -307,6 +316,9 @@ const updateManager = async (req, res) => {
         if (Array.isArray(boosts) && boosts.length > 0) {
             boostsStr = boosts.map(b => `${b.statName || b.statname} +${b.value || b.boostvalue || 1}`).join(', ');
         }
+
+        const imgProvided = (managerimageurl !== undefined || imageurl !== undefined);
+        const cleanImg = imgProvided ? ((managerimageurl || imageurl || '').trim() || null) : null;
 
         const sql = `
             UPDATE Manager SET
@@ -324,8 +336,10 @@ const updateManager = async (req, res) => {
                 linkup_centerpiece = $12,
                 linkup_keyman = $13,
                 linkup_positions = $14,
-                boosts_display = COALESCE($15, boosts_display)
-            WHERE ManagerID = $16
+                boosts_display = COALESCE($15, boosts_display),
+                managerimageurl = CASE WHEN $16 = TRUE THEN $17 ELSE managerimageurl END,
+                imageurl = CASE WHEN $16 = TRUE THEN $17 ELSE imageurl END
+            WHERE ManagerID = $18
             RETURNING *;
         `;
         const values = [
@@ -344,6 +358,8 @@ const updateManager = async (req, res) => {
             linkup_keyman || null,
             linkup_positions || null,
             boostsStr,
+            imgProvided,
+            cleanImg,
             parseInt(id)
         ];
 

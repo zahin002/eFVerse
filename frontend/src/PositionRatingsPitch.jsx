@@ -4,7 +4,7 @@ import { calculateEffectivePositionOVR, getAffinityTier as getEngineAffinityTier
 export default function PositionRatingsPitch({ 
     baseOvr, 
     primaryPosition, 
-    playstyle, 
+    playstyle, attackingPlaystyle, defensivePlaystyle, 
     customPrimaryPositions, 
     customSecondaryPositions,
     boostedStats,
@@ -149,7 +149,7 @@ export default function PositionRatingsPitch({
                     minHeight: '36px',
                     boxSizing: 'border-box'
                 }}>
-                    {playstyle || 'Hole Player'}
+                    {defensivePlaystyle ? `${attackingPlaystyle || playstyle || 'Hole Player'} • ${defensivePlaystyle}` : (attackingPlaystyle || playstyle || 'Hole Player')}
                 </div>
                 <div style={{
                     flex: 1,
