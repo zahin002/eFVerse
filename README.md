@@ -1,10 +1,10 @@
-<div align="center">
+﻿<div align="center">
 
-# eFVerse (FHUB)
+# eFVerse
 
-**A full-stack companion app for eFootball — player database, card training, squad building, and community analytics, backed by a logic-heavy PostgreSQL layer.**
+**Next-generation companion web application for eFootball — player card catalog, card training simulator, formation squad builder, and community analytics powered by a PostgreSQL domain engine.**
 
-[![Node.js](https://img.shields.io/badge/Node.js-16%2B-339933?logo=nodedotjs&logoColor=white)](#)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)](#)
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](#)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](#)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](#)
@@ -15,192 +15,237 @@
 
 ---
 
-> **Note on naming:** this repository is titled *eFVerse*; the running application brands itself internally as **FHUB**. Both refer to the same project.
-
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
+- [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
 - [Project Structure](#project-structure)
-- [Database Schema](#database-schema)
+- [Database Engine](#database-engine)
 - [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
+- [Environment Configuration](#environment-configuration)
 - [API Reference](#api-reference)
-- [Known Limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
 
+---
+
 ## Overview
 
-eFVerse is a full-stack companion application for the eFootball series. It centralizes player, card, and manager data behind a searchable database, then layers gameplay-specific tools on top:
+**eFVerse** is a full-stack analytics and tactical companion platform designed for the eFootball community. It delivers an intuitive, fast, and feature-rich interface to inspect card attributes, build custom tactical squads, calculate player progression builds, and analyze community data.
 
-- Build and simulate **card training/progression** (allocate points across stat categories and see the projected rating).
-- Assemble **squads** on formation-based pitch layouts, with position-penalty-aware ratings.
-- Track **form and injury history**, **market value trends**, and **community reviews** per player card.
-- Browse community-shared **card builds** and react to them.
-- Administer the underlying database (players, cards, managers, stats) through a role-gated admin panel.
+Unlike conventional CRUD applications, eFVerse offloads critical domain logic — including multi-attribute smart searching, similarity matching algorithms, position penalty mathematics, market value trends, and data audit logs — directly to high-performance **PostgreSQL PL/pgSQL stored procedures, functions, and triggers**.
 
-The project doubles as a demonstration of moving non-trivial business logic (smart search, similarity matching, rating math, valuation modeling, auditing) into the database layer via PostgreSQL functions, procedures, and triggers, rather than reimplementing it in the API layer.
+---
 
-## Features
+## Key Features
 
-**Player & Card Database**
-- Multi-field smart search (name, league, club, nationality, card type, position, individual stat ranges)
-- Detailed card view: base stats, form history, injury history, market value history, community reviews, similar-player suggestions
-- Head-to-head player comparison
+### 1. Player Card Catalog & Discovery
+- **Multi-Field Smart Search:** Filter players by name, league, club, nationality, position, card type, and custom attribute ranges.
+- **Comprehensive Card View:** Inspect base stats, level progression limits, live condition/form history, injury records, market value trends, and similar player recommendations.
+- **Head-to-Head Comparison:** Side-by-side radar and statistical comparison between any two player cards.
 
-**Card Training / Progression**
-- Allocate progression points into stat categories per configurable training programs
-- Save personal builds and browse/react to public community builds
-- Manager tactical boosts applied to effective stats (max 2 boosts per manager, enforced at the DB level)
+### 2. Card Progression & Training Simulator
+- **Interactive Point Allocation:** Allocate training progression points across stat categories in real time.
+- **Live Rating Simulation:** Preview effective card ratings as stats are tuned.
+- **Community Builds:** Save personal card builds, publish them to the community, and like or react to shared configurations.
+- **Manager Tactical Boosts:** Automatically calculate and apply active manager affinity boosts to in-game stats.
 
-**Squad Builder**
-- Interactive formation-based pitch (9 supported formations: 4-3-3, 4-4-2, 4-2-3-1, 3-5-2, 5-3-2, 4-1-4-1, 3-4-3, 4-5-1, 5-2-3)
-- Position-penalty-aware "effective rating" when playing a card out of position
-- Save, edit, delete, and favorite squads
+### 3. Tactical Squad Builder
+- **Interactive Pitch:** Drag and position cards onto 9 real-world formations (4-3-3, 4-4-2, 4-2-3-1, 3-5-2, 5-3-2, 4-1-4-1, 3-4-3, 4-5-1, 5-2-3).
+- **Position Penalty Engine:** Real-time calculation of overall rating adjustments when players are placed outside their primary/secondary positions.
+- **Squad Management:** Create, save, update, favorite, and manage custom team rosters.
 
-**Analytics / Leaderboards**
-- Top-rated cards, top goal-scorers (by GPG), injury-prone players, consistency leaders, recent hot-form players, top market-value players, most-liked community builds
+### 4. Manager Registry
+- Comprehensive registry of coaches with tactical proficiencies (Possession Game, Quick Counter, Long Ball Counter, Out Wide, Long Ball).
+- Manager tactical boost inspector with automated validation triggers.
 
-**Auth & Administration**
-- JWT-based authentication via httpOnly cookies, bcrypt-hashed passwords
-- Role-gated access (`USER` / `ADMIN`)
-- Admin panel for managing players, cards, managers, stats, forms, and injuries
+### 5. Advanced Analytics & Leaderboards
+- **Top Rated Cards:** Ranked list of the highest-rated cards across all series.
+- **Lethal Scorers:** Ranked by goals-per-game (GPG) ratio.
+- **Form & Reliability:** Tracking players by injury resistance and consistent "A" condition form.
+- **Market Trends & Hot Forms:** Recent player value fluctuations and current in-form stars.
+- **Community Favorites:** Most-liked builds and tactical setups.
 
-## Tech Stack
+### 6. Authentication & Administration
+- **Flexible Auth:** Dual-mode authentication supporting standard JWT sessions and Google OAuth 2.0 (Google Identity Services).
+- **Role-Based Access Control (RBAC):** Distinct roles for standard `USER` accounts and administrative `ADMIN` permissions.
+- **Admin Management Panel:** Role-gated dashboard for registering and curating players, cards, managers, and stat attributes.
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite 7, Axios, plain CSS-in-JS (no UI framework) |
-| Backend | Node.js, Express 5, JWT (`jsonwebtoken`), `bcrypt` / `bcryptjs`, `cookie-parser`, `cors`, `dotenv` |
-| Database | PostgreSQL (developed against Supabase), accessed via `pg` (raw SQL / functions / procedures) |
-| Dev tooling | `nodemon` (backend), ESLint (frontend) |
+---
 
-## Architecture
+## Technology Stack
+
+| Layer | Technology | Details |
+|---|---|---|
+| **Frontend** | React 19, Vite 7 | Modern React architecture, React Icons, responsive layouts |
+| **Styling** | Modern CSS | Glassmorphism UI, Outfit & Space Grotesk typography |
+| **Backend** | Node.js, Express 5 | Modular controllers and Express routers |
+| **Authentication** | JWT & Google OAuth 2.0 | `jsonwebtoken`, `bcryptjs`, Google Identity Services |
+| **Database** | PostgreSQL / Supabase | Raw SQL via `pg` connection pooling |
+| **Database Logic** | PL/pgSQL | Functions, stored procedures, check constraints, audit triggers |
+
+---
+
+## System Architecture
 
 ```
-┌─────────────────┐      HTTP/JSON (cookies)      ┌───────────────────┐        SQL         ┌──────────────────────┐
-│  React + Vite    │  <───────────────────────>   │  Express REST API  │ <───────────────> │  PostgreSQL (Supabase)│
-│  (frontend/)      │      localhost:5173          │  (backend/)         │   pg connection    │                        │
-└─────────────────┘                                └───────────────────┘                    └──────────────────────┘
-                                                                                                        │
-                                                                                    Functions / Procedures / Triggers:
-                                                                                    - smart_search_pro()
-                                                                                    - find_similar_players()
-                                                                                    - calculate_suggested_stats()
-                                                                                    - get_effective_rating()
-                                                                                    - update_player_valuation()
-                                                                                    - train_player_card_pro() / save_player_build_pro()
-                                                                                    - audit-on-delete triggers, boost-limit trigger, etc.
+┌─────────────────────────────────┐                 ┌─────────────────────────────────┐
+│         Frontend Client         │                 │       Backend REST API          │
+│         (React 19 + Vite 7)     │   HTTP / JSON   │     (Node.js + Express 5)       │
+│        http://localhost:5173    │ <─────────────> │     http://localhost:5001       │
+└─────────────────────────────────┘                 └─────────────────────────────────┘
+                                                                     │
+                                                               pg pool query
+                                                                     │
+                                                                     ▼
+                                                    ┌─────────────────────────────────┐
+                                                    │       PostgreSQL Database       │
+                                                    │   (Supabase / Local Postgres)   │
+                                                    │                                 │
+                                                    │  • smart_search_pro()           │
+                                                    │  • find_similar_players()       │
+                                                    │  • calculate_suggested_stats()  │
+                                                    │  • get_effective_rating()       │
+                                                    │  • update_player_valuation()    │
+                                                    │  • train_player_card_pro()      │
+                                                    │  • Audit & Boost Triggers       │
+                                                    └─────────────────────────────────┘
 ```
 
-A deliberate design decision in this project is that a meaningful share of the domain logic — smart search filtering, similarity scoring, rating/valuation math, and data auditing — is implemented directly in PostgreSQL (see [`SQL CODES/`](./SQL%20CODES)) rather than in the Express layer. Controllers in `backend/src/controllers/` are largely thin wrappers that call these functions/procedures and shape the JSON response.
-
-Authentication uses a JWT stored in an httpOnly cookie (`token`), verified per-request by `authMiddleware.js`. The frontend never touches the raw token; it caches only non-sensitive profile data (`username`, `role`) in `localStorage` for UI purposes and relies on the cookie for actual authorization.
+---
 
 ## Project Structure
 
 ```
-FHUB/
+eFVerse/
 ├── backend/
+│   ├── db/
+│   │   ├── schema.sql                 # Complete database DDL (tables, constraints, FKs)
+│   │   ├── procedures_and_triggers.sql# PL/pgSQL functions, procedures, and triggers
+│   │   └── seed_cards.sql             # Curated player card seed data
 │   ├── src/
-│   │   ├── controllers/       # Route handlers — one per domain (auth, player, manager, squad, ...)
-│   │   ├── routes/            # Express routers, one per domain
+│   │   ├── controllers/               # Domain-specific route controllers
+│   │   │   ├── authController.js
+│   │   │   ├── playerController.js
+│   │   │   ├── managerController.js
+│   │   │   ├── progressionController.js
+│   │   │   ├── squadController.js
+│   │   │   └── reviewController.js
 │   │   ├── middleware/
-│   │   │   └── authMiddleware.js  # JWT verification
-│   │   └── server.js          # App entrypoint, middleware & route wiring
-│   ├── .env.example           # Template for backend/.env
+│   │   │   └── authMiddleware.js      # JWT token authentication middleware
+│   │   ├── routes/                    # API route definitions
+│   │   └── server.js                  # Express application entrypoint
+│   ├── .env.example                   # Backend environment template
 │   └── package.json
+│
 ├── frontend/
+│   ├── public/
+│   │   ├── images/                    # Badges, stadium backgrounds, and club logos
+│   │   └── logo.png                   # Official eFVerse brand logo
 │   ├── src/
-│   │   ├── App.jsx             # Auth screen + main dashboard shell
-│   │   ├── AdminPanel.jsx      # Admin CRUD for players/cards/managers/stats
-│   │   ├── SmartSearch.jsx     # Multi-field player/card search
-│   │   ├── PlayerCardView.jsx  # Card detail: history, reviews, similar players
-│   │   ├── ComparePlayers.jsx  # Head-to-head comparison
-│   │   ├── ManagerDetailView.jsx
-│   │   ├── CardTrainer.jsx     # Progression / training UI
-│   │   ├── SquadBuilder.jsx    # Formation-based squad builder
-│   │   └── main.jsx
+│   │   ├── AdminPanel.jsx             # Role-gated administration dashboard
+│   │   ├── App.jsx                    # Core shell, navigation, and state router
+│   │   ├── badgeAssetEngine.js        # Dynamic crest and flag asset resolver
+│   │   ├── CardTrainer.jsx            # Interactive progression & training simulator
+│   │   ├── ComparePlayers.jsx         # Head-to-head card comparison
+│   │   ├── ManagerDetailView.jsx      # Manager profile and tactical affinity
+│   │   ├── PlayerCardView.jsx         # High-resolution card stats and reviews
+│   │   ├── SmartSearch.jsx            # Multi-dimensional database search engine
+│   │   ├── SquadBuilder.jsx           # Formation-based pitch squad builder
+│   │   ├── index.css                  # Global design tokens and animations
+│   │   └── main.jsx                   # Application mount point with error boundary
 │   ├── index.html
+│   ├── vite.config.js
 │   └── package.json
-├── SQL CODES/                  # Schema + PL/pgSQL functions, procedures, triggers (run before first use)
-│   ├── schema.txt              # Full DDL — tables, constraints, FKs
-│   ├── smart_search.txt
-│   ├── similar_player_card.txt
-│   ├── effective_rating.txt
-│   ├── auto_stats_calc.txt
-│   ├── market_value_updater.txt
-│   ├── train_card.txt
-│   ├── player_build_save.txt
-│   ├── update_player_status.txt
-│   ├── booster_limit_trigger.txt
-│   ├── default_form_trigger.txt
-│   ├── delete_player_audit.txt
-│   ├── manager_audit.txt
-│   ├── manager_insert.txt
-│   ├── player_card_stats insertion.txt
-│   └── logical_stats_enforcing.txt
-├── PROJECT_SETUP_GUIDE.txt
-├── .gitignore
-├── LICENSE
+│
+├── PROJECT_SETUP_GUIDE.txt            # Quick-reference local deployment instructions
+├── LICENSE                            # MIT License
 └── README.md
 ```
 
-## Database Schema
+---
 
-The schema (`SQL CODES/schema.txt`) defines ~20 tables covering:
+## Database Engine
 
-- **Reference data:** `League`, `Club`, `Nationality`, `Positions`, `StatType`, `FormType`, `InjuryType`, `TrainingProgram`
-- **Core entities:** `Player`, `Manager`, `Card`, `PlayerStats`, `ManagerEffect`
-- **Time-series / history:** `PlayerForm`, `InjuryRecord`, `PlayerMarketValue`
-- **User data:** `"User"`, `Squad`, `SquadPlayer`, `Review`, `Build`, `BuildStats`, `BuildReaction`, `CardAllocation`
-- **Rules & audit:** `ProgressionRule`, `PositionPenalty`, `Player_Deleted_Audit`, `Manager_Deleted_Audit`
+The PostgreSQL database architecture is organized into:
 
-Key constraints worth noting: overall ratings are bounded `0–100`, card `CurrentOverallRating` must sit between its base and max, manager play-styles are restricted to a fixed set, squad formations are restricted via a `CHECK` constraint, and boosts per manager are capped at 2 via a trigger.
+- **Reference Tables:** `League`, `Club`, `Nationality`, `Positions`, `StatType`, `FormType`, `InjuryType`, `TrainingProgram`
+- **Core Entities:** `Player`, `Manager`, `Card`, `PlayerStats`, `ManagerEffect`
+- **Time-Series Records:** `PlayerForm`, `InjuryRecord`, `PlayerMarketValue`
+- **User & Social Data:** `"User"`, `Squad`, `SquadPlayer`, `Review`, `Build`, `BuildStats`, `BuildReaction`, `CardAllocation`
+- **Rules & Audit Tables:** `ProgressionRule`, `PositionPenalty`, `Player_Deleted_Audit`, `Manager_Deleted_Audit`
+
+### Key Stored Procedures & Functions
+
+| Function / Procedure | Purpose |
+|---|---|
+| `smart_search_pro(...)` | High-efficiency multi-column filtering and keyword search |
+| `find_similar_players(...)` | Attribute-distance similarity algorithm for alternative player suggestions |
+| `calculate_suggested_stats(...)` | Algorithmic point distribution recommendations based on position archetype |
+| `get_effective_rating(...)` | Position-penalty rating adjustment calculation |
+| `update_player_valuation(...)` | Form-weighted market valuation algorithm |
+| `train_player_card_pro(...)` | Atomic transaction for point validation and stat increments |
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 16+
-- npm
-- A PostgreSQL database (the project was developed against [Supabase](https://supabase.com), but any Postgres 13+ instance should work)
+- **Node.js** (v18.0.0 or higher recommended)
+- **npm** (v9.0.0 or higher)
+- **PostgreSQL Database** (v13 or higher, or a hosted [Supabase](https://supabase.com) instance)
 
-### 1. Set up the database
+---
 
-Using `psql`, the Supabase SQL editor, or your client of choice, run the SQL files in `SQL CODES/` in this order:
+### Step 1: Database Initialization
 
-1. `schema.txt` — creates all tables, constraints, and foreign keys
-2. All remaining `.txt` files — functions, procedures, and triggers (order doesn't matter between these, but they must come after `schema.txt`)
+1. Open your PostgreSQL terminal (`psql`) or the Supabase SQL Editor.
+2. Execute the initialization scripts in sequence:
+   ```bash
+   # 1. Create tables, constraints, and relationships
+   psql -d <your_database> -f backend/db/schema.sql
 
-> These files use a `.txt` extension; you can run them as-is with `psql -f`, or rename to `.sql` first for editor syntax highlighting.
+   # 2. Install PL/pgSQL functions, procedures, and triggers
+   psql -d <your_database> -f backend/db/procedures_and_triggers.sql
 
-### 2. Configure environment variables
+   # 3. (Optional) Load curated player card seed data
+   psql -d <your_database> -f backend/db/seed_cards.sql
+   ```
+
+---
+
+### Step 2: Configure Environment Variables
+
+Create your backend configuration file from the template:
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Fill in `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_KEY`, and `JWT_SECRET` with your own values (see [Environment Variables](#environment-variables)).
+Populate `.env` with your database credentials and secret keys (see [Environment Configuration](#environment-configuration)).
 
-### 3. Start the backend
+---
+
+### Step 3: Start the Backend Service
 
 ```bash
 cd backend
 npm install
 node src/server.js
-# or, for auto-reload during development:
-npx nodemon src/server.js
 ```
 
-The API will be available at `http://localhost:5001`.
+The Express API server will listen on `http://localhost:5001`.
 
-### 4. Start the frontend
+---
+
+### Step 4: Start the Frontend Application
+
+In a separate terminal window:
 
 ```bash
 cd frontend
@@ -210,34 +255,37 @@ npm run dev
 
 Open `http://localhost:5173` in your browser.
 
-> Both the backend and frontend must be running simultaneously. The frontend currently calls the backend via a hardcoded `http://localhost:5001` base URL (see [Known Limitations](#known-limitations)).
+---
 
-## Environment Variables
+## Environment Configuration
 
-Defined in `backend/.env` (see `backend/.env.example`):
+Defined in `backend/.env`:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_KEY` | Supabase API key |
-| `JWT_SECRET` | Secret used to sign/verify auth JWTs |
-| `PORT` | Port for the Express server (defaults to `5001`) |
-| `NODE_ENV` | Set to `production` to enable secure, HTTPS-only auth cookies |
+| Variable | Description | Default / Example |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection URI | `postgresql://user:pass@host:5432/dbname` |
+| `SUPABASE_URL` | Supabase project URL *(if using Supabase)* | `https://your-project.supabase.co` |
+| `SUPABASE_KEY` | Supabase API key *(if using Supabase)* | `eyJhbGciOi...` |
+| `JWT_SECRET` | Secret key used to sign and verify JWT authentication tokens | `your_secure_jwt_secret` |
+| `PORT` | HTTP port for the Express backend | `5001` |
+| `NODE_ENV` | Environment mode (`development` or `production`) | `development` |
+
+---
 
 ## API Reference
 
-All routes are prefixed with `/api`. Routes marked 🔒 require a valid auth cookie (`verifyToken` middleware).
+All routes are mounted under the `/api` prefix. Routes marked with 🔒 require authentication (`Bearer` token or auth cookie).
 
 <details>
-<summary><strong>Auth</strong> — <code>/api/auth</code></summary>
+<summary><strong>Authentication</strong> — <code>/api/auth</code></summary>
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/register` | Create a new user |
-| POST | `/login` | Authenticate, sets JWT cookie |
-| POST 🔒 | `/logout` | Clear auth cookie |
-| GET 🔒 | `/profile/:userId` | Fetch a user's profile |
+| `POST` | `/register` | Register a new user account |
+| `POST` | `/login` | Authenticate and issue session token |
+| `POST` | `/google` | Authenticate via Google OAuth credential token |
+| `POST` 🔒 | `/logout` | Invalidate and clear current session |
+| `GET` 🔒 | `/profile/:userId` | Retrieve user profile information |
 
 </details>
 
@@ -246,21 +294,56 @@ All routes are prefixed with `/api`. Routes marked 🔒 require a valid auth coo
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/helpers` | Dropdown reference data (leagues, nations, positions, etc.) |
-| GET | `/clubs-by-league` | Clubs filtered by league |
-| GET | `/list-players` / `/list-cards` | List players / cards |
-| GET | `/suggestions` | Autocomplete player suggestions |
-| GET | `/smart-search` | Multi-field search |
-| GET | `/compare/:cardId1/:cardId2` | Compare two cards |
-| GET | `/calculate-stats/:id` | Suggested stat distribution for a card |
-| GET | `/view-card/:id` | Full card detail |
-| GET | `/history/:playerId` | Market value history |
-| GET | `/similar/:cardId` | Similar-player suggestions |
-| GET | `/top-rated` / `/top-scorers` / `/injury-prone` / `/consistent` / `/recent-hot-form` / `/top-market-value` | Leaderboards |
-| GET | `/list-penalties` | Position penalty table |
-| POST 🔒 | `/add-player` / `/add-card` / `/add-stats` | Create records (admin) |
-| PUT 🔒 | `/update-status` | Update player form/injury status |
-| DELETE 🔒 | `/delete-player/:id` / `/delete-card/:id` | Delete records (admin) |
+| `GET` | `/list-cards` | Retrieve all configured player cards (supports filter and sort query params) |
+| `GET` | `/list-players` | Retrieve all registered players |
+| `GET` | `/view-card/:id` | Full player card detail including stats, history, and reviews |
+| `GET` | `/smart-search` | Multi-field search endpoint |
+| `GET` | `/compare/:cardId1/:cardId2` | Head-to-head comparison data for two cards |
+| `GET` | `/similar/:cardId` | Similar player recommendations |
+| `GET` | `/helpers` | Reference data (leagues, nations, positions) |
+| `GET` | `/clubs` | All Konami registered clubs with crest URLs |
+| `GET` | `/top-rated` | Leaderboard: Highest rated cards |
+| `GET` | `/top-scorers` | Leaderboard: Top scorers by GPG |
+| `GET` | `/injury-prone` | Leaderboard: Players with high injury occurrence |
+| `GET` | `/consistent` | Leaderboard: Players with consistent condition |
+| `GET` | `/recent-hot-form` | Leaderboard: Players in active peak form |
+| `GET` | `/top-market-value` | Leaderboard: Highest estimated market value |
+| `POST` 🔒 | `/add-player` | Create a player registry entry (admin) |
+| `POST` 🔒 | `/add-card` | Create a new card registry entry (admin) |
+| `POST` 🔒 | `/add-stats` | Associate stat records with a card (admin) |
+| `DELETE` 🔒 | `/delete-card/:id` | Remove a card entry (admin) |
+
+</details>
+
+<details>
+<summary><strong>Squad Management</strong> — <code>/api/squads</code></summary>
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/formations` | List of supported pitch tactical formations |
+| `GET` | `/cards` | Card pool available for squad drafting |
+| `GET` | `/penalties-all` | Matrix of position penalty rules |
+| `GET` 🔒 | `/user/:userId` | Retrieve squads belonging to a user |
+| `GET` 🔒 | `/:squadId` | Retrieve individual squad details and roster |
+| `POST` 🔒 | `/save` | Save a new squad lineup |
+| `PUT` 🔒 | `/:squadId` | Update an existing squad lineup |
+| `DELETE` 🔒 | `/:squadId` | Delete a saved squad |
+| `POST` 🔒 | `/:squadId/favorite` | Toggle favorite status on a squad |
+
+</details>
+
+<details>
+<summary><strong>Progression & Training</strong> — <code>/api/progression</code></summary>
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/rules` | Training programs and rule specifications |
+| `GET` | `/top-liked-builds` | Highest community-rated progression builds |
+| `GET` 🔒 | `/my-build/:id` | User's saved build for a specific card |
+| `GET` 🔒 | `/community-builds/:cardId` | Public builds published by the community |
+| `POST` 🔒 | `/train` | Save progression allocation and update stats |
+| `POST` 🔒 | `/save-snapshot` | Publish a public build snapshot |
+| `POST` 🔒 | `/react` | Like or react to a community build |
 
 </details>
 
@@ -269,58 +352,12 @@ All routes are prefixed with `/api`. Routes marked 🔒 require a valid auth coo
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/list` | List all managers |
-| GET | `/stats` | Boostable stat types |
-| GET | `/boosts/:id` | Boosts assigned to a manager |
-| POST 🔒 | `/add` | Add a manager (admin) |
-| POST 🔒 | `/boosts` | Assign manager boosts |
-| DELETE 🔒 | `/delete/:id` | Delete a manager (admin) |
-
-</details>
-
-<details>
-<summary><strong>Forms & Injuries</strong> — <code>/api/forms</code>, <code>/api/injuries</code></summary>
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/types` | Available form/injury types |
-| GET | `/history/:id` | A player's form/injury history |
-| POST 🔒 | `/update` | Log a new form/injury entry |
-
-</details>
-
-<details>
-<summary><strong>Progression (Card Training)</strong> — <code>/api/progression</code></summary>
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/rules` | Training program rules |
-| GET | `/positions` | Position list |
-| GET | `/top-liked-builds` | Most-liked public builds |
-| GET 🔒 | `/my-build/:id` | Your saved build for a card |
-| GET 🔒 | `/builds/:cardId` | Your builds for a card |
-| GET 🔒 | `/community-builds/:cardId` | Public builds for a card |
-| GET 🔒 | `/managers-with-effects` | Managers with active boosts |
-| POST 🔒 | `/train` | Apply training points to a card |
-| POST 🔒 | `/save-snapshot` | Save a build snapshot |
-| POST 🔒 | `/react` | Like/dislike a community build |
-
-</details>
-
-<details>
-<summary><strong>Squads</strong> — <code>/api/squads</code></summary>
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/formations` / `/positions` | Static reference data |
-| GET | `/cards` | Cards available for squad-building |
-| GET | `/penalties-all` / `/penalties/:cardId/:targetPosition` | Position-penalty lookups |
-| POST 🔒 | `/save` | Save a new squad |
-| GET 🔒 | `/user/:userId` | List a user's squads |
-| GET 🔒 | `/:squadId` | Squad detail |
-| PUT 🔒 | `/:squadId` | Update a squad |
-| DELETE 🔒 | `/:squadId` | Delete a squad |
-| POST 🔒 | `/:squadId/favorite` | Toggle favorite status |
+| `GET` | `/list` | List all managers with playstyles and photo URLs |
+| `GET` | `/stats` | List boostable stat categories |
+| `GET` | `/boosts/:id` | Tactical boosts associated with a manager |
+| `POST` 🔒 | `/add` | Register a new manager (admin) |
+| `POST` 🔒 | `/boosts` | Assign tactical stat boost effects (admin) |
+| `DELETE` 🔒 | `/delete/:id` | Remove a manager record (admin) |
 
 </details>
 
@@ -329,40 +366,35 @@ All routes are prefixed with `/api`. Routes marked 🔒 require a valid auth coo
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/:cardId` | Reviews for a card |
-| POST 🔒 | `/add` | Submit a review |
+| `GET` | `/:cardId` | Retrieve all community reviews for a card |
+| `POST` 🔒 | `/add` | Submit a card review and rating |
 
 </details>
 
-## Known Limitations
-
-- **Privilege escalation on registration:** `POST /api/auth/register` accepts a client-supplied `role` field and persists it as-is, so any user can register as `ADMIN`. This should be fixed server-side (ignore/validate the field) before relying on role-gating for anything sensitive.
-- **Hardcoded API base URL:** most frontend components call `http://localhost:5001` directly rather than reading from an environment variable, making the app harder to deploy to a non-local environment without a find-and-replace.
-- **No automated tests.** Both `backend` and `frontend` `package.json` files have placeholder or missing test scripts.
-- **No CI/CD** (GitHub Actions, etc.) configured yet.
-- **`.env` was present in the working copy.** If this repository has ever been pushed with real credentials committed, rotate `DATABASE_URL`, `SUPABASE_KEY`, and `JWT_SECRET` immediately and scrub them from git history (e.g. with `git filter-repo` or BFG) — adding `.env` to `.gitignore` after the fact does not remove it from prior commits.
+---
 
 ## Roadmap
 
-Ideas for future iterations (not yet implemented):
+- [ ] Automated continuous integration (CI) test workflows via GitHub Actions.
+- [ ] End-to-end integration tests for core progression algorithms and rating math.
+- [ ] Server-side pagination for extensive player rosters.
+- [ ] Mobile responsive layout enhancements for the pitch squad builder.
+- [ ] Social build export with direct card link sharing.
 
-- Centralize the API base URL behind a single config/env value (`VITE_API_URL`) instead of hardcoding it per component
-- Fix the registration role-assignment issue and add stronger input validation across controllers
-- Add automated tests (unit tests for controllers/SQL functions, integration tests for routes) and a GitHub Actions CI workflow
-- Add pagination to list endpoints (`list-cards`, `list-players`) for larger datasets
-- Extract shared styling into a design system or component library instead of inline styles
-- Add screenshots/demo GIF and a live deployed demo link to this README
+---
 
 ## Contributing
 
-Contributions are welcome. If you'd like to help:
+Contributions are welcomed. To propose a change:
 
-1. Fork the repository and create a feature branch
-2. Follow the existing code style (controllers/routes pattern on the backend, functional components on the frontend)
-3. Open a pull request describing your change and the motivation behind it
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/new-feature`).
+3. Commit your changes with descriptive messages (`git commit -m 'Add new feature'`).
+4. Push to your branch (`git push origin feature/new-feature`).
+5. Open a Pull Request detailing your enhancements.
 
-If you're planning a larger change, opening an issue first to discuss it is appreciated.
+---
 
 ## License
 
-Distributed under the MIT License. See [`LICENSE`](./LICENSE) for details.
+This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for complete details.

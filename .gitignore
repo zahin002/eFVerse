@@ -18,3 +18,6 @@ scratch/
 *.log
 .DS_Store
 Thumbs.db
+
+.vite/
+frontend/.vite/
