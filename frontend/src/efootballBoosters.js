@@ -334,7 +334,7 @@ export const EFOOTBALL_BOOSTERS = [
         useCase: 'Big Time Messi (2015)',
         primaryPositions: ['RWF', 'LWF', 'SS', 'AMF'],
         stats: ['attackingawareness', 'dribbling', 'tightpossession', 'acceleration'],
-        description: 'Special Booster +4: Attacking Awareness, Dribbling, Tight Possession, Acceleration'
+        description: 'Special Booster +4: Offensive Awareness, Dribbling, Tight Possession, Acceleration'
     }
 ];
 
@@ -376,12 +376,12 @@ export const ATTRIBUTE_DISPLAY_NAMES = {
     loftedpass: 'Lofted Pass',
     finishing: 'Finishing',
     heading: 'Heading',
-    placekicking: 'Set Piece Taking',
+    placekicking: 'Place Kicking',
     curl: 'Curl',
     speed: 'Speed',
     acceleration: 'Acceleration',
     kickingpower: 'Kicking Power',
-    jump: 'Jumping',
+    jump: 'Jump',
     physicalcontact: 'Physical Contact',
     balance: 'Balance',
     stamina: 'Stamina',
@@ -398,10 +398,33 @@ export const ATTRIBUTE_DISPLAY_NAMES = {
 
 export const formatStatName = (key) => {
     if (!key) return '';
-    return ATTRIBUTE_DISPLAY_NAMES[key.toLowerCase()] || (key.charAt(0).toUpperCase() + key.slice(1));
+    const clean = key.toString().toLowerCase().replace(/[\s_\-]+/g, '');
+    return ATTRIBUTE_DISPLAY_NAMES[clean] || (key.charAt(0).toUpperCase() + key.slice(1));
 };
 
 export const getBoosterStatLabels = (booster) => {
     if (!booster || !booster.stats) return '';
     return booster.stats.map(formatStatName).join(', ');
+};
+
+export const getBoosterTypeColor = (type, fallbackName = null) => {
+    if (type && type !== 'ALL') {
+        const upper = type.toString().toUpperCase().trim();
+        if (upper === 'POTW' || upper === 'GREEN') return '#22c55e';
+        if (upper === 'SPECIAL' || upper === 'PURPLE' || upper === 'NAMED') return '#a855f7';
+        if (upper === 'CRAFTABLE' || upper === 'TOTAL_PACKAGE' || upper === 'GOLD' || upper === 'YELLOW') return '#fbbf24';
+        if (upper === 'STANDARD' || upper === 'BLUE' || upper === 'CYAN') return '#00f2fe';
+    }
+    if (fallbackName) {
+        if (fallbackName === 'Craftable Slot' || fallbackName === 'Open Booster Craft') return '#00f2fe';
+        const b = getBoosterByName(fallbackName);
+        if (b && b.category) {
+            const cat = b.category.toUpperCase();
+            if (cat === 'POTW') return '#22c55e';
+            if (cat === 'SPECIAL') return '#a855f7';
+            if (cat === 'TOTAL_PACKAGE' || cat === 'CRAFTABLE') return '#fbbf24';
+            if (cat === 'STANDARD') return '#00f2fe';
+        }
+    }
+    return '#00f2fe';
 };

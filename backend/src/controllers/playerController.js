@@ -254,10 +254,12 @@ const comparePlayers = async (req, res) => {
                 c1.CardType as card1_type, 
                 c1.BaseOverallRating as card1_rating,
                 c1.PositionCode as card1_position,
+                COALESCE(c1.cardimageurl, c1.imageurl, p1.imageurl) as card1_imageurl,
                 p1.PlayerName as player1_name, 
                 p1.Age as player1_age,
                 n1.CountryName as player1_nation, 
                 cl1.ClubName as player1_club,
+                cl1.logourl as player1_clublogo,
                 s1.offensiveawareness as p1_offensiveawareness,
                 s1.finishing as p1_finishing,
                 s1.ballcontrol as p1_ballcontrol,
@@ -283,10 +285,12 @@ const comparePlayers = async (req, res) => {
                 c2.CardType as card2_type, 
                 c2.BaseOverallRating as card2_rating,
                 c2.PositionCode as card2_position,
+                COALESCE(c2.cardimageurl, c2.imageurl, p2.imageurl) as card2_imageurl,
                 p2.PlayerName as player2_name, 
                 p2.Age as player2_age,
                 n2.CountryName as player2_nation, 
                 cl2.ClubName as player2_club,
+                cl2.logourl as player2_clublogo,
                 s2.offensiveawareness as p2_offensiveawareness,
                 s2.finishing as p2_finishing,
                 s2.ballcontrol as p2_ballcontrol,
@@ -339,9 +343,12 @@ const comparePlayers = async (req, res) => {
                 age: row.player1_age,
                 nation: row.player1_nation,
                 club: row.player1_club,
+                clublogo: row.player1_clublogo,
                 cardType: row.card1_type,
                 position: row.card1_position,
                 rating: row.card1_rating,
+                cardimageurl: row.card1_imageurl,
+                imageurl: row.card1_imageurl,
                 stats: {
                     offensiveawareness: row.p1_offensiveawareness,
                     finishing: row.p1_finishing,
@@ -371,9 +378,12 @@ const comparePlayers = async (req, res) => {
                 age: row.player2_age,
                 nation: row.player2_nation,
                 club: row.player2_club,
+                clublogo: row.player2_clublogo,
                 cardType: row.card2_type,
                 position: row.card2_position,
                 rating: row.card2_rating,
+                cardimageurl: row.card2_imageurl,
+                imageurl: row.card2_imageurl,
                 stats: {
                     offensiveawareness: row.p2_offensiveawareness,
                     finishing: row.p2_finishing,
@@ -471,7 +481,15 @@ const smartSearchCards = async (req, res) => {
     const b = req.query; 
     const clean = (val) => (val === '' || val === undefined || val === 'null' ? null : val);
     try {
-        const sql = `SELECT * FROM smart_search_pro($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) ORDER BY cardid DESC NULLS LAST, playerid DESC`;
+        const sql = `
+            SELECT 
+                ssp.*, 
+                COALESCE(ssp.cardimageurl, c.cardimageurl, c.imageurl, p.imageurl) AS cardimageurl
+            FROM smart_search_pro($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) ssp
+            LEFT JOIN Card c ON ssp.CardID = c.CardID
+            LEFT JOIN Player p ON ssp.PlayerID = p.PlayerID
+            ORDER BY ssp.cardid DESC NULLS LAST, ssp.playerid DESC
+        `;
         const values = [
             clean(b.name), b.leagueId ? parseInt(b.leagueId) : null, b.clubId ? parseInt(b.clubId) : null, b.nationId ? parseInt(b.nationId) : null,
             clean(b.cardType), clean(b.posCode),
@@ -813,8 +831,11 @@ const getSimilarPlayers = async (req, res) => {
                 ret_cardtype AS cardtype,
                 ret_positioncode AS positioncode, -- Updated mapping
                 ret_baseoverallrating AS baseoverallrating,
-                ret_statdifference AS statdifference
-            FROM find_similar_players($1);
+                ret_statdifference AS statdifference,
+            COALESCE(c.cardimageurl, c.imageurl, p.imageurl) AS cardimageurl
+            FROM find_similar_players($1) fsp
+            LEFT JOIN Card c ON fsp.ret_cardid = c.CardID
+            LEFT JOIN Player p ON c.PlayerID = p.PlayerID;
         `;
         
         const { rows } = await pool.query(query, [cardId]);
@@ -904,12 +925,13 @@ const getTopRatedCards = async (req, res) => {
         const query = `
             SELECT 
                 c.CardID, p.PlayerName, c.CardType, c.positioncode, c.BaseOverallRating,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 ROUND(AVG(r.AverageRating), 2) as communityrating,
                 COUNT(r.ReviewID) as reviewcount
             FROM Card c
             JOIN Player p ON c.PlayerID = p.PlayerID
             JOIN Review r ON c.CardID = r.CardID
-            GROUP BY c.CardID, p.PlayerName, c.CardType, c.positioncode, c.BaseOverallRating
+            GROUP BY c.CardID, p.PlayerName, c.CardType, c.positioncode, c.BaseOverallRating, c.cardimageurl, c.imageurl, p.imageurl
             ORDER BY communityrating DESC
             LIMIT 10;
         `;
@@ -930,6 +952,7 @@ const getTopGoalScorers = async (req, res) => {
                 c.CardType, 
                 c.positioncode, 
                 c.BaseOverallRating,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 SUM(r.Goals) as total_goals,
                 SUM(r.MatchesPlayed) as total_matches,
                 -- We calculate the global GPG for this card
@@ -937,7 +960,7 @@ const getTopGoalScorers = async (req, res) => {
             FROM Card c
             JOIN Player p ON c.PlayerID = p.PlayerID
             JOIN Review r ON c.CardID = r.CardID
-            GROUP BY c.CardID, p.PlayerName, c.CardType, c.positioncode, c.BaseOverallRating
+            GROUP BY c.CardID, p.PlayerName, c.CardType, c.positioncode, c.BaseOverallRating, c.cardimageurl, c.imageurl, p.imageurl
             -- We filter for players who have actually played at least 5 matches total
             -- to avoid "1 match, 5 goals" flukes ranking #1.
             HAVING SUM(r.MatchesPlayed) >= 5
@@ -961,13 +984,14 @@ const getInjuryPronePlayers = async (req, res) => {
                 c.CardID,
                 c.CardType, 
                 c.positioncode, 
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 COUNT(ir.InjuryID) as injury_count,
                 
                 SUM(CASE WHEN ir.EndDate IS NOT NULL THEN (ir.EndDate - ir.StartDate) ELSE 0 END) as total_days_out
             FROM Player p
             JOIN Card c ON p.PlayerID = c.PlayerID
             JOIN InjuryRecord ir ON p.PlayerID = ir.PlayerID
-            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode
+            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode, c.cardimageurl, c.imageurl, p.imageurl
             ORDER BY injury_count DESC
             LIMIT 10;
         `;
@@ -989,13 +1013,14 @@ const getConsistentPlayers = async (req, res) => {
                 c.CardID,
                 c.CardType, 
                 c.positioncode, 
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 COUNT(pf.FormID) as a_form_count
             FROM Player p
             JOIN Card c ON p.PlayerID = c.PlayerID
             JOIN PlayerForm pf ON p.PlayerID = pf.PlayerID
             JOIN FormType ft ON pf.FormTypeID = ft.FormTypeID
             WHERE ft.FormName = 'A'
-            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode
+            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.CardType, c.positioncode, c.cardimageurl, c.imageurl, p.imageurl
             ORDER BY a_form_count DESC
             LIMIT 10;
         `;
@@ -1017,6 +1042,7 @@ const getRecentTopForms = async (req, res) => {
                     c.CardID,
                     c.positioncode,
                     c.BaseOverallRating,
+                    COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                     ft.FormName,
                     pf.StartDate as last_updated
                 FROM Player p
@@ -1047,12 +1073,13 @@ const getTopAvgMarketValue = async (req, res) => {
                 c.CardID,
                 c.positioncode, 
                 c.BaseOverallRating,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 ROUND(AVG(pmv.BaseMarketValue), 2) as avg_market_value,
                 COUNT(pmv.MarketValueID) as value_records
             FROM Player p
             JOIN Card c ON p.PlayerID = c.PlayerID
             JOIN PlayerMarketValue pmv ON p.PlayerID = pmv.PlayerID
-            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.positioncode, c.BaseOverallRating
+            GROUP BY p.PlayerID, p.PlayerName, c.CardID, c.positioncode, c.BaseOverallRating, c.cardimageurl, c.imageurl, p.imageurl
             ORDER BY avg_market_value DESC
             LIMIT 10;
         `;
@@ -1155,12 +1182,16 @@ const updateCard = async (req, res) => {
         await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS booster1_type VARCHAR(50)');
         await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS booster2_type VARCHAR(50)');
 
+        const isTrendingCardType = (cardtype || '').toUpperCase() === 'POTW' || (cardtype || '').toUpperCase() === 'TRENDING';
+        const defaultBoosterType = isTrendingCardType ? 'POTW' : 'STANDARD';
+
         const b1TypeVal = booster1_type !== undefined 
-            ? ((booster1 === 'none' || booster1_type === 'ALL') ? null : booster1_type)
+            ? ((booster1_type === 'ALL' || !booster1_type) ? defaultBoosterType : booster1_type)
             : undefined;
         const b2TypeVal = booster2_type !== undefined 
-            ? ((booster2 === 'none' || booster2_type === 'ALL') ? null : booster2_type)
+            ? ((booster2_type === 'ALL' || !booster2_type) ? defaultBoosterType : booster2_type)
             : undefined;
+
 
         if (b1TypeVal !== undefined || b2TypeVal !== undefined) {
             await pool.query(`
@@ -1260,7 +1291,8 @@ const getOtherVersions = async (req, res) => {
     try {
         if (!playerid && !cardid) return res.json([]);
         const sql = `
-            SELECT c.*, p.playername, p.age, n.flagurl, cl.logourl
+            SELECT c.*, p.playername, p.age, n.flagurl, cl.logourl,
+                   COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl
             FROM card c
             JOIN player p ON c.playerid = p.playerid
             LEFT JOIN nationality n ON p.nationalityid = n.nationalityid
@@ -1286,9 +1318,104 @@ const getOtherVersions = async (req, res) => {
     }
 };
 
+
+const getAllClubs = async (req, res) => {
+    try {
+        const sql = `
+            SELECT c.clubid, c.clubname, c.logourl, c.leagueid, l.leaguename
+            FROM club c
+            LEFT JOIN league l ON c.leagueid = l.leagueid
+            ORDER BY c.clubname ASC
+        `;
+        const result = await pool.query(sql);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("❌ SQL Error in getAllClubs:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const addClub = async (req, res) => {
+    const { clubname, leagueid, logourl } = req.body;
+    try {
+        if (!clubname || !clubname.trim()) {
+            return res.status(400).json({ error: "Club name is required" });
+        }
+        const sql = `
+            INSERT INTO club (clubname, leagueid, logourl)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `;
+        const result = await pool.query(sql, [
+            clubname.trim(), 
+            leagueid ? parseInt(leagueid) : null, 
+            logourl ? logourl.trim() : null
+        ]);
+        cardDetailsCache.clear();
+        res.status(201).json({ message: "Club created successfully", club: result.rows[0] });
+    } catch (error) {
+        console.error("❌ Error adding club:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const updateClub = async (req, res) => {
+    const { id } = req.params;
+    const { clubname, leagueid, logourl } = req.body;
+    try {
+        if (!clubname || !clubname.trim()) {
+            return res.status(400).json({ error: "Club name is required" });
+        }
+        const sql = `
+            UPDATE club 
+            SET clubname = $1, leagueid = $2, logourl = $3
+            WHERE clubid = $4
+            RETURNING *
+        `;
+        const result = await pool.query(sql, [
+            clubname.trim(), 
+            leagueid ? parseInt(leagueid) : null, 
+            logourl ? logourl.trim() : null, 
+            parseInt(id)
+        ]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Club not found" });
+        }
+        cardDetailsCache.clear();
+        res.json({ message: "Club updated successfully", club: result.rows[0] });
+    } catch (error) {
+        console.error("❌ Error updating club:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const deleteClub = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const playerCheck = await pool.query('SELECT playerid FROM player WHERE clubid = $1 LIMIT 1', [parseInt(id)]);
+        if (playerCheck.rows.length > 0) {
+            return res.status(400).json({ error: "Cannot delete club because players are currently assigned to it." });
+        }
+        const result = await pool.query('DELETE FROM club WHERE clubid = $1 RETURNING *', [parseInt(id)]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Club not found" });
+        }
+        cardDetailsCache.clear();
+        res.json({ message: "Club deleted successfully" });
+    } catch (error) {
+        console.error("❌ Error deleting club:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
 module.exports = { 
     getHelpers, 
-    getClubsByLeague, 
+    getClubsByLeague,
+    getAllClubs,
+    addClub,
+    updateClub,
+    deleteClub, 
     getPlayersList, 
     getCardsList, 
     getCardDetails, 

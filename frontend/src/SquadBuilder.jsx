@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { calculateEffectivePositionOVR } from './progressionEngine';
+import { calculateEffectivePositionOVR, getAffinityTier, POSITION_PRIMARY_MAP, POSITION_FULL_AFFINITY_MAP, POSITION_PARTIAL_AFFINITY_MAP } from './progressionEngine';
+import { getTierBadge, getClubLogoUrl, getManagerPhotoUrl } from './badgeAssetEngine';
 import {
     FiLayers,
     FiGlobe,
@@ -137,7 +138,26 @@ export default function SquadBuilder({ currentUser, onBack }) {
 
     const [squadName, setSquadName] = useState('My Dream Team');
     const [selectedManager, setSelectedManager] = useState('');
+    const [managerPickerOpen, setManagerPickerOpen] = useState(false);
+    const [managerSearchQuery, setManagerSearchQuery] = useState('');
+    const managerPickerRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (managerPickerRef.current && !managerPickerRef.current.contains(e.target)) {
+                setManagerPickerOpen(false);
+            }
+        };
+        if (managerPickerOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [managerPickerOpen]);
     const [formation, setFormation] = useState('4-3-3');
+    const [isFluidFormation, setIsFluidFormation] = useState(false);
+    const [defensiveFormation, setDefensiveFormation] = useState('4-4-2');
+    const [activePitchView, setActivePitchView] = useState('attacking'); // 'attacking' | 'defensive'
+    const [communityPitchView, setCommunityPitchView] = useState('attacking');
     const [loading, setLoading] = useState(false);
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -325,71 +345,100 @@ export default function SquadBuilder({ currentUser, onBack }) {
         return null;
     }, []);
 
-    const getPositionPenalty = useCallback((naturalPos, targetRole) => {
-        if (!naturalPos || !targetRole) return 0;
-        const from = naturalPos.toString().toUpperCase().trim();
-        const to = targetRole.toString().toUpperCase().trim();
-        if (from === to) return 0;
+    const getPlayerProficiency = useCallback((card, targetRole) => {
+        if (!card || !targetRole) return { effectiveRating: 0, penalty: 0, affinity: 'NONE' };
+        const baseOvr = parseInt(
+            safeGet(card, 'BaseOverallRating', 'baseoverallrating', 'baseOverallRating') ||
+            safeGet(card, 'CurrentOverallRating', 'currentoverallrating', 'currentOverallRating') || 75
+        );
+        const naturalPos = (
+            safeGet(card, 'PositionCode', 'positioncode', 'naturalPosition', 'naturalposition', 'PrimaryPosition', 'primaryposition') || 'GK'
+        ).toString().toUpperCase().trim();
+        const targetPos = targetRole.toString().toUpperCase().trim();
 
-        let penaltiesToUse = penalties && Array.isArray(penalties) && penalties.length > 0 ? penalties : [
-            { FromPosition: 'GK', ToPosition: 'CB', Penalty: 20 },
-            { FromPosition: 'GK', ToPosition: 'LB', Penalty: 20 },
-            { FromPosition: 'GK', ToPosition: 'RB', Penalty: 20 },
-            { FromPosition: 'CB', ToPosition: 'LB', Penalty: 10 },
-            { FromPosition: 'CB', ToPosition: 'RB', Penalty: 10 },
-            { FromPosition: 'CB', ToPosition: 'DMF', Penalty: 15 },
-            { FromPosition: 'LB', ToPosition: 'CB', Penalty: 10 },
-            { FromPosition: 'LB', ToPosition: 'RB', Penalty: 15 },
-            { FromPosition: 'LB', ToPosition: 'LWF', Penalty: 5 },
-            { FromPosition: 'RB', ToPosition: 'CB', Penalty: 10 },
-            { FromPosition: 'RB', ToPosition: 'LB', Penalty: 15 },
-            { FromPosition: 'RB', ToPosition: 'RWF', Penalty: 5 },
-            { FromPosition: 'DMF', ToPosition: 'CMF', Penalty: 5 },
-            { FromPosition: 'DMF', ToPosition: 'AMF', Penalty: 10 },
-            { FromPosition: 'CMF', ToPosition: 'DMF', Penalty: 5 },
-            { FromPosition: 'CMF', ToPosition: 'AMF', Penalty: 5 },
-            { FromPosition: 'AMF', ToPosition: 'CMF', Penalty: 10 },
-            { FromPosition: 'AMF', ToPosition: 'LWF', Penalty: 5 },
-            { FromPosition: 'AMF', ToPosition: 'RWF', Penalty: 5 },
-            { FromPosition: 'LWF', ToPosition: 'AMF', Penalty: 5 },
-            { FromPosition: 'LWF', ToPosition: 'LB', Penalty: 10 },
-            { FromPosition: 'RWF', ToPosition: 'AMF', Penalty: 5 },
-            { FromPosition: 'RWF', ToPosition: 'RB', Penalty: 10 },
-            { FromPosition: 'CF', ToPosition: 'SS', Penalty: 5 },
-            { FromPosition: 'SS', ToPosition: 'CF', Penalty: 5 },
-        ];
-
-        const penalty = penaltiesToUse.find(p => {
-            if (!p) return false;
-            const dbFrom = (p.FromPosition || p.fromposition || '').toString().toUpperCase().trim();
-            const dbTo = (p.ToPosition || p.toposition || '').toString().toUpperCase().trim();
-            return dbFrom === from && dbTo === to;
-        });
-
-        if (penalty) {
-            const val = parseInt(penalty.Penalty || penalty.penalty || 0);
-            return isNaN(val) ? 0 : val;
+        // Direct natural match
+        if (naturalPos === targetPos) {
+            return { effectiveRating: baseOvr, penalty: 0, affinity: 'PRIMARY' };
         }
-        return 15;
-    }, [penalties]);
+
+        // Parse custom primary positions
+        let customPrim = safeGet(card, 'primarypositions', 'primaryPositions', 'PrimaryPositions') || card.primarypositions || card.PrimaryPositions || card.primaryPositions || [];
+        if (typeof customPrim === 'string') {
+            try {
+                if (customPrim.startsWith('[')) customPrim = JSON.parse(customPrim);
+                else customPrim = customPrim.split(',').map(s => s.trim().toUpperCase());
+            } catch (e) {
+                customPrim = customPrim.split(',').map(s => s.trim().toUpperCase());
+            }
+        }
+        if (!Array.isArray(customPrim)) customPrim = [];
+
+        // Parse custom secondary positions
+        let customSec = safeGet(card, 'secondarypositions', 'secondaryPositions', 'SecondaryPositions') || card.secondarypositions || card.SecondaryPositions || card.secondaryPositions || [];
+        if (typeof customSec === 'string') {
+            try {
+                if (customSec.startsWith('[')) customSec = JSON.parse(customSec);
+                else customSec = customSec.split(',').map(s => s.trim().toUpperCase());
+            } catch (e) {
+                customSec = customSec.split(',').map(s => s.trim().toUpperCase());
+            }
+        }
+        if (!Array.isArray(customSec)) customSec = [];
+
+        const primList = customPrim.map(p => p.toString().toUpperCase().trim());
+        const secList = customSec.map(p => p.toString().toUpperCase().trim());
+        if (!primList.includes(naturalPos)) primList.push(naturalPos);
+
+        // 1. If target role is in primary positions list: Full base rating with 0 penalty
+        if (primList.includes(targetPos)) {
+            return { effectiveRating: baseOvr, penalty: 0, affinity: 'PRIMARY' };
+        }
+
+        // 2. Also check standard adjacent primary map for natural position
+        if (POSITION_PRIMARY_MAP && POSITION_PRIMARY_MAP[naturalPos]?.includes(targetPos)) {
+            return { effectiveRating: baseOvr, penalty: 0, affinity: 'PRIMARY' };
+        }
+
+        // 3. If target role is in secondary positions list: Minor drop (-3)
+        if (secList.includes(targetPos)) {
+            const pen = 3;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'FULL' };
+        }
+
+        // 4. Check full affinity map
+        if (POSITION_FULL_AFFINITY_MAP && POSITION_FULL_AFFINITY_MAP[naturalPos]?.includes(targetPos)) {
+            const pen = 3;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'FULL' };
+        }
+
+        // 5. Check partial affinity map
+        if (POSITION_PARTIAL_AFFINITY_MAP && POSITION_PARTIAL_AFFINITY_MAP[naturalPos]?.includes(targetPos)) {
+            const pen = 8;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'PARTIAL' };
+        }
+
+        // 6. Fallback engine affinity tier
+        const affinity = getAffinityTier(naturalPos, targetPos, primList, secList);
+
+        if (affinity === 'PRIMARY') {
+            return { effectiveRating: baseOvr, penalty: 0, affinity: 'PRIMARY' };
+        } else if (affinity === 'FULL') {
+            const pen = 3;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'FULL' };
+        } else if (affinity === 'PARTIAL') {
+            const pen = 8;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'PARTIAL' };
+        } else {
+            const pen = 15;
+            return { effectiveRating: Math.max(40, baseOvr - pen), penalty: pen, affinity: 'NONE' };
+        }
+    }, [safeGet]);
 
     const getEffectiveRating = useCallback((card, assignedRole) => {
-        if (!card || !assignedRole) return 0;
-        const baseRating = parseInt(
-            safeGet(card, 'CurrentOverallRating', 'currentoverallrating', 'BaseOverallRating', 'baseoverallrating') || 0
-        );
-        if (baseRating === 0 || isNaN(baseRating)) return 0;
-        const naturalPos = (
-            safeGet(card, 'PositionCode', 'positioncode', 'PrimaryPosition', 'primaryposition') || 'GK'
-        ).toString().toUpperCase().trim();
+        return getPlayerProficiency(card, assignedRole).effectiveRating;
+    }, [getPlayerProficiency]);
 
-        return calculateEffectivePositionOVR({
-            trainedStats: card,
-            primaryPosition: naturalPos,
-            targetPosition: assignedRole,
-            baseOvr: baseRating
-        });
-    }, [safeGet]);
+    
 
     const totalStrength = useMemo(() => {
         return lineup.reduce((acc, slot) => {
@@ -477,9 +526,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
             const loadedSquads = squadsRes.data || [];
             setMySquads(loadedSquads);
             const normalizedManagers = (managersRes.data || []).map(m => ({
+                ...m,
                 ManagerID: m.ManagerID || m.managerid || m.id,
                 ManagerName: m.ManagerName || m.managername || m.name || 'Unknown Manager',
-                PlayStyle: m.PlayStyle || m.playstyle || 'Possession Game'
+                PlayStyle: m.PlayStyle || m.playstyle || 'Possession Game',
+                managerimageurl: m.managerimageurl || m.imageurl || m.ImageURL,
+                imageurl: m.imageurl || m.managerimageurl || m.ImageURL
             }));
             setManagers(normalizedManagers);
             setMyCards(cardsRes.data || []);
@@ -501,7 +553,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const startNewSquad = useCallback(() => {
         setEditingSquadId(null);
         setSquadName('My Dream Team');
-        setSelectedManager(managers[0]?.ManagerID || '');
+        setSelectedManager('');
         setFormation('4-3-3');
         setLineup(getInitialLineup('4-3-3'));
         setView('builder');
@@ -538,15 +590,36 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         return cCardId === player.cardId || (cCardId && player.cardId && cCardId.toString() === player.cardId.toString());
                     });
 
-                    return matchedCard || {
+                    if (matchedCard) {
+                        return {
+                            ...matchedCard,
+                            primarypositions: matchedCard.primarypositions || player.primarypositions || player.primaryPositions || [],
+                            secondarypositions: matchedCard.secondarypositions || player.secondarypositions || player.secondaryPositions || [],
+                            cardimageurl: matchedCard.cardimageurl || player.cardimageurl || player.cardImageUrl || null
+                        };
+                    }
+
+                    return {
                         CardID: player.cardId,
+                        cardid: player.cardId,
                         PlayerID: player.playerId,
+                        playerid: player.playerId,
                         PositionCode: player.naturalPosition || 'GK',
+                        positioncode: player.naturalPosition || 'GK',
+                        naturalPosition: player.naturalPosition || 'GK',
                         PlayerName: player.playerName || 'Unknown',
+                        playername: player.playerName || 'Unknown',
                         CurrentOverallRating: player.currentOverallRating || 0,
+                        currentoverallrating: player.currentOverallRating || 0,
                         BaseOverallRating: player.baseOverallRating || 0,
+                        baseoverallrating: player.baseOverallRating || 0,
                         CardType: player.cardType || 'Standard',
-                        ClubName: player.clubName || 'N/A'
+                        cardtype: player.cardType || 'Standard',
+                        ClubName: player.clubName || 'N/A',
+                        clubname: player.clubName || 'N/A',
+                        primarypositions: player.primarypositions || player.primaryPositions || [],
+                        secondarypositions: player.secondarypositions || player.secondaryPositions || [],
+                        cardimageurl: player.cardimageurl || player.cardImageUrl || null
                     };
                 };
 
@@ -755,7 +828,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
         } finally {
             setLoading(false);
         }
-    }, [currentUser, selectedManager, playersInSquad, lineup, squadName, formation, totalStrength, refreshData, safeGet, editingSquadId, notify, validateZoneCaps]);
+    }, [currentUser, selectedManager, playersInSquad, lineup, squadName, formation, isFluidFormation, defensiveFormation, totalStrength, refreshData, safeGet, editingSquadId, notify, validateZoneCaps]);
 
     // ============================================
     // COMMUNITY SHARING HANDLERS
@@ -1516,12 +1589,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     );
                 }
 
-                // Filled slot - authentic card with tier color, position, penalty, and rating
+                // Filled slot - authentic card with tier color, position, penalty, rating and actual artwork
                 const cardType = safeGet(card, 'CardType', 'cardtype', 'cardType') || 'Standard';
                 const tier = getCardTierColor(cardType);
                 const cardPos = (safeGet(card, 'PositionCode', 'positioncode', 'naturalPosition', 'naturalposition') || 'GK').toString().toUpperCase();
-                const penalty = getPositionPenalty(cardPos, (position || '').toUpperCase());
-                const effectiveRating = getEffectiveRating(card, position);
+                const { effectiveRating, penalty } = getPlayerProficiency(card, (position || '').toUpperCase());
+                const commCardImg = card.cardimageurl || card.imageurl || card.cardImageURL || card.imageURL;
                 const playerName = safeGet(card, 'PlayerName', 'playername', 'playerName') || 'Unknown';
 
                 return (
@@ -1532,28 +1605,21 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             top: `${top}%`,
                             left: `${left}%`,
                             transform: 'translate(-50%, -50%)',
-                            width: '54px',
-                            height: '68px',
-                            background: tier.bg,
-                            border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.7)' : `2px solid ${tier.border}`,
+                            width: '56px',
+                            height: '72px',
                             borderRadius: '10px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '4px 3px',
+                            border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.85)' : `2px solid ${tier.border}`,
                             boxShadow: penalty > 0
-                                ? '0 0 14px rgba(255, 77, 77, 0.35), 0 4px 12px rgba(0,0,0,0.5)'
-                                : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.5)`,
-                            backdropFilter: 'blur(10px)',
-                            transition: 'transform 0.2s ease',
+                                ? '0 0 14px rgba(255, 77, 77, 0.4), 0 4px 12px rgba(0,0,0,0.6)'
+                                : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.6)`,
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                             boxSizing: 'border-box',
                             zIndex: 20,
                             cursor: 'default',
                             userSelect: 'none'
                         }}
                         onMouseEnter={e => {
-                            e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                            e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.12)';
                             e.currentTarget.style.zIndex = '30';
                         }}
                         onMouseLeave={e => {
@@ -1562,58 +1628,104 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         }}
                         title={`${playerName} | Natural: ${cardPos} | Role: ${position} | Rating: ${effectiveRating}`}
                     >
-                        {/* Top: Position & Penalty */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                            <span style={{
-                                fontSize: '0.48em',
-                                fontWeight: '900',
-                                color: posColor.color,
-                                background: 'rgba(0,0,0,0.5)',
-                                padding: '1px 3px',
-                                borderRadius: '3px'
-                            }}>
-                                {position}
-                            </span>
-                            {penalty > 0 && (
-                                <span style={{
-                                    fontSize: '0.45em',
-                                    fontWeight: '800',
-                                    color: '#ff4d4d',
-                                    background: 'rgba(255,77,77,0.2)',
-                                    padding: '1px 4px',
-                                    borderRadius: '3px'
-                                }}>
-                                    -{penalty}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Center: Big OVR */}
                         <div style={{
-                            fontSize: '1.2em',
-                            fontWeight: '900',
-                            lineHeight: 1,
-                            color: penalty > 0 ? '#ff6b6b' : tier.accent,
-                            textShadow: `0 0 12px ${penalty > 0 ? '#ff4d4d' : tier.accent}80`
-                        }}>
-                            {effectiveRating}
-                        </div>
-
-                        {/* Bottom: Player Name */}
-                        <div style={{
-                            width: '100%',
-                            textAlign: 'center',
-                            fontSize: '0.48em',
-                            fontWeight: '800',
-                            color: '#fff',
-                            whiteSpace: 'nowrap',
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: '8px',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            background: 'rgba(0,0,0,0.45)',
-                            borderRadius: '3px',
-                            padding: '2px 3px'
+                            background: tier.bg,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            padding: '3px 3px 2px 3px',
+                            boxSizing: 'border-box'
                         }}>
-                            {playerName}
+                            {/* Actual Card Background Artwork */}
+                            {commCardImg ? (
+                                <img
+                                    src={commCardImg}
+                                    alt={playerName}
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        zIndex: 1
+                                    }}
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                            ) : null}
+
+                            {/* Gradient Overlay for Legibility */}
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.92) 100%)',
+                                zIndex: 2,
+                                pointerEvents: 'none'
+                            }} />
+
+                            {/* Top: Position & Penalty */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', zIndex: 3 }}>
+                                <span style={{
+                                    fontSize: '0.5em',
+                                    fontWeight: '900',
+                                    color: posColor.color,
+                                    background: 'rgba(0,0,0,0.65)',
+                                    padding: '1px 3px',
+                                    borderRadius: '3px',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.9)'
+                                }}>
+                                    {position}
+                                </span>
+                                {penalty > 0 && (
+                                    <span style={{
+                                        fontSize: '0.45em',
+                                        fontWeight: '900',
+                                        color: '#fff',
+                                        background: 'rgba(239, 68, 68, 0.9)',
+                                        padding: '1px 3px',
+                                        borderRadius: '3px',
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                    }}>
+                                        -{penalty}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Center: Big OVR */}
+                            <div style={{
+                                fontSize: '1.25em',
+                                fontWeight: '900',
+                                lineHeight: 1,
+                                textAlign: 'center',
+                                color: penalty > 0 ? '#ff6b6b' : '#fff',
+                                textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8)',
+                                zIndex: 3,
+                                fontFamily: "'Outfit', sans-serif"
+                            }}>
+                                {effectiveRating}
+                            </div>
+
+                            {/* Bottom: Player Name */}
+                            <div style={{
+                                width: '100%',
+                                textAlign: 'center',
+                                fontSize: '0.46em',
+                                fontWeight: '800',
+                                color: '#fff',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                background: 'rgba(5, 10, 20, 0.88)',
+                                borderRadius: '3px',
+                                padding: '1px 2px',
+                                zIndex: 3,
+                                textShadow: '0 1px 3px rgba(0,0,0,0.95)'
+                            }}>
+                                {playerName}
+                            </div>
                         </div>
                     </div>
                 );
@@ -2141,7 +2253,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         gap: '4px',
                         backdropFilter: 'blur(8px)',
                         animation: 'sbPulseSlot 2.5s ease-in-out infinite',
-                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'top 0.45s cubic-bezier(0.4, 0, 0.2, 1), left 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s',
                         zIndex: 10
                     }}
                     onMouseEnter={e => {
@@ -2174,13 +2286,20 @@ export default function SquadBuilder({ currentUser, onBack }) {
             );
         }
 
-        // Filled Slot — premium micro-card
+        // Filled Slot — premium micro-card with actual card artwork and name
+        const activeFormKey = (isFluidFormation && activePitchView === 'defensive') ? defensiveFormation : (formation || '4-3-3');
+        const activeFormLayout = FORMATIONS[activeFormKey] || FORMATIONS['4-3-3'];
+        const currentSlotSpec = activeFormLayout[slotIndex] || activeFormLayout[0];
+        const assignedPos = currentSlotSpec ? currentSlotSpec.position : position;
+        const currentTop = currentSlotSpec ? currentSlotSpec.top : top;
+        const currentLeft = currentSlotSpec ? currentSlotSpec.left : left;
+
         const cardType = card.cardtype || card.CardType || 'Standard';
         const tier = getCardTierColor(cardType);
-        const cardPos = (safeGet(card, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
-        const penalty = getPositionPenalty(cardPos, position.toUpperCase());
-        const effectiveRating = getEffectiveRating(card, position);
+        const { effectiveRating, penalty } = getPlayerProficiency(card, assignedPos);
         const playerName = safeGet(card, 'PlayerName', 'playername') || 'Unknown';
+        const slotPosColor = getPositionColor(assignedPos);
+        const cardImg = card.cardimageurl || card.imageurl || card.cardImageURL || card.imageURL;
 
         return (
             <div
@@ -2196,24 +2315,17 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 }}
                 style={{
                     position: 'absolute',
-                    top: `${top}%`,
-                    left: `${left}%`,
+                    top: `${currentTop}%`,
+                    left: `${currentLeft}%`,
                     transform: 'translate(-50%, -50%)',
-                    width: '54px',
-                    height: '68px',
-                    background: tier.bg,
-                    border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.7)' : `2px solid ${tier.border}`,
+                    width: '56px',
+                    height: '72px',
                     borderRadius: '10px',
+                    border: penalty > 0 ? '2px solid rgba(255, 77, 77, 0.85)' : `2px solid ${tier.border}`,
                     cursor: isGK ? 'pointer' : 'grab',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '4px 3px',
                     boxShadow: penalty > 0
-                        ? '0 0 14px rgba(255, 77, 77, 0.35), 0 4px 12px rgba(0,0,0,0.5)'
-                        : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.5)`,
-                    backdropFilter: 'blur(10px)',
+                        ? '0 0 14px rgba(255, 77, 77, 0.4), 0 4px 12px rgba(0,0,0,0.6)'
+                        : `${tier.shadow}, 0 4px 12px rgba(0,0,0,0.6)`,
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxSizing: 'border-box',
                     zIndex: 20
@@ -2227,7 +2339,108 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     e.currentTarget.style.zIndex = '20';
                 }}
             >
-                {/* Remove Cross Button */}
+                {/* Inner clipped card content */}
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    background: tier.bg,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '3px 3px 2px 3px',
+                    boxSizing: 'border-box'
+                }}>
+                    {/* Actual Card Background Artwork */}
+                    {cardImg ? (
+                        <img
+                            src={cardImg}
+                            alt={playerName}
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                zIndex: 1
+                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                    ) : null}
+
+                    {/* Gradient Overlay for Legibility */}
+                    <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.92) 100%)',
+                        zIndex: 2,
+                        pointerEvents: 'none'
+                    }} />
+
+                    {/* Top: Position & Penalty */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', zIndex: 3 }}>
+                        <span style={{
+                            fontSize: '0.5em',
+                            fontWeight: '900',
+                            color: slotPosColor.color,
+                            background: 'rgba(0,0,0,0.65)',
+                            padding: '1px 3px',
+                            borderRadius: '3px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.9)'
+                        }}>
+                            {assignedPos}
+                        </span>
+                        {penalty > 0 && (
+                            <span style={{
+                                fontSize: '0.45em',
+                                fontWeight: '900',
+                                color: '#fff',
+                                background: 'rgba(239, 68, 68, 0.9)',
+                                padding: '1px 3px',
+                                borderRadius: '3px',
+                                textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                            }}>
+                                -{penalty}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Center: Big OVR */}
+                    <div style={{
+                        fontSize: '1.25em',
+                        fontWeight: '900',
+                        lineHeight: 1,
+                        textAlign: 'center',
+                        color: penalty > 0 ? '#ff6b6b' : '#fff',
+                        textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8)',
+                        zIndex: 3,
+                        fontFamily: "'Outfit', sans-serif"
+                    }}>
+                        {effectiveRating}
+                    </div>
+
+                    {/* Bottom: Player Name */}
+                    <div style={{
+                        width: '100%',
+                        textAlign: 'center',
+                        fontSize: '0.46em',
+                        fontWeight: '800',
+                        color: '#fff',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        background: 'rgba(5, 10, 20, 0.88)',
+                        borderRadius: '3px',
+                        padding: '1px 2px',
+                        zIndex: 3,
+                        textShadow: '0 1px 3px rgba(0,0,0,0.95)'
+                    }}>
+                        {playerName}
+                    </div>
+                </div>
+
+                {/* Remove Cross Button (Floats outside top-right) */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -2237,8 +2450,8 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         position: 'absolute',
                         top: '-6px',
                         right: '-6px',
-                        width: '15px',
-                        height: '15px',
+                        width: '16px',
+                        height: '16px',
                         borderRadius: '50%',
                         background: '#ef4444',
                         color: '#fff',
@@ -2249,7 +2462,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                         justifyContent: 'center',
                         fontSize: '0.5em',
                         fontWeight: '900',
-                        zIndex: 5,
+                        zIndex: 10,
                         lineHeight: 1,
                         padding: 0
                     }}
@@ -2257,60 +2470,6 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 >
                     <FiX size={9} />
                 </button>
-
-                {/* Top: Position & Penalty */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <span style={{
-                        fontSize: '0.48em',
-                        fontWeight: '900',
-                        color: posColor.color,
-                        background: 'rgba(0,0,0,0.5)',
-                        padding: '1px 3px',
-                        borderRadius: '3px'
-                    }}>
-                        {position}
-                    </span>
-                    {penalty > 0 && (
-                        <span style={{
-                            fontSize: '0.45em',
-                            fontWeight: '800',
-                            color: '#ff4d4d',
-                            background: 'rgba(255,77,77,0.2)',
-                            padding: '1px 4px',
-                            borderRadius: '3px'
-                        }}>
-                            -{penalty}
-                        </span>
-                    )}
-                </div>
-
-                {/* Center: Big OVR */}
-                <div style={{
-                    fontSize: '1.2em',
-                    fontWeight: '900',
-                    lineHeight: 1,
-                    color: penalty > 0 ? '#ff6b6b' : tier.accent,
-                    textShadow: `0 0 12px ${penalty > 0 ? '#ff4d4d' : tier.accent}80`
-                }}>
-                    {effectiveRating}
-                </div>
-
-                {/* Bottom: Player Name */}
-                <div style={{
-                    width: '100%',
-                    textAlign: 'center',
-                    fontSize: '0.48em',
-                    fontWeight: '800',
-                    color: '#fff',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    background: 'rgba(0,0,0,0.45)',
-                    borderRadius: '3px',
-                    padding: '2px 3px'
-                }}>
-                    {playerName}
-                </div>
             </div>
         );
     };
@@ -2373,10 +2532,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 28px rgba(0,0,0,0.4)'
+                boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+                position: 'relative',
+                zIndex: 100
             }}>
                 {/* Squad Name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '160px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '150px', flex: 1 }}>
                     <input
                         value={squadName}
                         onChange={(e) => setSquadName(e.target.value)}
@@ -2396,60 +2557,335 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     />
                 </div>
 
-                {/* Manager Select */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {/* Manager Picker */}
+                <div ref={managerPickerRef} style={{ position: 'relative', zIndex: 110, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '0.72em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>MGR:</span>
-                    <select
-                        value={selectedManager}
-                        onChange={(e) => setSelectedManager(e.target.value)}
+                    <div
+                        onClick={() => setManagerPickerOpen(!managerPickerOpen)}
                         style={{
                             background: 'rgba(15, 23, 42, 0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            border: managerPickerOpen ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.12)',
                             borderRadius: '8px',
                             color: '#fff',
-                            padding: '8px 10px',
+                            padding: '4px 10px',
                             fontSize: '0.82em',
                             fontWeight: '700',
-                            outline: 'none',
                             cursor: 'pointer',
-                            fontFamily: "'Outfit', sans-serif",
-                            maxWidth: '200px'
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            userSelect: 'none',
+                            minWidth: '170px',
+                            maxWidth: '240px',
+                            boxShadow: managerPickerOpen ? '0 0 10px rgba(0, 242, 254, 0.25)' : 'none',
+                            transition: 'all 0.15s ease'
                         }}
                     >
-                        <option value="">Select Manager</option>
-                        {managers && managers.map(m => (
-                            <option key={m.ManagerID} value={m.ManagerID}>
-                                {m.ManagerName} ({m.PlayStyle})
-                            </option>
-                        ))}
-                    </select>
+                        {(() => {
+                            const selectedMgr = managers.find(m => m.ManagerID?.toString() === selectedManager?.toString());
+                            if (selectedMgr) {
+                                const photo = getManagerPhotoUrl(selectedMgr.ManagerName, selectedMgr.managerimageurl || selectedMgr.imageurl);
+                                return (
+                                    <>
+                                        <div style={{
+                                            width: '26px',
+                                            height: '26px',
+                                            borderRadius: '6px',
+                                            overflow: 'hidden',
+                                            background: '#1c2433',
+                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            flexShrink: 0
+                                        }}>
+                                            {photo ? (
+                                                <img
+                                                    src={photo}
+                                                    alt={selectedMgr.ManagerName}
+                                                    referrerPolicy="no-referrer"
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    onError={e => {
+                                                        e.currentTarget.onerror = null;
+                                                        e.currentTarget.src = 'https://secure.gravatar.com/avatar/unknown?d=mp';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '11px', fontWeight: 'bold' }}>
+                                                    {(selectedMgr.ManagerName || 'M').charAt(0)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+                                            <div style={{ fontSize: '0.82em', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {selectedMgr.ManagerName}
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            }
+                            return (
+                                <>
+                                    <div style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#64748b',
+                                        fontSize: '11px',
+                                        flexShrink: 0
+                                    }}>
+                                        <FiUser size={13} color="#94a3b8" />
+                                    </div>
+                                    <span style={{ color: '#94a3b8', fontSize: '0.82em', flex: 1, textAlign: 'left', fontWeight: '800' }}>
+                                        Select Manager
+                                    </span>
+                                </>
+                            );
+                        })()}
+                        <span style={{ fontSize: '9px', color: '#94a3b8', transform: managerPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                            ▼
+                        </span>
+                    </div>
+
+                    {/* Dropdown Menu */}
+                    {managerPickerOpen && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 8px)',
+                            left: 0,
+                            width: '320px',
+                            maxHeight: '380px',
+                            background: '#0d131f',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: '12px',
+                            padding: '10px',
+                            zIndex: 1000,
+                            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 242, 254, 0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                        }}>
+                            <input
+                                value={managerSearchQuery}
+                                onChange={e => setManagerSearchQuery(e.target.value)}
+                                placeholder="Search manager..."
+                                onClick={e => e.stopPropagation()}
+                                style={{
+                                    width: '100%',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    color: '#fff',
+                                    fontSize: '0.8em',
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+
+                            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '280px' }}>
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedManager('');
+                                        setManagerPickerOpen(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '7px 10px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        background: !selectedManager ? 'rgba(0, 242, 254, 0.12)' : 'transparent',
+                                        border: !selectedManager ? '1px solid rgba(0, 242, 254, 0.4)' : '1px solid transparent',
+                                        transition: 'all 0.15s'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <FiX size={14} color="#94a3b8" />
+                                    </div>
+                                    <span style={{ fontSize: '0.82em', fontWeight: '800', color: '#94a3b8' }}>No Manager</span>
+                                </div>
+
+                                {managers
+                                    .filter(m => (m.ManagerName || '').toLowerCase().includes(managerSearchQuery.toLowerCase()))
+                                    .map(m => {
+                                        const isSelected = selectedManager?.toString() === m.ManagerID?.toString();
+                                        const photo = getManagerPhotoUrl(m.ManagerName, m.managerimageurl || m.imageurl);
+                                        return (
+                                            <div
+                                                key={m.ManagerID}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedManager(m.ManagerID.toString());
+                                                    setManagerPickerOpen(false);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: '10px',
+                                                    padding: '6px 10px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    background: isSelected ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                                                    border: isSelected ? '1px solid rgba(0, 242, 254, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 242, 254, 0.08)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = isSelected ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.02)'}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                                    <div style={{
+                                                        width: '34px',
+                                                        height: '34px',
+                                                        borderRadius: '6px',
+                                                        overflow: 'hidden',
+                                                        background: '#1c2433',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        {photo ? (
+                                                            <img
+                                                                src={photo}
+                                                                alt={m.ManagerName}
+                                                                referrerPolicy="no-referrer"
+                                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                onError={e => {
+                                                                    e.currentTarget.onerror = null;
+                                                                    e.currentTarget.src = 'https://secure.gravatar.com/avatar/unknown?d=mp';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '11px', fontWeight: 'bold' }}>
+                                                                {m.ManagerName ? m.ManagerName.charAt(0) : 'M'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div style={{ fontSize: '0.84em', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {m.ManagerName}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.68em', color: '#84cc16', fontWeight: '700' }}>
+                                                            {m.PlayStyle || 'Tactical'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Formation Select */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '0.72em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>FRM:</span>
-                    <select
-                        value={formation}
-                        onChange={(e) => handleFormationChange(e.target.value)}
-                        style={{
-                            background: 'rgba(15, 23, 42, 0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '8px',
-                            color: '#fff',
-                            padding: '8px 10px',
-                            fontSize: '0.82em',
-                            fontWeight: '700',
-                            outline: 'none',
-                            cursor: 'pointer',
-                            fontFamily: "'Outfit', sans-serif"
-                        }}
-                    >
-                        {Object.keys(FORMATIONS).map(f => (
-                            <option key={f} value={f}>{f}</option>
-                        ))}
-                        <option value="custom">Custom (Drag)</option>
-                    </select>
-                </div>
+                {/* Fluid Formation Toggle */}
+                <button
+                    type="button"
+                    onClick={() => setIsFluidFormation(!isFluidFormation)}
+                    style={{
+                        background: isFluidFormation ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                        border: isFluidFormation ? '1px solid #00f2fe' : '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '8px',
+                        color: isFluidFormation ? '#00f2fe' : '#94a3b8',
+                        padding: '6px 12px',
+                        fontSize: '0.78em',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <span style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: isFluidFormation ? '#00f2fe' : '#64748b',
+                        boxShadow: isFluidFormation ? '0 0 8px #00f2fe' : 'none'
+                    }} />
+                    Fluid Formation: {isFluidFormation ? 'ON' : 'OFF'}
+                </button>
+
+                {/* Formations: Single or Dual (Attacking + Defensive) */}
+                {!isFluidFormation ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '0.72em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>FRM:</span>
+                        <select
+                            value={formation}
+                            onChange={(e) => handleFormationChange(e.target.value)}
+                            style={{
+                                background: 'rgba(15, 23, 42, 0.85)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                padding: '6px 10px',
+                                fontSize: '0.82em',
+                                fontWeight: '700',
+                                outline: 'none',
+                                cursor: 'pointer',
+                                fontFamily: "'Outfit', sans-serif"
+                            }}
+                        >
+                            {Object.keys(FORMATIONS).map(f => (
+                                <option key={f} value={f}>{f}</option>
+                            ))}
+                            <option value="custom">Custom (Drag)</option>
+                        </select>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '0.68em', fontWeight: '800', color: '#00f2fe', textTransform: 'uppercase' }}>ATK:</span>
+                            <select
+                                value={formation}
+                                onChange={(e) => handleFormationChange(e.target.value)}
+                                style={{
+                                    background: 'rgba(15, 23, 42, 0.85)',
+                                    border: '1px solid rgba(0, 242, 254, 0.4)',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    padding: '5px 8px',
+                                    fontSize: '0.8em',
+                                    fontWeight: '700',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {Object.keys(FORMATIONS).map(f => (
+                                    <option key={f} value={f}>{f}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '0.68em', fontWeight: '800', color: '#a78bfa', textTransform: 'uppercase' }}>DEF:</span>
+                            <select
+                                value={defensiveFormation}
+                                onChange={(e) => setDefensiveFormation(e.target.value)}
+                                style={{
+                                    background: 'rgba(15, 23, 42, 0.85)',
+                                    border: '1px solid rgba(167, 139, 250, 0.4)',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    padding: '5px 8px',
+                                    fontSize: '0.8em',
+                                    fontWeight: '700',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {Object.keys(FORMATIONS).map(f => (
+                                    <option key={f} value={f}>{f}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
 
                 {/* Strength + Starters + Save */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2498,26 +2934,20 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             gap: '6px'
                         }}
                     >
-                        <FiSave size={14} />
-                        {loading ? 'Saving...' : editingSquadId ? 'Update' : 'Save'}
+                        <FiSave size={14} /> {editingSquadId ? 'Update' : 'Save'}
                     </button>
 
-                    {/* Share to Community Button — only show when editing an existing saved squad */}
+                    {/* Share Squad to Community Toggle */}
                     {editingSquadId && (() => {
-                        const squad = mySquads.find(s => {
-                            const sid = safeGet(s, 'SquadID', 'squadid');
-                            return sid && sid.toString() === editingSquadId.toString();
-                        });
-                        const isShared = squad && (safeGet(squad, 'IsSharedToCommunity', 'issharedtocommunity') === true);
+                        const sq = mySquads.find(s => safeGet(s, 'SquadID', 'squadid')?.toString() === editingSquadId.toString());
+                        const isShared = sq && Boolean(sq.issharedtocommunity);
                         return (
                             <button
-                                onClick={handleShareCurrentSquad}
+                                onClick={() => isShared ? handleUnshareSquad(editingSquadId) : handleShareSquad(editingSquadId)}
                                 disabled={loading}
                                 style={{
-                                    padding: '10px 16px',
-                                    background: isShared
-                                        ? 'rgba(255, 77, 77, 0.12)'
-                                        : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                                    padding: '10px 14px',
+                                    background: isShared ? 'rgba(255, 77, 77, 0.15)' : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
                                     color: isShared ? '#ff9999' : '#fff',
                                     border: isShared ? '1px solid rgba(255, 77, 77, 0.3)' : 'none',
                                     borderRadius: '8px',
@@ -2539,8 +2969,61 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 </div>
             </div>
 
+            {/* Fluid Formation Shape Switcher */}
+            {isFluidFormation && (
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    marginBottom: '14px'
+                }}>
+                    <button
+                        type="button"
+                        onClick={() => setActivePitchView('attacking')}
+                        style={{
+                            padding: '8px 18px',
+                            borderRadius: '10px',
+                            border: activePitchView === 'attacking' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
+                            background: activePitchView === 'attacking' ? 'rgba(0, 242, 254, 0.2)' : 'rgba(15, 23, 42, 0.7)',
+                            color: activePitchView === 'attacking' ? '#00f2fe' : '#94a3b8',
+                            fontWeight: '800',
+                            fontSize: '0.82em',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: activePitchView === 'attacking' ? '0 0 16px rgba(0,242,254,0.3)' : 'none',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Attacking Shape ({formation}) · With Ball
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActivePitchView('defensive')}
+                        style={{
+                            padding: '8px 18px',
+                            borderRadius: '10px',
+                            border: activePitchView === 'defensive' ? '1px solid #a78bfa' : '1px solid rgba(255,255,255,0.08)',
+                            background: activePitchView === 'defensive' ? 'rgba(167, 139, 250, 0.2)' : 'rgba(15, 23, 42, 0.7)',
+                            color: activePitchView === 'defensive' ? '#c4b5fd' : '#94a3b8',
+                            fontWeight: '800',
+                            fontSize: '0.82em',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: activePitchView === 'defensive' ? '0 0 16px rgba(167,139,250,0.3)' : 'none',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Defensive Block ({defensiveFormation}) · Without Ball
+                    </button>
+                </div>
+            )}
+
             {/* ===================== SVG PITCH ===================== */}
-            <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '700px', margin: '0 auto', zIndex: 1 }}>
                 <div
                     style={{
                         width: '100%',
@@ -2643,36 +3126,49 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: '20px',
                 width: '100%',
-                maxWidth: '580px',
-                maxHeight: '80vh',
+                maxWidth: '1000px',
+                maxHeight: '86vh',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.8), 0 0 40px rgba(0, 242, 254, 0.08)',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.85), 0 0 40px rgba(0, 242, 254, 0.08)',
                 overflow: 'hidden',
                 animation: 'sbModalIn 0.3s ease-out'
             }}>
                 {/* Modal Header */}
                 <div style={{
-                    padding: '18px 22px',
+                    padding: '16px 22px',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     background: 'rgba(0, 242, 254, 0.03)'
                 }}>
-                    <div>
-                        <div style={{ fontSize: '0.68em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            STARTING XI SELECTION
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div>
+                            <div style={{ fontSize: '0.68em', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                STARTING XI SELECTION
+                            </div>
+                            <h3 style={{ margin: '3px 0 0 0', fontSize: '1.25em', fontWeight: '900', color: '#fff' }}>
+                                Select for <span style={{ color: getPositionColor(targetPos).color }}>{targetPos}</span>
+                            </h3>
                         </div>
-                        <h3 style={{ margin: '3px 0 0 0', fontSize: '1.25em', fontWeight: '900', color: '#fff' }}>
-                            Select for <span style={{ color: getPositionColor(targetPos).color }}>{targetPos}</span>
-                        </h3>
+                        <span style={{
+                            fontSize: '0.74em',
+                            fontWeight: '700',
+                            color: '#94a3b8',
+                            background: 'rgba(255,255,255,0.05)',
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            border: '1px solid rgba(255,255,255,0.08)'
+                        }}>
+                            {filteredCards.length} Cards
+                        </span>
                     </div>
                     <button
                         onClick={() => { setModalOpen(false); setSearchQuery(''); }}
                         style={{
-                            width: '30px',
-                            height: '30px',
+                            width: '32px',
+                            height: '32px',
                             borderRadius: '50%',
                             background: 'rgba(255,255,255,0.06)',
                             color: '#94a3b8',
@@ -2693,7 +3189,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                 </div>
 
                 {/* Modal Search & Filter Toolbar */}
-                <div style={{ padding: '14px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ padding: '12px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -2703,18 +3199,17 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             background: 'rgba(15, 23, 42, 0.8)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             borderRadius: '8px',
-                            padding: '9px 12px',
+                            padding: '8px 12px',
                             color: '#fff',
                             fontSize: '0.88em',
                             outline: 'none',
-                            marginBottom: '10px',
                             boxSizing: 'border-box',
                             fontFamily: "'Outfit', sans-serif"
                         }}
                     />
 
                     {/* Position Filter Pills */}
-                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {[
                             { id: 'all', label: 'All' },
                             { id: 'exact', label: targetPos },
@@ -2727,12 +3222,12 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                 key={f.id}
                                 onClick={() => setPositionFilter(f.id)}
                                 style={{
-                                    background: positionFilter === f.id ? 'rgba(0, 242, 254, 0.15)' : 'rgba(255,255,255,0.03)',
+                                    background: positionFilter === f.id ? 'rgba(0, 242, 254, 0.18)' : 'rgba(255,255,255,0.03)',
                                     color: positionFilter === f.id ? '#00f2fe' : '#64748b',
-                                    border: `1px solid ${positionFilter === f.id ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255,255,255,0.06)'}`,
+                                    border: positionFilter === f.id ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.08)',
                                     borderRadius: '6px',
-                                    padding: '3px 10px',
-                                    fontSize: '0.72em',
+                                    padding: '4px 12px',
+                                    fontSize: '0.74em',
                                     fontWeight: '800',
                                     cursor: 'pointer',
                                     transition: 'all 0.15s'
@@ -2744,28 +3239,43 @@ export default function SquadBuilder({ currentUser, onBack }) {
                     </div>
                 </div>
 
-                {/* Cards List */}
-                <div style={{ padding: '12px 22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {/* Cards Grid — Visual Cards matching authentic eFootball card design */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(136px, 1fr))',
+                    gap: '14px',
+                    padding: '18px 22px 24px',
+                    overflowY: 'auto',
+                    flex: 1,
+                    alignContent: 'start'
+                }}>
                     {filteredCards.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '36px 20px', color: '#475569' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <FiSearch size={28} style={{ marginBottom: '8px', opacity: 0.4 }} />
-                            </div>
-                            <div style={{ fontWeight: '700' }}>No available players found</div>
-                            <div style={{ fontSize: '0.82em', marginTop: '4px' }}>All matching cards are already in your XI</div>
+                        <div style={{
+                            gridColumn: '1 / -1',
+                            textAlign: 'center',
+                            padding: '48px 20px',
+                            color: '#64748b'
+                        }}>
+                            <FiUsers size={32} style={{ opacity: 0.4, marginBottom: '10px' }} />
+                            <div style={{ fontWeight: '800', fontSize: '0.95em', color: '#94a3b8' }}>No available players found</div>
+                            <div style={{ fontSize: '0.78em', marginTop: '4px' }}>All matching cards are already placed in your XI or match no filters.</div>
                         </div>
                     ) : (
                         filteredCards.map(c => {
                             const playerName = safeGet(c, 'PlayerName', 'playername') || 'Unknown';
                             const cardPos = (safeGet(c, 'PositionCode', 'positioncode') || 'GK').toString().toUpperCase();
-                            const rating = parseInt(safeGet(c, 'CurrentOverallRating', 'currentoverallrating') || 0);
+                            const baseOvr = parseInt(
+                                safeGet(c, 'BaseOverallRating', 'baseoverallrating') ||
+                                safeGet(c, 'CurrentOverallRating', 'currentoverallrating') ||
+                                75
+                            );
                             const cardId = safeGet(c, 'CardID', 'cardid');
-                            const clubName = safeGet(c, 'ClubName', 'clubname') || 'Free Agent';
+                            const clubName = safeGet(c, 'ClubName', 'clubname') || '';
                             const cardType = c.cardtype || c.CardType || 'Standard';
                             const tier = getCardTierColor(cardType);
-
-                            const penalty = targetPos ? getPositionPenalty(cardPos, targetPos) : 0;
-                            const effectiveRating = Math.max(40, rating - penalty);
+                            const cardImg = c.cardimageurl || c.imageurl || c.cardImageURL || c.imageURL;
+                            const badge = getTierBadge(baseOvr);
+                            const clubLogo = clubName ? getClubLogoUrl(clubName) : null;
                             const isExact = cardPos === targetPos;
 
                             return (
@@ -2773,89 +3283,169 @@ export default function SquadBuilder({ currentUser, onBack }) {
                                     key={cardId}
                                     onClick={() => handleAddPlayer(c)}
                                     style={{
-                                        background: 'rgba(255,255,255,0.025)',
-                                        border: isExact
-                                            ? '1px solid rgba(0, 255, 135, 0.25)'
-                                            : '1px solid rgba(255,255,255,0.06)',
-                                        borderLeft: `3px solid ${tier.accent}`,
-                                        borderRadius: '10px',
-                                        padding: '10px 14px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
+                                        position: 'relative',
+                                        height: '215px',
+                                        borderRadius: '14px',
+                                        overflow: 'hidden',
                                         cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        animation: 'sbSlideIn 0.3s ease-out'
+                                        background: tier.bg,
+                                        border: isExact ? `2px solid ${tier.accent}` : `1px solid ${tier.border}`,
+                                        boxShadow: isExact ? `${tier.shadow}, 0 8px 20px rgba(0,0,0,0.6)` : '0 6px 18px rgba(0,0,0,0.5)',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        userSelect: 'none'
                                     }}
                                     onMouseEnter={e => {
-                                        e.currentTarget.style.background = 'rgba(0, 242, 254, 0.06)';
-                                        e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.3)';
-                                        e.currentTarget.style.borderLeftColor = tier.accent;
+                                        e.currentTarget.style.transform = 'translateY(-6px) scale(1.03)';
+                                        e.currentTarget.style.boxShadow = `0 14px 30px rgba(0,0,0,0.85), ${tier.shadow}`;
+                                        e.currentTarget.style.borderColor = tier.accent;
                                     }}
                                     onMouseLeave={e => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.025)';
-                                        e.currentTarget.style.borderColor = isExact ? 'rgba(0, 255, 135, 0.25)' : 'rgba(255,255,255,0.06)';
-                                        e.currentTarget.style.borderLeftColor = tier.accent;
+                                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                        e.currentTarget.style.boxShadow = isExact ? `${tier.shadow}, 0 8px 20px rgba(0,0,0,0.6)` : '0 6px 18px rgba(0,0,0,0.5)';
+                                        e.currentTarget.style.borderColor = isExact ? tier.accent : tier.border;
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                                        {/* Card Type Pill */}
+                                    {/* Full Card Cover Art Image */}
+                                    {cardImg ? (
+                                        <img
+                                            src={cardImg}
+                                            alt={playerName}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover',
+                                                zIndex: 1
+                                            }}
+                                            onError={e => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                    ) : (
+                                        <div style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            background: `radial-gradient(circle at 50% 30%, ${tier.accent}25 0%, #080d19 80%)`,
+                                            zIndex: 1
+                                        }} />
+                                    )}
+
+                                    {/* Top-Left Base OVR, Position & Club Stack — centered over card logo */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '6px',
+                                        left: '28px',
+                                        transform: 'translateX(-50%)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        zIndex: 3,
+                                        pointerEvents: 'none'
+                                    }}>
                                         <span style={{
-                                            fontSize: '0.6em',
-                                            fontWeight: '800',
+                                            fontSize: '1.85em',
+                                            lineHeight: 0.9,
+                                            fontWeight: '900',
+                                            color: '#fff',
+                                            fontFamily: "'Outfit', 'Impact', sans-serif",
+                                            textShadow: '0 2px 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.9)',
+                                            letterSpacing: '-1px'
+                                        }}>
+                                            {baseOvr}
+                                        </span>
+                                        <span style={{
+                                            fontSize: '0.82em',
+                                            fontWeight: '900',
+                                            color: '#fff',
+                                            textShadow: '0 2px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.9)',
+                                            marginTop: '1px',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            {cardPos}
+                                        </span>
+                                    </div>
+
+                                    {/* Top-Right Tier / Type Pill */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        zIndex: 3,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'flex-end',
+                                        gap: '3px',
+                                        pointerEvents: 'none'
+                                    }}>
+                                        <span style={{
+                                            fontSize: '0.58em',
+                                            fontWeight: '900',
                                             color: tier.accent,
+                                            background: 'rgba(10, 15, 26, 0.88)',
                                             border: `1px solid ${tier.border}`,
                                             padding: '2px 5px',
-                                            borderRadius: '3px',
+                                            borderRadius: '4px',
                                             textTransform: 'uppercase',
-                                            whiteSpace: 'nowrap',
-                                            flexShrink: 0
+                                            letterSpacing: '0.5px',
+                                            boxShadow: '0 2px 6px rgba(0,0,0,0.6)'
                                         }}>
                                             {cardType}
                                         </span>
-
-                                        <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontWeight: '800', color: '#fff', fontSize: '0.92em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {playerName}
-                                            </div>
-                                            <div style={{ fontSize: '0.72em', color: '#64748b', marginTop: '1px' }}>
-                                                <strong style={{ color: '#94a3b8' }}>{cardPos}</strong> · {clubName}
-                                            </div>
-                                        </div>
+                                        {badge && (
+                                            <span style={{
+                                                fontSize: '0.6em',
+                                                fontWeight: '900',
+                                                color: badge.color,
+                                                background: 'rgba(10, 15, 26, 0.88)',
+                                                border: `1px solid ${badge.border}`,
+                                                padding: '1px 5px',
+                                                borderRadius: '3px',
+                                                boxShadow: '0 2px 6px rgba(0,0,0,0.6)'
+                                            }}>
+                                                {badge.label}
+                                            </span>
+                                        )}
                                     </div>
 
-                                    {/* Ratings & Synergy */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{
-                                                fontSize: '1.15em',
-                                                fontWeight: '900',
-                                                color: penalty > 0 ? '#ff6b6b' : '#00FF87'
-                                            }}>
-                                                {effectiveRating}
-                                            </div>
-                                            <div style={{ fontSize: '0.62em', fontWeight: '800', color: penalty > 0 ? '#ff6b6b' : '#00FF87' }}>
-                                                {penalty > 0 ? `-${penalty}` : 'SYNC'}
-                                            </div>
-                                        </div>
-
-                                        <button style={{
-                                            padding: '6px 12px',
-                                            background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
-                                            color: '#000',
-                                            border: 'none',
-                                            borderRadius: '6px',
+                                    {/* Bottom Banner with Player Name and Stars */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        zIndex: 3,
+                                        background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,0.98) 100%)',
+                                        padding: '18px 8px 6px 8px',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        pointerEvents: 'none'
+                                    }}>
+                                        <div style={{
+                                            fontSize: '0.8em',
                                             fontWeight: '900',
-                                            fontSize: '0.72em',
-                                            cursor: 'pointer',
+                                            color: '#fff',
                                             whiteSpace: 'nowrap',
-                                            transition: 'opacity 0.15s'
-                                        }}
-                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                                        >
-                                            Select
-                                        </button>
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            maxWidth: '100%',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.3px',
+                                            textShadow: '0 2px 4px rgba(0,0,0,0.9)'
+                                        }}>
+                                            {playerName}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.62em',
+                                            color: tier.accent,
+                                            letterSpacing: '2px',
+                                            lineHeight: 1,
+                                            textShadow: `0 0 6px ${tier.accent}80`
+                                        }}>
+                                            ★★★★★
+                                        </div>
                                     </div>
                                 </div>
                             );

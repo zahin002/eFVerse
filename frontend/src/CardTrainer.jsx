@@ -289,7 +289,10 @@ export default function CardTrainer({ card, onBack, onComplete }) {
             if (mgr && mgr.effects) {
                 const match = mgr.effects.find(e => {
                     const effStat = e.statName || e.statname || '';
-                    return effStat && typeof effStat === 'string' && effStat.toLowerCase() === statName.toLowerCase();
+                    if (!effStat || typeof effStat !== 'string') return false;
+                    const cleanEff = effStat.toLowerCase().replace(/[\s_\-]+/g, '');
+                    const cleanStat = statName.toLowerCase().replace(/[\s_\-]+/g, '');
+                    return cleanEff === cleanStat;
                 });
                 if (match) managerBoost = match.boost;
             }

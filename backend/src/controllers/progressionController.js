@@ -458,14 +458,22 @@ const getManagersWithEffects = async (req, res) => {
                 m.ManagerID, 
                 m.ManagerName, 
                 m.Playstyle,
-                
+                m.possession_game,
+                m.quick_counter,
+                m.long_ball_counter,
+                m.out_wide,
+                m.long_ball,
+                m.boosts_display,
+                m.overload,
+                COALESCE(m.managerimageurl, m.imageurl) as managerimageurl,
+                COALESCE(m.managerimageurl, m.imageurl) as imageurl,
                 COALESCE(
-                    json_agg(json_build_object('statName', LOWER(REPLACE(me.StatName, ' ', '')), 'boost', me.BoostValue)) 
+                    json_agg(json_build_object('statName', me.StatName, 'statKey', LOWER(REPLACE(me.StatName, ' ', '')), 'boost', me.BoostValue)) 
                     FILTER (WHERE me.StatName IS NOT NULL), 
                 '[]') as effects
             FROM Manager m
             LEFT JOIN ManagerEffect me ON m.ManagerID = me.ManagerID
-            GROUP BY m.ManagerID, m.ManagerName, m.Playstyle
+            GROUP BY m.ManagerID, m.ManagerName, m.Playstyle, m.possession_game, m.quick_counter, m.long_ball_counter, m.out_wide, m.long_ball, m.boosts_display, m.overload, m.managerimageurl, m.imageurl
             ORDER BY m.ManagerName
         `;
         const result = await pool.query(sql);

@@ -136,6 +136,9 @@ const getCards = async (req, res) => {
                 c.CurrentOverallRating,
                 c.MaxOverallRating,
                 c.TotalProgressionPoints,
+                c.primarypositions,
+                c.secondarypositions,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 p.PlayerName,
                 p.Age,
                 p.LeagueID,
@@ -195,7 +198,7 @@ const getCards = async (req, res) => {
 
 
 const saveSquad = async (req, res) => {
-    const { userId, managerId, squadName, formation, players, teamStrength } = req.body;
+    const { userId, managerId, squadName, formation, players, teamStrength, isFluidFormation, defensiveFormation } = req.body;
     
     console.log("📝 saveSquad called with:", { userId, managerId, squadName, formation, teamStrength, playersCount: players?.length });
     console.log("📝 Players data:", JSON.stringify(players, null, 2));
@@ -319,7 +322,7 @@ const getUserSquads = async (req, res) => {
             LEFT JOIN SquadPlayer sp ON s.SquadID = sp.SquadID
             LEFT JOIN Manager m ON s.ManagerID = m.ManagerID
             WHERE s.UserID = $1
-            GROUP BY s.SquadID, s.UserID, s.ManagerID, s.SquadName, s.Formation, s.TeamStrength, s.CreatedAt, s.UpdatedAt, s.IsFavourite, s.IsSharedToCommunity, s.SharedAt, m.ManagerName, m.PlayStyle
+            GROUP BY s.SquadID, s.UserID, s.ManagerID, s.SquadName, s.Formation, s.TeamStrength, s.CreatedAt, s.UpdatedAt, s.IsFavourite, s.IsSharedToCommunity, s.SharedAt, s.isfluidformation, s.defensiveformation, m.ManagerName, m.PlayStyle
             ORDER BY s.IsFavourite DESC, s.CreatedAt DESC
         `;
 
@@ -370,6 +373,9 @@ const getSquadDetails = async (req, res) => {
                 c.baseoverallrating,
                 c.currentoverallrating,
                 c.maxoverallrating,
+                c.primarypositions,
+                c.secondarypositions,
+                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
                 p.playerid,
                 p.playername,
                 p.age,
@@ -440,6 +446,12 @@ const getSquadDetails = async (req, res) => {
                     baseOverallRating: row.baseoverallrating,
                     currentOverallRating: row.currentoverallrating,
                     maxOverallRating: row.maxoverallrating,
+                    primaryPositions: row.primarypositions || [],
+                    secondaryPositions: row.secondarypositions || [],
+                    primarypositions: row.primarypositions || [],
+                    secondarypositions: row.secondarypositions || [],
+                    cardImageUrl: row.cardimageurl,
+                    cardimageurl: row.cardimageurl,
                     isStartingXI: row.isstartingxi,
                     stats: {
                         offensiveAwareness: row.offensiveawareness,
@@ -482,7 +494,7 @@ const getSquadDetails = async (req, res) => {
 
 const updateSquad = async (req, res) => {
     const { squadId } = req.params;
-    const { squadName, formation, players, teamStrength, managerId } = req.body;
+    const { squadName, formation, players, teamStrength, managerId, isFluidFormation, defensiveFormation } = req.body;
 
     if (!squadId) {
         return res.status(400).json({ error: "Squad ID required" });

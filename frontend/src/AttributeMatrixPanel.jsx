@@ -124,7 +124,7 @@ export default function AttributeMatrixPanel({ stats = {}, boostedStats = {} }) 
                     <StatRowItem label="Defensive Engagement" {...getStat('defensiveengagement', 50)} />
                     <StatRowItem label="Tackling" {...getStat('tackling', 40)} />
                     <StatRowItem label="Aggression" {...getStat('aggression', 40)} />
-                    <StatRowItem label="Goalkeeping" {...getStat('gkawareness', 40)} />
+                    <StatRowItem label="GK Awareness" {...getStat('gkawareness', 40)} />
                     <StatRowItem label="GK Catching" {...getStat('gkcatching', 40)} />
                     <StatRowItem label="GK Parrying" {...getStat('gkparrying', 40)} />
                     <StatRowItem label="GK Reflexes" {...getStat('gkreflexes', 40)} />

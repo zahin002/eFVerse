@@ -5,6 +5,10 @@ const { verifyToken } = require('../middleware/authMiddleware');
 
 router.get('/helpers', controller.getHelpers);
 router.get('/clubs-by-league', controller.getClubsByLeague);
+router.get('/clubs', controller.getAllClubs);
+router.post('/add-club', verifyToken, controller.addClub);
+router.put('/update-club/:id', verifyToken, controller.updateClub);
+router.delete('/delete-club/:id', verifyToken, controller.deleteClub);
 router.get('/list-players', controller.getPlayersList);
 router.get('/list-cards', controller.getCardsList);
 router.get('/suggestions', controller.getPlayerSuggestions);

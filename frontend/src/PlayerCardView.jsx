@@ -8,7 +8,8 @@ import PlayerSkillsPanel from './PlayerSkillsPanel';
 import AttributeMatrixPanel from './AttributeMatrixPanel';
 import ProgressionSlidersPanel from './ProgressionSlidersPanel';
 import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl, getTierBadge } from './badgeAssetEngine';
-import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor, formatStatName, getBoosterStatLabels } from './efootballBoosters';
+import BoosterHexagonIcon from './BoosterHexagonIcon';
+import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor, getBoosterTypeColor, formatStatName, getBoosterStatLabels } from './efootballBoosters';
 import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR, getLevelCost } from './progressionEngine';
 import shootingIcon from './assets/progression_icons/shooting.png';
 import passingIcon from './assets/progression_icons/passing.png';
@@ -23,32 +24,14 @@ import gk3Icon from './assets/progression_icons/gk3.png';
 
 axios.defaults.withCredentials = true;
 
-const HexagonBadge = ({ color = '#38bdf8', onClick, title }) => (
-    <svg 
-        width="24" 
-        height="24" 
-        viewBox="0 0 100 100" 
-        onClick={onClick}
-        title={title}
-        style={{ 
-            display: 'inline-block', 
-            verticalAlign: 'middle', 
-            filter: `drop-shadow(0 0 6px ${color})`,
-            cursor: onClick ? 'pointer' : 'default',
-            transition: 'transform 0.15s ease'
-        }}
-        onMouseEnter={e => { if (onClick) e.currentTarget.style.transform = 'scale(1.15)'; }}
-        onMouseLeave={e => { if (onClick) e.currentTarget.style.transform = 'scale(1)'; }}
-    >
-        <polygon points="50,10 85,30 85,70 50,90 15,70 15,30" fill="#1b2230" stroke={color} strokeWidth="7" />
-        <path d="M40,35 C40,35 60,32 60,45 C60,58 40,55 40,55 M40,48 L55,48" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" />
-    </svg>
+const HexagonBadge = ({ color = '#00f2fe', onClick, title, disabled = false }) => (
+    <BoosterHexagonIcon color={color} size={26} onClick={onClick} title={title} disabled={disabled} />
 );
 
-const DoubleBoosterLogo = ({ color1 = '#38bdf8', color2 = '#f97316', onBooster1Click, onBooster2Click }) => (
+const DoubleBoosterLogo = ({ color1 = '#00f2fe', color2 = '#00f2fe', type1 = 'STANDARD', type2 = 'STANDARD', onBooster1Click, onBooster2Click, isBooster2Active = true }) => (
     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
-        <HexagonBadge color={color1} onClick={onBooster1Click} title="Click to select Booster 1" />
-        <HexagonBadge color={color2 || '#f97316'} onClick={onBooster2Click} title="Click to select Booster 2" />
+        <BoosterHexagonIcon type={type1} color={color1} size={22} onClick={onBooster1Click} title="Booster 1" />
+        <BoosterHexagonIcon type={type2} color={color2} size={22} onClick={onBooster2Click} title="Booster 2" disabled={!isBooster2Active} />
     </div>
 );
 
@@ -201,16 +184,16 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const rawAdminB2 = (data?.booster2 || player?.booster2 || "").trim();
 
     const isBooster1AdminSet = Boolean(rawAdminB1 && rawAdminB1.toLowerCase() !== 'none');
-    const isBooster2AdminSet = Boolean(rawAdminB2 && rawAdminB2.toLowerCase() !== 'none');
+    const isB2Craftable = rawAdminB2 === 'Craftable Slot' || rawAdminB2 === 'Open Booster Craft';
+    const isB2None = !rawAdminB2 || rawAdminB2.toLowerCase() === 'none';
+    const isB2Specific = Boolean(rawAdminB2 && !isB2Craftable && !isB2None);
 
     // Manager and Booster selection states
     const [managersList, setManagersList] = useState([]);
     const [selectedManagerId, setSelectedManagerId] = useState("");
     const [booster1, setBooster1] = useState(rawAdminB1 || "none");
-    const [booster2, setBooster2] = useState(rawAdminB2 || "none");
+    const [booster2, setBooster2] = useState("none");
     const [booster2Level, setBooster2Level] = useState(3);
-    const [booster2Category, setBooster2Category] = useState('STANDARD');
-    const [showBooster2TypeMenu, setShowBooster2TypeMenu] = useState(false);
     const [showBooster2LevelPicker, setShowBooster2LevelPicker] = useState(false);
     const [otherVersions, setOtherVersions] = useState([]);
 
@@ -223,37 +206,6 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     const booster1Ref = useRef(null);
     const booster2Ref = useRef(null);
 
-    const BOOSTER_TYPES = [
-        {
-            id: 'POTW',
-            name: 'Green Booster - POTW',
-            color: '#22c55e',
-            maxBoost: 3,
-            desc: 'Form-based, caps at +3 for A form'
-        },
-        {
-            id: 'STANDARD',
-            name: 'Blue Booster - Standard',
-            color: '#38bdf8',
-            maxBoost: 3,
-            desc: 'Usually +2 or +3, always activated'
-        },
-        {
-            id: 'TOTAL_PACKAGE',
-            name: 'Yellow/Brown - Total Package',
-            color: '#eab308',
-            maxBoost: 3,
-            desc: 'Boosts all stats up to +3 with full league team'
-        },
-        {
-            id: 'SPECIAL',
-            name: 'Purple Booster - Special / Named',
-            color: '#a855f7',
-            maxBoost: 4,
-            desc: 'Big Time / Special cards +4, always activated'
-        }
-    ];
-
     const handleBooster1Click = () => {
         if (isBooster1AdminSet) return;
         if (booster1Ref.current) {
@@ -262,23 +214,34 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
         }
     };
 
-    const handleBooster2Click = () => {
-        setShowBooster2TypeMenu(prev => !prev);
-    };
-
     const getEffectiveBooster1Color = () => {
+        if (!isBooster1AdminSet) return '#475569';
         const b1Type = data?.booster1_type || player?.booster1_type;
-        if (b1Type && b1Type !== 'ALL') {
-            const matched = BOOSTER_TYPES.find(t => t.id === b1Type);
-            if (matched) return matched.color;
-        }
-        return getBoosterCategoryColor(booster1);
+        if (b1Type && b1Type !== 'ALL') return getBoosterTypeColor(b1Type, rawAdminB1);
+        if (isTrendingCard) return '#22c55e';
+        return '#00f2fe';
     };
 
     const getEffectiveBooster2Color = () => {
-        if (booster2 === 'Craftable Slot' || booster2Category === 'CRAFTABLE') return '#fbbf24';
-        const matched = BOOSTER_TYPES.find(t => t.id === booster2Category);
-        return matched ? matched.color : getBoosterCategoryColor(booster2, true);
+        if (isB2None) return '#475569';
+        const b2Type = data?.booster2_type || player?.booster2_type;
+        if (b2Type && b2Type !== 'ALL') return getBoosterTypeColor(b2Type, rawAdminB2);
+        if (isTrendingCard) return '#22c55e';
+        return '#00f2fe';
+    };
+
+    const getEffectiveBooster1Type = () => {
+        const b1Type = data?.booster1_type || player?.booster1_type;
+        if (b1Type && b1Type !== 'ALL') return b1Type;
+        if (isTrendingCard) return 'POTW';
+        return 'STANDARD';
+    };
+
+    const getEffectiveBooster2Type = () => {
+        const b2Type = data?.booster2_type || player?.booster2_type;
+        if (b2Type && b2Type !== 'ALL') return b2Type;
+        if (isTrendingCard) return 'POTW';
+        return 'STANDARD';
     };
 
     const handleSmartAllocate = () => {
@@ -297,24 +260,19 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
     useEffect(() => {
         const b1 = (data?.booster1 || player?.booster1 || "none").trim();
         const b2 = (data?.booster2 || player?.booster2 || "none").trim();
-        setBooster1(b1 || "none");
-        setBooster2(b2 || "none");
+        setBooster1(b1 && b1.toLowerCase() !== 'none' ? b1 : "none");
 
-        const b2Type = data?.booster2_type || player?.booster2_type;
-        if (b2Type && b2Type !== 'ALL') {
-            setBooster2Category(b2Type);
+        // If admin set Craftable Slot, user initially sees No Booster, but dropdown is enabled!
+        if (b2 === 'Craftable Slot' || b2 === 'Open Booster Craft') {
+            setBooster2("none");
+            setShowBooster2LevelPicker(false);
+        } else if (b2 && b2.toLowerCase() !== 'none') {
+            setBooster2(b2);
+            const b2ValMatch = b2.match(/\+(\d+)/);
+            if (b2ValMatch) setBooster2Level(parseInt(b2ValMatch[1], 10));
         } else {
-            const bObj = getBoosterByName(b2);
-            if (bObj && bObj.category) {
-                setBooster2Category(bObj.category);
-            } else {
-                setBooster2Category('STANDARD');
-            }
-        }
-
-        const b2ValMatch = b2.match(/\+(\d+)/);
-        if (b2ValMatch) {
-            setBooster2Level(parseInt(b2ValMatch[1], 10));
+            setBooster2("none");
+            setShowBooster2LevelPicker(false);
         }
     }, [data?.booster1, data?.booster2, data?.booster1_type, data?.booster2_type, player?.booster1, player?.booster2, player?.booster1_type, player?.booster2_type]);
 
@@ -806,7 +764,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                 </div>
                                 {/* Club Logo */}
                                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)', flexShrink: 0 }}>
-                                    <img src={getClubLogoUrl(clubName, player.club?.logourl)} alt={clubName} style={{ width: '32px', height: '32px', objectFit: 'contain' }} title={clubName} onError={(e) => { e.target.onerror = null; e.target.src = '/images/club_default.svg'; }} />
+                                    <img src={getClubLogoUrl(clubName, player.club?.logourl || player.clublogourl || player.logourl)} alt={clubName} style={{ width: '32px', height: '32px', objectFit: 'contain' }} title={clubName} onError={(e) => { e.target.onerror = null; e.target.src = '/images/club_default.svg'; }} />
                                 </div>
                                 {/* Tournament Badge */}
                                 <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)', flexShrink: 0 }}>
@@ -853,10 +811,10 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 );
                                             })()}
 
-                                            {/* Top Left OVR & Position Stack — centered alignment above flag */}
-                                            <div style={{ position: 'absolute', top: '10px', left: '9px', width: '54px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                                            {/* Top Left OVR & Position Stack — perfectly centered and aligned above club logo */}
+                                            <div style={{ position: 'absolute', top: '7px', left: '42px', transform: 'translateX(-50%)', width: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
                                                 <h1 style={{ 
-                                                    fontSize: boostedOvr >= 100 ? '2.4em' : '2.8em', 
+                                                    fontSize: boostedOvr >= 100 ? '2.4em' : '2.7em', 
                                                     margin: 0, 
                                                     lineHeight: 0.9, 
                                                     color: '#fff', 
@@ -871,12 +829,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </h1>
 
                                                 <h3 style={{ 
-                                                    margin: '2px 0 0 0', 
-                                                    fontSize: '1.2em', 
+                                                    margin: '1px 0 0 0', 
+                                                    fontSize: '1.15em', 
                                                     color: '#fff', 
                                                     textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', 
                                                     fontWeight: '900', 
-                                                    letterSpacing: '1px',
+                                                    letterSpacing: '0.8px',
                                                     lineHeight: 1,
                                                     textAlign: 'center'
                                                 }}>
@@ -947,10 +905,12 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                         {/* ROW 1: BOOSTER 1 */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
                                             <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                                <HexagonBadge 
+                                                <BoosterHexagonIcon 
+                                                    type={getEffectiveBooster1Type()} 
                                                     color={getEffectiveBooster1Color()} 
                                                     onClick={handleBooster1Click} 
                                                     title="Booster 1" 
+                                                    disabled={!isBooster1AdminSet}
                                                 />
                                             </div>
                                             <select 
@@ -978,83 +938,75 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 {rawAdminB1 && rawAdminB1.toLowerCase() !== 'none' && (
                                                     <option value={rawAdminB1}>{rawAdminB1}</option>
                                                 )}
-                                                {EFOOTBALL_BOOSTERS.map(b => {
-                                                    const boostVal = rawAdminB1?.match(/\+(\d+)/)?.[1] || '4';
-                                                    const optVal = `${b.name} +${boostVal}`;
-                                                    if (optVal === rawAdminB1) return null;
-                                                    return (
-                                                        <option key={`b1-${b.name}`} value={optVal}>
-                                                            {b.name} (+${boostVal})
-                                                        </option>
-                                                    );
-                                                })}
+                                                {!isBooster1AdminSet && EFOOTBALL_BOOSTERS.map(b => (
+                                                    <option key={`b1-${b.name}`} value={`${b.name} +4`}>
+                                                        {b.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
 
-                                        {/* ROW 2: BOOSTER 2 (FULL WIDTH DISPLAY LIKE IMAGE 2 + FLOATING LEVEL PICKER WINDOW) */}
+                                        {/* ROW 2: BOOSTER 2 */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', position: 'relative' }}>
                                             <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                                                <HexagonBadge 
+                                                <BoosterHexagonIcon 
+                                                    type={getEffectiveBooster2Type()} 
                                                     color={getEffectiveBooster2Color()} 
-                                                    onClick={handleBooster2Click} 
-                                                    title="Select Booster 2 Category" 
+                                                    title={isB2None ? "No Booster" : "Booster 2"} 
+                                                    disabled={isB2None}
                                                 />
                                             </div>
                                             <select 
                                                 ref={booster2Ref}
-                                                value={booster2} 
+                                                value={booster2 === 'none' ? 'none' : booster2.replace(/\s*\+\d+$/, '').trim()} 
+                                                disabled={isB2None || isB2Specific}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
-                                                    setBooster2(val);
-                                                    if (val && val !== 'none' && val !== 'Craftable Slot') {
-                                                        setShowBooster2LevelPicker(true);
-                                                    } else {
+                                                    if (!val || val === 'none') {
+                                                        setBooster2('none');
                                                         setShowBooster2LevelPicker(false);
+                                                    } else {
+                                                        const baseName = val.replace(/\s*\+\d+$/, '').trim();
+                                                        setBooster2(`${baseName} +${booster2Level || 3}`);
+                                                        setShowBooster2LevelPicker(true);
                                                     }
                                                 }} 
                                                 title="Booster 2"
                                                 style={{ 
                                                     flex: 1,
                                                     background: '#0d1117', 
-                                                    color: getEffectiveBooster2Color(), 
-                                                    border: `1px solid ${getEffectiveBooster2Color()}`, 
+                                                    color: isB2None ? '#64748b' : getEffectiveBooster2Color(), 
+                                                    border: `1px solid ${isB2None ? 'rgba(255,255,255,0.08)' : getEffectiveBooster2Color()}`, 
                                                     borderRadius: '6px', 
                                                     padding: '4px 6px', 
                                                     fontSize: '0.74em', 
                                                     fontWeight: 'bold', 
                                                     outline: 'none', 
-                                                    cursor: 'pointer',
+                                                    cursor: isB2None || isB2Specific ? 'default' : 'pointer',
+                                                    opacity: isB2None ? 0.6 : 1,
                                                     minWidth: 0
                                                 }}
                                             >
                                                 <option value="none">No Booster</option>
-                                                <option value="Craftable Slot" style={{ color: '#fbbf24', fontWeight: 'bold' }}>
-                                                    Open Booster Crafting Slot
-                                                </option>
-                                                {rawAdminB2 && rawAdminB2.toLowerCase() !== 'none' && rawAdminB2 !== 'Craftable Slot' && (
+                                                {isB2Specific && (
                                                     <option value={rawAdminB2}>{rawAdminB2}</option>
                                                 )}
-                                                {EFOOTBALL_BOOSTERS.map(b => {
-                                                    const boostVal = booster2Level || 3;
-                                                    const optVal = `${b.name} +${boostVal}`;
-                                                    if (optVal === rawAdminB2) return null;
-                                                    return (
-                                                        <option key={`b2-${b.name}`} value={optVal}>
-                                                            {b.name} (+${boostVal})
-                                                        </option>
-                                                    );
-                                                })}
+                                                {isB2Craftable && EFOOTBALL_BOOSTERS.map(b => (
+                                                    <option key={`b2-${b.name}`} value={b.name}>
+                                                        {b.name}
+                                                    </option>
+                                                ))}
                                             </select>
 
                                             {/* FLOATING LEVEL SELECTION WINDOW (+1 TO +5) */}
-                                            {showBooster2LevelPicker && booster2 !== 'none' && (
+                                            {showBooster2LevelPicker && booster2 !== 'none' && !isB2None && (
                                                 <div 
                                                     style={{
                                                         position: 'absolute',
                                                         top: '-46px',
                                                         right: '0',
                                                         background: '#0d1117',
-                                                        border: `1.5px solid ${getEffectiveBooster2Color()}`,
+                                                        border: `1.5px solid ${getEffectiveBooster2Color()}`, 
                                                         borderRadius: '8px',
                                                         padding: '4px 6px',
                                                         boxShadow: '0 8px 25px rgba(0,0,0,0.95)',
@@ -1068,115 +1020,59 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     <span style={{ fontSize: '0.65em', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', marginRight: '2px' }}>
                                                         Level:
                                                     </span>
-                                                    {[1, 2, 3, 4, 5].map(lvl => (
-                                                        <button
-                                                            key={lvl}
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setBooster2Level(lvl);
-                                                                setShowBooster2LevelPicker(false);
-                                                            }}
-                                                            style={{
-                                                                padding: '3px 7px',
-                                                                borderRadius: '4px',
-                                                                border: 'none',
-                                                                background: lvl === booster2Level ? getEffectiveBooster2Color() : '#1e293b',
-                                                                color: lvl === booster2Level ? '#000' : '#fff',
-                                                                fontWeight: '900',
-                                                                fontSize: '0.75em',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s ease'
-                                                            }}
-                                                        >
-                                                            +{lvl}
-                                                        </button>
-                                                    ))}
+                                                    {[1, 2, 3, 4, 5].map(lvl => {
+                                                        const isSel = lvl === booster2Level;
+                                                        return (
+                                                            <button
+                                                                key={`lvl-${lvl}`}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setBooster2Level(lvl);
+                                                                    const baseName = booster2.replace(/\s*\+\d+$/, '').trim();
+                                                                    if (baseName && baseName !== 'none') {
+                                                                        setBooster2(`${baseName} +${lvl}`);
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    width: '24px',
+                                                                    height: '24px',
+                                                                    borderRadius: '4px',
+                                                                    border: isSel ? `1px solid ${getEffectiveBooster2Color()}` : '1px solid rgba(255,255,255,0.1)',
+                                                                    background: isSel ? getEffectiveBooster2Color() : '#1e293b',
+                                                                    color: isSel ? '#000' : '#fff',
+                                                                    fontSize: '0.72em',
+                                                                    fontWeight: '900',
+                                                                    cursor: 'pointer',
+                                                                    padding: 0,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                            >
+                                                                +{lvl}
+                                                            </button>
+                                                        );
+                                                    })}
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowBooster2LevelPicker(false)}
                                                         style={{
-                                                            background: 'none',
+                                                            background: 'transparent',
                                                             border: 'none',
                                                             color: '#64748b',
-                                                            fontSize: '0.75em',
+                                                            fontSize: '11px',
                                                             cursor: 'pointer',
-                                                            marginLeft: '2px',
-                                                            padding: '0 2px'
+                                                            padding: '0 2px',
+                                                            marginLeft: '2px'
                                                         }}
+                                                        title="Close"
                                                     >
                                                         ✕
                                                     </button>
                                                 </div>
                                             )}
                                         </div>
-
-                                        {/* CLICKABLE 2ND HEXAGON BOOSTER CATEGORY SELECTION POPOVER MENU */}
-                                        {showBooster2TypeMenu && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                bottom: '42px',
-                                                left: '50%',
-                                                transform: 'translateX(-50%)',
-                                                width: '270px',
-                                                background: '#0d1117',
-                                                border: '1px solid rgba(56, 189, 248, 0.4)',
-                                                borderRadius: '12px',
-                                                padding: '10px',
-                                                boxShadow: '0 10px 30px rgba(0,0,0,0.9)',
-                                                zIndex: 200,
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '8px'
-                                            }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                                    <span style={{ fontSize: '0.75em', fontWeight: '900', color: '#00f2fe', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                        Select Booster 2 Category
-                                                    </span>
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setShowBooster2TypeMenu(false)}
-                                                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9em', cursor: 'pointer', fontWeight: 'bold' }}
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                </div>
-
-                                                {BOOSTER_TYPES.map(type => (
-                                                    <div
-                                                        key={type.id}
-                                                        onClick={() => {
-                                                            setBooster2Category(type.id);
-                                                            setBooster2Level(type.maxBoost);
-                                                            setShowBooster2TypeMenu(false);
-                                                        }}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '10px',
-                                                            padding: '6px 8px',
-                                                            borderRadius: '8px',
-                                                            background: booster2Category === type.id ? 'rgba(255,255,255,0.08)' : '#111722',
-                                                            border: `1px solid ${booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}`,
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.2s ease'
-                                                        }}
-                                                        onMouseEnter={e => e.currentTarget.style.borderColor = type.color}
-                                                        onMouseLeave={e => e.currentTarget.style.borderColor = booster2Category === type.id ? type.color : 'rgba(255,255,255,0.06)'}
-                                                    >
-                                                        <HexagonBadge color={type.color} />
-                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span style={{ fontSize: '0.78em', fontWeight: '900', color: type.color }}>
-                                                                {type.name}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.62em', color: '#94a3b8' }}>
-                                                                {type.desc}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1282,7 +1178,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </div>
                                             )}
                                             <span 
-                                                title={getDefensivePlaystyleInfo(player.defensive_playstyle)?.overview || player.defensive_playstyle}
+                                                title={player.defensive_playstyle}
                                                 style={{ 
                                                     color: '#fff', 
                                                     fontSize: '0.92em', 
@@ -1349,8 +1245,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                             >
                                                 {/* MANAGER AVATAR FRAME */}
                                                 <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', border: '1px solid rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                                                    {selectedManager?.imageurl ? (
-                                                        <img src={selectedManager.imageurl} alt={selectedManager.managername} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    {(selectedManager?.managerimageurl || selectedManager?.imageurl) ? (
+                                                        <img src={selectedManager.managerimageurl || selectedManager.imageurl} alt={selectedManager.managername} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
                                                     ) : (
                                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -1446,7 +1342,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                                 }}
                                                             >
                                                                 <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', fontSize: '0.8em', flexShrink: 0 }}>
-                                                                    {mgr.imageurl ? <img src={mgr.imageurl} alt="" style={{ width: '100%', height: '100%', borderRadius: '6px', objectFit: 'cover' }} /> : (
+                                                                    {(mgr.managerimageurl || mgr.imageurl) ? <img src={mgr.managerimageurl || mgr.imageurl} alt="" style={{ width: '100%', height: '100%', borderRadius: '6px', objectFit: 'cover' }} onError={e => { e.currentTarget.style.display = 'none'; }} /> : (
                                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                                                             <circle cx="12" cy="7" r="4"></circle>
@@ -1473,8 +1369,8 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                     Boosts: {selectedManager.effects?.length > 0
                                                         ? selectedManager.effects.map(e => {
                                                             const name = (e.statName || e.statname || 'Unknown');
-                                                            const label = name.charAt(0).toUpperCase() + name.slice(1);
-                                                            return `${label} +${e.boost}`;
+                                                            const label = formatStatName(name);
+                                                            return `${label} +${e.boost || e.value || 1}`;
                                                         }).join(', ')
                                                         : 'No stat effects assigned'}
                                                 </div>
@@ -1651,76 +1547,233 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                     {otherVersions.length > 0 ? (
                                         <div style={{
                                             display: 'flex',
-                                            gap: '14px',
+                                            gap: '16px',
                                             overflowX: 'auto',
-                                            paddingBottom: '12px',
+                                            padding: '8px 4px 20px 4px',
                                             scrollbarWidth: 'thin'
                                         }}>
-                                            {otherVersions.map(vCard => (
-                                                <div 
-                                                    key={vCard.cardid}
-                                                    onClick={() => {
-                                                        if (onSelectCard) onSelectCard(vCard.cardid);
-                                                    }}
-                                                    style={{
-                                                        minWidth: '125px',
-                                                        width: '125px',
-                                                        background: 'linear-gradient(180deg, #182232 0%, #0d1117 100%)',
-                                                        border: '1px solid rgba(56, 189, 248, 0.3)',
-                                                        borderRadius: '10px',
-                                                        padding: '10px',
-                                                        cursor: 'pointer',
-                                                        transition: 'transform 0.2s ease, borderColor 0.2s ease',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        position: 'relative'
-                                                    }}
-                                                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#00f2fe'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.3)'; }}
-                                                >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '6px' }}>
-                                                        <span style={{ fontSize: '1.05em', fontWeight: '900', color: '#00f2fe' }}>{vCard.baseoverallrating}</span>
-                                                        <span style={{ fontSize: '0.7em', fontWeight: 'bold', color: '#fff', background: '#1e293b', padding: '1px 5px', borderRadius: '4px' }}>{vCard.positioncode}</span>
-                                                    </div>
+                                            {otherVersions.map(vCard => {
+                                                const cardImgUrl = vCard.cardimageurl || vCard.imageurl;
+                                                const typeUpper = (vCard.cardtype || '').toUpperCase();
+                                                let typeClass = 'card-tile-standard';
+                                                let badgeBg = 'rgba(0,200,255,0.1)';
+                                                let badgeColor = '#00f2fe';
+                                                let badgeBorder = '1px solid rgba(0,200,255,0.25)';
+                                                let textColor = '#00f2fe';
+                                                let typeLabel = vCard.cardtype || 'STANDARD';
 
-                                                    {(vCard.cardimageurl || vCard.imageurl) ? (
-                                                        <img 
-                                                            src={vCard.cardimageurl || vCard.imageurl} 
-                                                            alt={vCard.playername} 
-                                                            style={{
-                                                                width: '78px',
-                                                                height: '92px',
-                                                                objectFit: 'cover',
-                                                                borderRadius: '8px',
-                                                                border: '1px solid rgba(255,255,255,0.2)',
-                                                                marginBottom: '8px',
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
-                                                            }} 
-                                                        />
-                                                    ) : (
-                                                        <div style={{
-                                                            width: '78px',
-                                                            height: '92px',
-                                                            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                                                            borderRadius: '8px',
-                                                            border: '1px solid rgba(255,255,255,0.1)',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            marginBottom: '8px'
-                                                        }}>
-                                                            <div style={{ fontSize: '0.65em', color: '#a78bfa', fontWeight: 'bold' }}>{vCard.cardtype}</div>
-                                                            <div style={{ fontSize: '0.75em', fontWeight: '900', color: '#fff', textAlign: 'center', margin: '4px 0', padding: '0 4px' }}>{vCard.playername}</div>
+                                                if (typeUpper === 'LEGENDARY' || typeUpper === 'EPIC' || typeUpper === 'LEGEND') {
+                                                    typeClass = 'card-tile-legendary';
+                                                    badgeBg = 'rgba(255,200,0,0.15)';
+                                                    badgeColor = '#FFD700';
+                                                    badgeBorder = '1px solid rgba(255,200,0,0.3)';
+                                                    textColor = '#FFD700';
+                                                    typeLabel = 'LEGENDARY';
+                                                } else if (typeUpper === 'SHOWTIME' || typeUpper === 'SHOW TIME') {
+                                                    typeClass = 'card-tile-showtime';
+                                                    badgeBg = 'rgba(0,210,255,0.15)';
+                                                    badgeColor = '#00d2ff';
+                                                    badgeBorder = '1px solid rgba(0,210,255,0.4)';
+                                                    textColor = '#00d2ff';
+                                                    typeLabel = 'SHOWTIME';
+                                                } else if (typeUpper === 'BIG TIME' || typeUpper === 'BIGTIME') {
+                                                    typeClass = 'card-tile-bigtime';
+                                                    badgeBg = 'rgba(255,69,0,0.15)';
+                                                    badgeColor = '#ff4500';
+                                                    badgeBorder = '1px solid rgba(255,69,0,0.4)';
+                                                    textColor = '#ff4500';
+                                                    typeLabel = 'BIG TIME';
+                                                } else if (typeUpper === 'POTW' || typeUpper === 'TRENDING') {
+                                                    typeClass = 'card-tile-potw';
+                                                    badgeBg = 'rgba(0,255,135,0.12)';
+                                                    badgeColor = '#00FF87';
+                                                    badgeBorder = '1px solid rgba(0,255,135,0.3)';
+                                                    textColor = '#00FF87';
+                                                    typeLabel = 'POTW';
+                                                }
+
+                                                const badge = getTierBadge(vCard.baseoverallrating || vCard.maxoverallrating || 0);
+
+                                                if (cardImgUrl) {
+                                                    return (
+                                                        <div 
+                                                            key={vCard.cardid}
+                                                            className={`card-tile ${typeClass}`} 
+                                                            onClick={() => {
+                                                                if (onSelectCard) onSelectCard(vCard.cardid);
+                                                            }}
+                                                            style={{ 
+                                                                position: 'relative', 
+                                                                height: '255px', 
+                                                                minWidth: '180px',
+                                                                maxWidth: '190px',
+                                                                width: '180px',
+                                                                borderRadius: '16px', 
+                                                                overflow: 'hidden', 
+                                                                cursor: 'pointer',
+                                                                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                                padding: 0,
+                                                                flexShrink: 0,
+                                                                transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease'
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
+                                                                e.currentTarget.style.boxShadow = '0 16px 36px rgba(0,0,0,0.7), 0 0 20px rgba(0,242,254,0.35)';
+                                                                e.currentTarget.style.borderColor = 'rgba(0,242,254,0.6)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+                                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                                            }}
+                                                        >
+                                                            {/* Full Cover Card Background Image */}
+                                                            <img 
+                                                                src={cardImgUrl} 
+                                                                alt={vCard.playername || 'Player'} 
+                                                                style={{ 
+                                                                    position: 'absolute', 
+                                                                    top: 0, 
+                                                                    left: 0, 
+                                                                    width: '100%', 
+                                                                    height: '100%', 
+                                                                    objectFit: 'cover', 
+                                                                    zIndex: 1 
+                                                                }} 
+                                                            />
+
+                                                            {/* Top Left OVR & Position Stack */}
+                                                            <div style={{ 
+                                                                position: 'absolute', 
+                                                                top: '8px', 
+                                                                left: '8px', 
+                                                                width: '46px', 
+                                                                display: 'flex', 
+                                                                flexDirection: 'column', 
+                                                                alignItems: 'center', 
+                                                                justifyContent: 'center', 
+                                                                zIndex: 3 
+                                                            }}>
+                                                                <h1 style={{ 
+                                                                    fontSize: '2.1em', 
+                                                                    margin: 0, 
+                                                                    lineHeight: 0.9, 
+                                                                    color: '#fff', 
+                                                                    textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.85)', 
+                                                                    fontWeight: '900', 
+                                                                    letterSpacing: '-1px', 
+                                                                    fontFamily: "'Outfit', 'Impact', sans-serif", 
+                                                                    textAlign: 'center' 
+                                                                }}>
+                                                                    {vCard.baseoverallrating || vCard.maxoverallrating || '—'}
+                                                                </h1>
+                                                                <h3 style={{ 
+                                                                    margin: '2px 0 0 0', 
+                                                                    fontSize: '0.95em', 
+                                                                    color: '#fff', 
+                                                                    textShadow: '1px 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.85)', 
+                                                                    fontWeight: '900', 
+                                                                    letterSpacing: '0.8px', 
+                                                                    lineHeight: 1, 
+                                                                    textAlign: 'center' 
+                                                                }}>
+                                                                    {vCard.positioncode || 'N/A'}
+                                                                </h3>
+                                                            </div>
+
+                                                            {/* Top Right Tier Badge */}
+                                                            <div style={{ 
+                                                                position: 'absolute', 
+                                                                top: '10px', 
+                                                                right: '10px', 
+                                                                background: 'rgba(24, 28, 36, 0.9)', 
+                                                                color: badge.color, 
+                                                                border: `1px solid ${badge.border}`, 
+                                                                padding: '2px 7px', 
+                                                                borderRadius: '6px', 
+                                                                fontWeight: '900', 
+                                                                fontSize: '0.7em', 
+                                                                zIndex: 3, 
+                                                                boxShadow: '0 2px 6px rgba(0,0,0,0.7)', 
+                                                                letterSpacing: '0.5px' 
+                                                            }}>
+                                                                {badge.label}
+                                                            </div>
+
+                                                            {/* Player Name near bottom */}
+                                                            <h2 style={{ 
+                                                                position: 'absolute', 
+                                                                bottom: '48px', 
+                                                                left: '8px', 
+                                                                right: '8px', 
+                                                                margin: 0, 
+                                                                fontSize: '1.05em', 
+                                                                textAlign: 'center', 
+                                                                color: '#fff', 
+                                                                zIndex: 3, 
+                                                                textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.95)', 
+                                                                fontWeight: '900', 
+                                                                lineHeight: 1.15, 
+                                                                whiteSpace: 'nowrap', 
+                                                                overflow: 'hidden', 
+                                                                textOverflow: 'ellipsis' 
+                                                            }}>
+                                                                {vCard.playername || 'Unknown Player'}
+                                                            </h2>
                                                         </div>
-                                                    )}
+                                                    );
+                                                }
 
-                                                    <div style={{ fontSize: '0.75em', fontWeight: 'bold', color: '#cbd5e1', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        {vCard.playername}
+                                                // Fallback: standard styled card tile when no image is available
+                                                return (
+                                                    <div 
+                                                        key={vCard.cardid}
+                                                        className={`card-tile ${typeClass}`} 
+                                                        onClick={() => {
+                                                            if (onSelectCard) onSelectCard(vCard.cardid);
+                                                        }} 
+                                                        style={{ 
+                                                            position: 'relative',
+                                                            height: '255px',
+                                                            minWidth: '180px',
+                                                            maxWidth: '190px',
+                                                            width: '180px',
+                                                            borderRadius: '16px',
+                                                            flexShrink: 0,
+                                                            cursor: 'pointer',
+                                                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                                                            transition: 'transform 0.25s ease, box-shadow 0.25s ease'
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
+                                                            e.currentTarget.style.boxShadow = '0 16px 36px rgba(0,0,0,0.7)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)';
+                                                        }}
+                                                    >
+                                                        <div className="card-tile-inner" style={{ height: '100%', boxSizing: 'border-box' }}>
+                                                            <span className="card-tile-type-badge" style={{ background: badgeBg, color: badgeColor, border: badgeBorder }}>
+                                                                {typeLabel}
+                                                            </span>
+                                                            <div className="card-tile-ovr" style={{ color: textColor, textShadow: `0 0 20px ${textColor}60` }}>
+                                                                {vCard.baseoverallrating || '—'}
+                                                            </div>
+                                                            <div className="card-tile-pos" style={{ color: textColor }}>
+                                                                {vCard.positioncode || 'N/A'}
+                                                            </div>
+                                                            <div className="card-tile-name">
+                                                                {vCard.playername || 'Unknown Player'}
+                                                            </div>
+                                                            <div className="card-tile-footer" style={{ borderTop: `1px solid ${textColor}25`, color: textColor }}>
+                                                                <span>View Card</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <div style={{ fontSize: '0.88em', color: '#64748b', fontStyle: 'italic', padding: '12px 0' }}>
@@ -1822,7 +1875,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
 
                     // Full attributes list matching eFHUB reference image 4
                     const attackingStatsList = [
-                        { key: 'offensiveawareness', label: 'Attacking Awareness' },
+                        { key: 'offensiveawareness', label: 'Offensive Awareness' },
                         { key: 'ballcontrol', label: 'Ball Control' },
                         { key: 'dribbling', label: 'Dribbling' },
                         { key: 'tightpossession', label: 'Tight Possession' },
@@ -1830,7 +1883,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         { key: 'loftedpass', label: 'Lofted Pass' },
                         { key: 'finishing', label: 'Finishing' },
                         { key: 'heading', label: 'Heading' },
-                        { key: 'placekicking', label: 'Set Piece Taking' },
+                        { key: 'placekicking', label: 'Place Kicking' },
                         { key: 'curl', label: 'Curl' },
                     ];
 
@@ -1838,7 +1891,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         { key: 'speed', label: 'Speed' },
                         { key: 'acceleration', label: 'Acceleration' },
                         { key: 'kickingpower', label: 'Kicking Power' },
-                        { key: 'jump', label: 'Jumping' },
+                        { key: 'jump', label: 'Jump' },
                         { key: 'physicalcontact', label: 'Physical Contact' },
                         { key: 'balance', label: 'Balance' },
                         { key: 'stamina', label: 'Stamina' },
@@ -1849,7 +1902,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                         { key: 'defensiveengagement', label: 'Defensive Engagement' },
                         { key: 'tackling', label: 'Tackling' },
                         { key: 'aggression', label: 'Aggression' },
-                        { key: 'gkawareness', label: 'Goalkeeping', isGkOnly: true },
+                        { key: 'gkawareness', label: 'GK Awareness', isGkOnly: true },
                         { key: 'gkcatching', label: 'GK Catching', isGkOnly: true },
                         { key: 'gkparrying', label: 'GK Parrying', isGkOnly: true },
                         { key: 'gkreflexes', label: 'GK Reflexes', isGkOnly: true },

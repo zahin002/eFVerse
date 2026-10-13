@@ -1,7 +1,35 @@
-// Dynamic Badge & Image Asset Engine for eFVerse (Local Public SVG + DB URLs + CDN Fallbacks)
+// In-memory registry for dynamic club crest logos
+const clubLogoCache = {};
 
-export const getCountryFlagUrl = (countryName, customFlagUrl) => {
-    if (customFlagUrl && (customFlagUrl.startsWith('http') || customFlagUrl.startsWith('/'))) return customFlagUrl;
+export const setClubLogoRegistry = (clubs) => {
+    if (!Array.isArray(clubs)) return;
+    clubs.forEach(c => {
+        if (c && c.clubname && c.logourl) {
+            const key = c.clubname.toString().toLowerCase().trim();
+            clubLogoCache[key] = c.logourl;
+        }
+    });
+};
+
+export const registerClubLogo = (clubName, logoUrl) => {
+    if (clubName && logoUrl) {
+        clubLogoCache[clubName.toString().toLowerCase().trim()] = logoUrl;
+    }
+};
+
+// Automatically pre-load official Konami club logos on client side
+if (typeof window !== 'undefined') {
+    fetch('http://localhost:5001/api/players/clubs')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => {
+            if (Array.isArray(data)) {
+                setClubLogoRegistry(data);
+            }
+        })
+        .catch(() => {});
+}
+
+export const getCountryFlagUrl = (countryName) => {
     if (!countryName) return 'https://flagcdn.com/w40/un.png';
     const name = countryName.toString().toLowerCase().trim();
 
@@ -32,11 +60,27 @@ export const getTournamentBadgeUrl = (eventName, leagueName, cardType) => {
 };
 
 export const getClubLogoUrl = (clubName, customLogoUrl) => {
-    if (customLogoUrl && (customLogoUrl.startsWith('http') || customLogoUrl.startsWith('/'))) return customLogoUrl;
+    if (customLogoUrl && (customLogoUrl.startsWith('http') || customLogoUrl.startsWith('/'))) {
+        return customLogoUrl;
+    }
     if (!clubName) return '/images/real_madrid.svg';
 
     const name = clubName.toString().toLowerCase().trim();
-    if (name.includes('real madrid') || name.includes('madrid')) {
+
+    // 1. Direct registry lookup
+    if (clubLogoCache[name]) {
+        return clubLogoCache[name];
+    }
+
+    // 2. Substring match against registered Konami clubs
+    for (const [regName, regUrl] of Object.entries(clubLogoCache)) {
+        if (name === regName || name.includes(regName) || regName.includes(name)) {
+            return regUrl;
+        }
+    }
+
+    // 3. Fallbacks for standard names
+    if (name.includes('real madrid') || name.includes('madrid chamartin') || name.includes('madrid')) {
         return '/images/real_madrid.svg';
     }
     if (name.includes('barcelona') || name.includes('barca')) {
@@ -45,22 +89,22 @@ export const getClubLogoUrl = (clubName, customLogoUrl) => {
     if (name.includes('psg') || name.includes('paris')) {
         return '/images/psg.svg';
     }
-    if (name.includes('bayern')) {
+    if (name.includes('bayern') || name.includes('münchen')) {
         return 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/300px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png';
     }
-    if (name.includes('manchester city') || name.includes('man city')) {
+    if (name.includes('manchester city') || name.includes('manchester b') || name.includes('man city')) {
         return 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/300px-Manchester_City_FC_badge.svg.png';
     }
     if (name.includes('manchester united') || name.includes('man utd')) {
         return 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/300px-Manchester_United_FC_crest.svg.png';
     }
-    if (name.includes('liverpool')) {
+    if (name.includes('liverpool') || name.includes('liverpool r')) {
         return 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Liverpool_FC.svg/300px-Liverpool_FC.svg.png';
     }
     if (name.includes('arsenal')) {
         return 'https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/300px-Arsenal_FC.svg.png';
     }
-    if (name.includes('chelsea')) {
+    if (name.includes('chelsea') || name.includes('chelsea b')) {
         return 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/300px-Chelsea_FC.svg.png';
     }
     if (name.includes('ac milan') || name.includes('milan')) {
@@ -69,14 +113,17 @@ export const getClubLogoUrl = (clubName, customLogoUrl) => {
     if (name.includes('inter') || name.includes('internazionale')) {
         return 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/300px-FC_Internazionale_Milano_2021.svg.png';
     }
-    if (name.includes('juventus')) {
+    if (name.includes('juventus') || name.includes('piemonte')) {
         return 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Juventus_FC_2017_icon_%28black%29.svg/300px-Juventus_FC_2017_icon_%28black%29.svg.png';
     }
 
     return '/images/club_default.svg';
 };
 
-export const getManagerPhotoUrl = (managerName) => {
+export const getManagerPhotoUrl = (managerName, customPhotoUrl) => {
+    if (customPhotoUrl && (customPhotoUrl.startsWith('http') || customPhotoUrl.startsWith('/') || customPhotoUrl.startsWith('data:'))) {
+        return customPhotoUrl;
+    }
     if (!managerName) return 'https://secure.gravatar.com/avatar/unknown?d=mp';
     const name = managerName.toLowerCase().trim();
     if (name.includes('deschamps')) {

@@ -29,7 +29,8 @@ export default function ManagerDetailView({ data, onBack }) {
         { name: 'Quick Counter', val: data.quick_counter || 50 },
         { name: 'Long Ball Ctr', val: data.long_ball_counter || 50 },
         { name: 'Out Wide', val: data.out_wide || 50 },
-        { name: 'Long Ball', val: data.long_ball || 50 }
+        { name: 'Long Ball', val: data.long_ball || 50 },
+        { name: 'Overload', val: data.overload || 50 }
     ];
 
     const getScoreColor = (val) => {

@@ -587,7 +587,8 @@ CREATE OR REPLACE FUNCTION smart_search_pro(
 RETURNS TABLE (
     CardID INT, PlayerID INT, PlayerName VARCHAR, PositionCode VARCHAR, CardType TEXT, 
     LeagueName VARCHAR, ClubName VARCHAR, CountryName VARCHAR,
-    BaseRating INT, Finishing INT, Speed INT
+    BaseRating INT, Finishing INT, Speed INT,
+    CardImageURL VARCHAR
 ) 
 LANGUAGE plpgsql
 AS $$
@@ -596,7 +597,8 @@ BEGIN
     SELECT 
         c.CardID, p.PlayerID, p.PlayerName, c.PositionCode, c.CardType, 
         l.LeagueName, cl.ClubName, n.CountryName,
-        c.BaseOverallRating, s.Finishing, s.Speed
+        c.BaseOverallRating, s.Finishing, s.Speed,
+        COALESCE(c.cardimageurl, c.imageurl, p.imageurl)::VARCHAR AS CardImageURL
     FROM Card c
     JOIN Player p ON c.PlayerID = p.PlayerID
     LEFT JOIN League l ON p.LeagueID = l.LeagueID

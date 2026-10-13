@@ -1333,11 +1333,28 @@ function App() {
                                     <div style={{ position: 'absolute', top: '10%', left: '5%', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(0,242,254,0.08) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 4s ease-in-out infinite', pointerEvents: 'none' }} />
                                     <div style={{ position: 'absolute', bottom: '10%', right: '8%', width: '220px', height: '220px', background: 'radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)', borderRadius: '50%', animation: 'pulseGlow 5s ease-in-out infinite 1s', pointerEvents: 'none' }} />
 
+                                    {/* Logo with transparent background above eFVerse */}
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                                        <img
+                                            src="/logo.png"
+                                            alt="eFVerse Logo"
+                                            style={{
+                                                width: '92px',
+                                                height: '92px',
+                                                objectFit: 'contain',
+                                                filter: 'drop-shadow(0 0 25px rgba(0, 242, 254, 0.55))',
+                                                transition: 'transform 0.25s ease'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                        />
+                                    </div>
+
                                     <h1 className="hero-title">
                                         eFVerse
                                     </h1>
                                     <p className="hero-subtitle">
-                                        Explore player cards, build tactical squads, track progression builds 
+                                        Explore player cards, build tactical squads, track progression builds
                                     </p>
 
                                     <div className="hero-ctas">
@@ -1349,36 +1366,20 @@ function App() {
                                         </button>
                                     </div>
 
-                                    {/* LIVE STAT TICKER */}
-                                    <div className="stat-ticker">
-                                        <div className="stat-ticker-item">
-                                            <div className="stat-ticker-value" style={{ color: '#00f2fe' }}>{allCards.length}</div>
-                                            <div className="stat-ticker-label"> Total Cards</div>
-                                        </div>
-                                        <div className="stat-ticker-item">
-                                            <div className="stat-ticker-value" style={{ color: '#ffd700' }}>{allCards.filter(c => c.cardtype === 'Legendary').length}</div>
-                                            <div className="stat-ticker-label"> Legendary</div>
-                                        </div>
-                                        <div className="stat-ticker-item">
-                                            <div className="stat-ticker-value" style={{ color: '#00ff87' }}>{allCards.filter(c => c.cardtype === 'POTW').length}</div>
-                                            <div className="stat-ticker-label"> POTW</div>
-                                        </div>
-                                    </div>
-
                                     {/* Subtle Scroll Down Indicator */}
-                                    <div 
+                                    <div
                                         onClick={handleBrowseCards}
-                                        style={{ 
-                                            position: 'absolute', 
-                                            bottom: '18px', 
-                                            left: '50%', 
-                                            transform: 'translateX(-50%)', 
-                                            cursor: 'pointer', 
-                                            color: '#64748b', 
-                                            fontSize: '0.75em', 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            alignItems: 'center', 
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '18px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            cursor: 'pointer',
+                                            color: '#64748b',
+                                            fontSize: '0.75em',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
                                             gap: '4px',
                                             transition: 'all 0.25s ease',
                                             zIndex: 2,
@@ -1393,6 +1394,8 @@ function App() {
                                         </svg>
                                     </div>
                                 </div>
+
+
 
                                 {/* ===================== PILL NAVIGATION ===================== */}
                                 <div id="database-section" style={{ display: 'flex', gap: '12px', margin: '48px 0 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', flexWrap: 'wrap' }}>
@@ -1657,7 +1660,8 @@ function App() {
                                                                     { label: 'Long Ball Counter', val: mgr.long_ball_counter || 50 },
                                                                     { label: 'Quick Counter', val: mgr.quick_counter || 50 },
                                                                     { label: 'Long Ball', val: mgr.long_ball || 50 },
-                                                                    { label: 'Out Wide', val: mgr.out_wide || 50 }
+                                                                    { label: 'Out Wide', val: mgr.out_wide || 50 },
+                                                                    { label: 'Overload', val: mgr.overload || 50 }
                                                                 ].map((pItem, pIdx) => {
                                                                     const color = getRatingColor(pItem.val);
                                                                     const textCol = getRatingTextCol(pItem.val);

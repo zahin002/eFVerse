@@ -1,5 +1,42 @@
 const pool = require('../db');
 
+const CANONICAL_STAT_DISPLAY_MAP = {
+    'offensiveawareness': 'Offensive Awareness',
+    'ballcontrol': 'Ball Control',
+    'dribbling': 'Dribbling',
+    'tightpossession': 'Tight Possession',
+    'lowpass': 'Low Pass',
+    'loftedpass': 'Lofted Pass',
+    'finishing': 'Finishing',
+    'heading': 'Heading',
+    'placekicking': 'Place Kicking',
+    'curl': 'Curl',
+    'speed': 'Speed',
+    'acceleration': 'Acceleration',
+    'kickingpower': 'Kicking Power',
+    'jump': 'Jump',
+    'physicalcontact': 'Physical Contact',
+    'balance': 'Balance',
+    'stamina': 'Stamina',
+    'defensiveawareness': 'Defensive Awareness',
+    'defensiveengagement': 'Defensive Engagement',
+    'tackling': 'Tackling',
+    'aggression': 'Aggression',
+    'gkawareness': 'GK Awareness',
+    'gkcatching': 'GK Catching',
+    'gkparrying': 'GK Parrying',
+    'gkreflexes': 'GK Reflexes',
+    'gkreach': 'GK Reach',
+    'passing': 'Passing'
+};
+
+const formatCanonicalStatName = (name) => {
+    if (!name) return '';
+    const clean = name.toString().toLowerCase().replace(/[\s_\-]+/g, '');
+    return CANONICAL_STAT_DISPLAY_MAP[clean] || name;
+};
+
+
 const STAT_NAME_MAP = {
     'Speed': 'Speed',
     'Ball Control': 'BallControl',
@@ -68,7 +105,7 @@ const addManager = async (req, res) => {
 
         let boostsStr = null;
         if (Array.isArray(boosts) && boosts.length > 0) {
-            boostsStr = boosts.map(b => `${b.statName || b.statname} +${b.value || b.boostvalue || 1}`).join(', ');
+            boostsStr = boosts.map(b => `${formatCanonicalStatName(b.statName || b.statname)} +${b.value || b.boostvalue || 1}`).join(', ');
         } else if (typeof boosts === 'string') {
             boostsStr = boosts;
         }
@@ -93,7 +130,7 @@ const addManager = async (req, res) => {
                 boosts_display,
                 managerimageurl,
                 imageurl
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING *;
         `;
         const values = [
@@ -226,7 +263,7 @@ const assignManagerBoosts = async (req, res) => {
 
         let boostsStr = null;
         if (Array.isArray(boosts) && boosts.length > 0) {
-            boostsStr = boosts.map(b => `${b.statName || b.statname} +${b.value || b.boostvalue || 1}`).join(', ');
+            boostsStr = boosts.map(b => `${formatCanonicalStatName(b.statName || b.statname)} +${b.value || b.boostvalue || 1}`).join(', ');
             for (let boost of boosts) {
                 const rawStat = boost.statName || boost.statname;
                 const val = boost.value || boost.boostvalue || 1;
@@ -314,7 +351,7 @@ const updateManager = async (req, res) => {
 
         let boostsStr = null;
         if (Array.isArray(boosts) && boosts.length > 0) {
-            boostsStr = boosts.map(b => `${b.statName || b.statname} +${b.value || b.boostvalue || 1}`).join(', ');
+            boostsStr = boosts.map(b => `${formatCanonicalStatName(b.statName || b.statname)} +${b.value || b.boostvalue || 1}`).join(', ');
         }
 
         const imgProvided = (managerimageurl !== undefined || imageurl !== undefined);

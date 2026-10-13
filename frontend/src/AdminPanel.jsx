@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 export const ATTACKING_PLAYSTYLES = [
   'Goal Poacher',
@@ -41,8 +41,9 @@ export const DEFENSIVE_PLAYSTYLES = [
   'Defensive GK'
 ];
 
+import BoosterHexagonIcon from './BoosterHexagonIcon';
 import { EFOOTBALL_BOOSTERS, BOOSTER_CATEGORIES, getBoosterByName, formatStatName, getBoosterStatLabels } from './efootballBoosters';
-import { getManagerPhotoUrl } from './badgeAssetEngine';
+import { getManagerPhotoUrl, registerClubLogo } from './badgeAssetEngine';
 import { IoIosExit } from "react-icons/io";
 import { IoMdExit } from "react-icons/io";
 import { IoMdClose } from "react-icons/io";
@@ -50,12 +51,128 @@ import { IoMdClose } from "react-icons/io";
 axios.defaults.withCredentials = true;
 
 
+
+const BoosterTypeSelect = ({ value, onChange, label = "Booster Type", accentColor = 'rgba(0, 242, 254, 0.4)' }) => {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        if (open) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [open]);
+
+    const options = [
+        { value: 'ALL', label: 'All Booster Types', type: null, color: '#e2e8f0' },
+        { value: 'SPECIAL', label: 'Special / Named', type: 'SPECIAL', color: '#a855f7' },
+        { value: 'STANDARD', label: 'Standard', type: 'STANDARD', color: '#38bdf8' },
+        { value: 'TOTAL_PACKAGE', label: 'Total Package', type: 'CRAFTABLE', color: '#fbbf24' },
+        { value: 'POTW', label: 'POTW', type: 'POTW', color: '#22c55e' }
+    ];
+
+    const currentOpt = options.find(o => o.value === (value || 'ALL')) || options[0];
+
+    return (
+        <div ref={containerRef} style={{ position: 'relative', marginBottom: '6px' }}>
+            <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>
+                {label}
+            </label>
+            <div
+                onClick={() => setOpen(!open)}
+                style={{
+                    background: '#121214',
+                    border: `1px solid ${currentOpt.value !== 'ALL' ? currentOpt.color : accentColor}`,
+                    borderRadius: '6px',
+                    padding: '5px 10px',
+                    fontSize: '0.75em',
+                    fontWeight: 'bold',
+                    color: currentOpt.color,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    userSelect: 'none',
+                    boxShadow: open ? `0 0 8px ${currentOpt.color}44` : 'none',
+                    transition: 'border-color 0.15s, box-shadow 0.15s'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {currentOpt.type ? (
+                        <BoosterHexagonIcon type={currentOpt.type} size={18} />
+                    ) : (
+                        <span style={{ width: '18px', textAlign: 'center', fontSize: '11px', color: '#94a3b8' }}>✦</span>
+                    )}
+                    <span>{currentOpt.label}</span>
+                </div>
+                <span style={{ fontSize: '9px', color: '#94a3b8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▼</span>
+            </div>
+
+            {open && (
+                <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: '#141822',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '6px',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.85)',
+                    zIndex: 9999,
+                    overflow: 'hidden'
+                }}>
+                    {options.map(opt => (
+                        <div
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setOpen(false);
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '8px 12px',
+                                fontSize: '0.78em',
+                                fontWeight: 'bold',
+                                color: opt.color,
+                                cursor: 'pointer',
+                                background: opt.value === currentOpt.value ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                                transition: 'background 0.12s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+                            onMouseLeave={e => e.currentTarget.style.background = opt.value === currentOpt.value ? 'rgba(255, 255, 255, 0.1)' : 'transparent'}
+                        >
+                            {opt.type ? (
+                                <BoosterHexagonIcon type={opt.type} size={20} />
+                            ) : (
+                                <span style={{ width: '20px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>✦</span>
+                            )}
+                            <span>{opt.label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const parseBoosterHelper = (str, defaultVal = 4) => {
-    if (!str || str.toLowerCase() === 'none') return { name: 'none', val: defaultVal };
-    if (str.toLowerCase() === 'craftable slot') return { name: 'Craftable Slot', val: defaultVal };
+    if (!str || str.toLowerCase() === 'none' || str.toLowerCase() === 'no booster') {
+        return { name: 'none', val: 0 };
+    }
+    if (str.toLowerCase() === 'craftable slot') return { name: 'Craftable Slot', val: 0 };
     const match = str.match(/\+(\d+)/);
     const val = match ? parseInt(match[1], 10) : defaultVal;
-    const clean = str.replace(/\+\d+/, '').trim();
+    let clean = str.replace(/\+\d+/, '').trim();
+    const bObj = getBoosterByName(clean);
+    if (bObj) {
+        clean = bObj.name;
+    }
     return { name: clean, val: val };
 };
 
@@ -72,7 +189,7 @@ export default function AdminPanel() {
       const path = (window.location.pathname || '').toLowerCase();
       if (path.startsWith('/admin/')) {
         const tab = path.split('/admin/')[1]?.split('/')[0];
-        if (['player', 'card', 'stats', 'status', 'manager', 'boosts'].includes(tab)) {
+        if (['player', 'card', 'stats', 'status', 'manager', 'boosts', 'clubs'].includes(tab)) {
           setActiveTab(tab);
         }
       } else if (path === '/admin') {
@@ -87,6 +204,7 @@ export default function AdminPanel() {
 
   const handleTabSelect = (tabKey) => {
     setActiveTab(tabKey);
+    if (tabKey === 'clubs') { setMgmtTab('clubs'); fetchClubs(); }
     setMessage('');
     const targetPath = `/admin/${tabKey}`;
     if (window.location.pathname.toLowerCase() !== targetPath) {
@@ -107,6 +225,13 @@ export default function AdminPanel() {
   
   const [formClubs, setFormClubs] = useState([]); 
   const [mgmtClubs, setMgmtClubs] = useState([]);
+
+  const [clubsList, setClubsList] = useState([]);
+  const [clubSearch, setClubSearch] = useState('');
+  const [clubLeagueFilter, setClubLeagueFilter] = useState('');
+  const [clubForm, setClubForm] = useState({ clubname: '', leagueid: '', logourl: '' });
+  const [editingClub, setEditingClub] = useState(null);
+
 
 
   const [playerForm, setPlayerForm] = useState({ playername: '', age: '', leagueid: '', clubid: '', nationalityid: '' });
@@ -325,16 +450,10 @@ export default function AdminPanel() {
             booster2: c.booster2 || 'Technique +3',
             booster1_name: parseBoosterHelper(c.booster1 || 'none', 4).name,
             booster1_val: parseBoosterHelper(c.booster1 || 'none', 4).val,
-            booster1_type: c.booster1_type || (() => {
-                const b = getBoosterByName(parseBoosterHelper(c.booster1 || 'none', 4).name);
-                return b ? b.category : 'ALL';
-            })(),
+            booster1_type: c.booster1_type || ((c.cardtype === 'POTW' || c.cardtype === 'Trending') ? 'POTW' : 'STANDARD'),
             booster2_name: parseBoosterHelper(c.booster2 || 'none', 3).name,
             booster2_val: parseBoosterHelper(c.booster2 || 'none', 3).val,
-            booster2_type: c.booster2_type || (() => {
-                const b = getBoosterByName(parseBoosterHelper(c.booster2 || 'none', 3).name);
-                return b ? b.category : 'ALL';
-            })(),
+            booster2_type: c.booster2_type || ((c.cardtype === 'POTW' || c.cardtype === 'Trending') ? 'POTW' : 'STANDARD'),
             tierbadge: c.tierbadge || 'S+',
             livecondition: c.livecondition || 'B',
             gpcost: c.gpcost || '',
@@ -382,13 +501,18 @@ export default function AdminPanel() {
                   ? 'Craftable Slot' 
                   : `${editForm.booster2_name} +${editForm.booster2_val || 3}`);
           
-          const payload = {
-              ...editForm,
-              booster1: b1Formatted,
-              booster2: b2Formatted,
-              booster1_type: (!editForm.booster1_name || editForm.booster1_name === 'none') ? null : (editForm.booster1_type && editForm.booster1_type !== 'ALL' ? editForm.booster1_type : null),
-              booster2_type: (!editForm.booster2_name || editForm.booster2_name === 'none') ? null : (editForm.booster2_type && editForm.booster2_type !== 'ALL' ? editForm.booster2_type : null)
-          };
+          const isTrendingCardType = (editForm.cardtype || '').toUpperCase() === 'POTW' || (editForm.cardtype || '').toUpperCase() === 'TRENDING';
+           const defType = isTrendingCardType ? 'POTW' : 'STANDARD';
+           const finalB1Type = (editForm.booster1_type && editForm.booster1_type !== 'ALL') ? editForm.booster1_type : defType;
+           const finalB2Type = (editForm.booster2_type && editForm.booster2_type !== 'ALL') ? editForm.booster2_type : defType;
+
+           const payload = {
+               ...editForm,
+               booster1: b1Formatted,
+               booster2: b2Formatted,
+               booster1_type: finalB1Type,
+               booster2_type: finalB2Type
+           };
           await axios.put(`http://localhost:5001/api/players/update-card/${editingCard.cardid}`, payload);
           // 2. Update Player 3D model & physics metrics
           if (editingCard.playerid || editingCard.player?.playerid) {
@@ -406,7 +530,7 @@ export default function AdminPanel() {
   };
 
   const fetchAllData = () => {
-    fetchHelpers(); fetchPlayers(); fetchCards(); fetchManagers();
+    fetchHelpers(); fetchPlayers(); fetchCards(); fetchManagers(); fetchClubs();
     fetchFormTypes(); fetchInjuryTypes(); fetchStatTypes(); 
   };
 
@@ -464,6 +588,60 @@ export default function AdminPanel() {
       });
   });
   
+  
+  const fetchClubs = () => axios.get('http://localhost:5001/api/players/clubs').then(res => setClubsList(res.data)).catch(err => console.error(err));
+
+  const handleClubSubmit = async (e) => {
+    e.preventDefault();
+    if (!clubForm.clubname || !clubForm.clubname.trim()) {
+      setMessage('Error: Club name is required.');
+      return;
+    }
+    try {
+      if (editingClub) {
+        await axios.put(`http://localhost:5001/api/players/update-club/${editingClub.clubid}`, clubForm);
+        setMessage(`Club "${clubForm.clubname}" updated successfully.`);
+      } else {
+        await axios.post('http://localhost:5001/api/players/add-club', clubForm);
+        setMessage(`Club "${clubForm.clubname}" registered successfully.`);
+      }
+      registerClubLogo(clubForm.clubname, clubForm.logourl);
+      setEditingClub(null);
+      setClubForm({ clubname: '', leagueid: '', logourl: '' });
+      fetchClubs();
+      fetchHelpers();
+    } catch (err) {
+      console.error('Error saving club:', err);
+      setMessage(err.response?.data?.error || 'Failed to save club.');
+    }
+  };
+
+  const handleDeleteClub = (clubid, clubname) => {
+    setDialog({
+      title: 'Delete Club',
+      message: `Are you sure you want to delete club "${clubname}"?`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`http://localhost:5001/api/players/delete-club/${clubid}`);
+          setMessage(`Club "${clubname}" deleted.`);
+          fetchClubs();
+          fetchHelpers();
+        } catch (err) {
+          console.error('Error deleting club:', err);
+          setMessage(err.response?.data?.error || 'Failed to delete club.');
+        }
+      }
+    });
+  };
+
+  const filteredClubs = useMemo(() => {
+    return clubsList.filter(c => {
+      const matchesName = !clubSearch.trim() || c.clubname.toLowerCase().includes(clubSearch.toLowerCase().trim());
+      const matchesLeague = !clubLeagueFilter || String(c.leagueid) === String(clubLeagueFilter);
+      return matchesName && matchesLeague;
+    });
+  }, [clubsList, clubSearch, clubLeagueFilter]);
+
   const fetchManagers = () => axios.get('http://localhost:5001/api/managers/list').then(res => setManagersList(res.data));
 
   const handleMgmtSearch = async () => {
@@ -768,7 +946,8 @@ const handleCardSelectForStats = async (e) => {
           { key: 'stats', label: '3. ADD STATS' },
           { key: 'status', label: '4. UPDATE STATUS' },
           { key: 'manager', label: '5. ADD MANAGER' },
-          { key: 'boosts', label: '6. MANAGER BOOSTER' }
+          { key: 'boosts', label: '6. MANAGER BOOSTER' },
+          { key: 'clubs', label: '7. CLUBS' }
         ].map(item => (
             <button className="click-btn"
               key={item.key} 
@@ -863,7 +1042,7 @@ const handleCardSelectForStats = async (e) => {
 
                 {/* Card Image URL (Optional) */}
                 <div>
-                    <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL (OPTIONAL)</label>
+                    <label style={{ fontSize: '0.7em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL</label>
                     <input 
                         placeholder="Card Image URL (e.g. https://.../mbappe.png)" 
                         type="url" 
@@ -894,20 +1073,31 @@ const handleCardSelectForStats = async (e) => {
                     </select>
                 </div>
 
+                {/* MANAGER IMAGE URL */}
+                <div>
+                    <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '4px' }}>Manager Image URL</label>
+                    <input 
+                        placeholder="https://... Image URL for manager photo" 
+                        value={managerForm.managerimageurl || ''} 
+                        onChange={e => setManagerForm({...managerForm, managerimageurl: e.target.value})} 
+                        style={inputStyle} 
+                    />
+                </div>
+
                 {/* AFFILIATIONS (OPTIONAL) */}
                 <div style={{ background: '#222', padding: '12px', borderRadius: '8px', border: '1px solid #333' }}>
-                    <div style={{ fontSize: '0.75em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 'bold' }}>Affiliations (Optional)</div>
+                    <div style={{ fontSize: '0.75em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 'bold' }}>Affiliations</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                         <select value={managerForm.nationalityid} onChange={e=>setManagerForm({...managerForm, nationalityid: e.target.value})} style={inputStyle}>
-                            <option value="">Nationality (Optional)</option>
+                            <option value="">Nationality</option>
                             {helpers.nations.map(n => <option key={n.nationalityid} value={n.nationalityid}>{n.countryname}</option>)}
                         </select>
                         <select value={managerForm.leagueid} onChange={e => setManagerForm({ ...managerForm, leagueid: e.target.value, clubid: '' })} style={inputStyle}>
-                            <option value="">League (Optional)</option>
+                            <option value="">League</option>
                             {helpers.leagues.map(l => <option key={l.leagueid} value={l.leagueid}>{l.leaguename}</option>)}
                         </select>
                         <select value={managerForm.clubid} onChange={e => setManagerForm({ ...managerForm, clubid: e.target.value })} style={inputStyle} disabled={!managerForm.leagueid}>
-                            <option value="">{managerForm.leagueid ? 'Club (Optional)' : 'Select League first...'}</option>
+                            <option value="">{managerForm.leagueid ? 'Club' : 'Select League first...'}</option>
                             {formClubs.map(c => <option key={c.clubid} value={c.clubid}>{c.clubname}</option>)}
                         </select>
                     </div>
@@ -915,8 +1105,8 @@ const handleCardSelectForStats = async (e) => {
 
                 {/* 5 PLAYSTYLE PROFICIENCY RATINGS */}
                 <div style={{ background: '#222', padding: '12px', borderRadius: '8px', border: '1px solid #333' }}>
-                    <div style={{ fontSize: '0.75em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 'bold' }}>Tactical Playstyle Proficiencies (40 - 99)</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                    <div style={{ fontSize: '0.75em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 'bold' }}>Tactical Playstyle Proficiencies</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
                         <div>
                             <label style={{ fontSize: '0.62em', color: '#aaa', display: 'block' }}>Possession</label>
                             <input type="number" min="40" max="99" value={managerForm.possession_game} onChange={e=>setManagerForm({...managerForm, possession_game: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} />
@@ -936,6 +1126,10 @@ const handleCardSelectForStats = async (e) => {
                         <div>
                             <label style={{ fontSize: '0.62em', color: '#aaa', display: 'block' }}>Long Ball</label>
                             <input type="number" min="40" max="99" value={managerForm.long_ball} onChange={e=>setManagerForm({...managerForm, long_ball: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: '0.62em', color: '#aaa', display: 'block' }}>Overload</label>
+                            <input type="number" min="40" max="99" value={managerForm.overload} onChange={e=>setManagerForm({...managerForm, overload: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} />
                         </div>
                     </div>
                 </div>
@@ -1031,7 +1225,7 @@ const handleCardSelectForStats = async (e) => {
 
                     {/* BOOST 2 */}
                     <div style={{ padding: '14px', background: '#252525', borderRadius: '8px', border: '1px solid #444' }}>
-                        <h4 style={{margin: '0 0 8px 0', color: '#00f2fe', fontSize: '0.85em', textTransform: 'uppercase'}}>Booster Slot 2 (Optional)</h4>
+                        <h4 style={{margin: '0 0 8px 0', color: '#00f2fe', fontSize: '0.85em', textTransform: 'uppercase'}}>Booster Slot 2</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
                             <select value={boostForm.boost2.statName} onChange={e=>setBoostForm({...boostForm, boost2: { ...boostForm.boost2, statName: e.target.value }})} style={inputStyle}>
                                 <option value="">Select Stat...</option>
@@ -1047,7 +1241,7 @@ const handleCardSelectForStats = async (e) => {
 
                 {/* LINK-UP PHILOSOPHY (OPTIONAL) */}
                 <div style={{ background: '#252525', padding: '14px', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.4)' }}>
-                    <div style={{ fontSize: '0.8em', color: '#fbbf24', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 'bold' }}> Link-Up Philosophy (Optional)</div>
+                    <div style={{ fontSize: '0.8em', color: '#fbbf24', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 'bold' }}> Link-Up Philosophy</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                         <input placeholder="Link-up Type (e.g. Breakthrough Pass A)" value={boostForm.linkup_type} onChange={e=>setBoostForm({...boostForm, linkup_type: e.target.value})} style={inputStyle} />
                         <input placeholder="Positions (e.g. AMF, CF)" value={boostForm.linkup_positions} onChange={e=>setBoostForm({...boostForm, linkup_positions: e.target.value})} style={inputStyle} />
@@ -1073,6 +1267,7 @@ const handleCardSelectForStats = async (e) => {
         <div style={{ background: '#6a6969', borderRadius: '4px', display: 'flex', padding: '2px' }}>
             <button onClick={() => setMgmtTab('database')} style={{ background: mgmtTab === 'database' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>PLAYERS</button>
             <button onClick={() => { setMgmtTab('managers'); fetchManagers(); }} style={{ background: mgmtTab === 'managers' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>MANAGERS</button>
+            <button onClick={() => { setMgmtTab('clubs'); fetchClubs(); }} style={{ background: mgmtTab === 'clubs' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>CLUBS</button>
           {/* ({managersList.length}) */}
         </div>
     </div>
@@ -1167,7 +1362,7 @@ const handleCardSelectForStats = async (e) => {
                                 <div>
                                     <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.05em' }}>{item.managername}</div>
                                     <div style={{ fontSize: '0.75em', color: '#00f2fe', marginTop: '2px' }}>
-                                        {item.playstyle} • Pos: {item.possession_game || 50} | QC: {item.quick_counter || 50} | LBC: {item.long_ball_counter || 50} | OW: {item.out_wide || 50} | LB: {item.long_ball || 50}
+                                        {item.playstyle} • Pos: {item.possession_game || 50} | QC: {item.quick_counter || 50} | LBC: {item.long_ball_counter || 50} | OW: {item.out_wide || 50} | LB: {item.long_ball || 50} | OL: {item.overload || 50}
                                     </div>
                                 </div>
                             </div>
@@ -1321,7 +1516,7 @@ const handleCardSelectForStats = async (e) => {
 
                             {/* CARD IMAGE URL (OPTIONAL) IN EDIT MODAL */}
                             <div>
-                                <label style={{ fontSize: '0.75em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL (OPTIONAL)</label>
+                                <label style={{ fontSize: '0.75em', color: '#00f2fe', fontWeight: 'bold' }}>CARD IMAGE URL</label>
                                 <input 
                                     type="url" 
                                     placeholder="Card Image URL (e.g. https://.../mbappe.png)" 
@@ -1407,38 +1602,20 @@ const handleCardSelectForStats = async (e) => {
                                     </div>
 
                                     {/* Booster 1 Type Selector */}
-                                    <div style={{ marginBottom: '6px' }}>
-                                        <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Type</label>
-                                        <select
-                                            value={editForm.booster1_type || 'ALL'}
-                                            onChange={e => {
-                                                const newType = e.target.value;
-                                                const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
-                                                    ? BOOSTER_CATEGORIES[newType].maxBoost 
-                                                    : editForm.booster1_val;
-                                                setEditForm(prev => ({
-                                                    ...prev,
-                                                    booster1_type: newType,
-                                                    booster1_val: defVal || 4
-                                                }));
-                                            }}
-                                            style={{
-                                                ...inputStyle,
-                                                padding: '5px 8px',
-                                                fontSize: '0.75em',
-                                                fontWeight: 'bold',
-                                                borderColor: editForm.booster1_type && editForm.booster1_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster1_type] ? BOOSTER_CATEGORIES[editForm.booster1_type].color : 'rgba(0, 242, 254, 0.4)',
-                                                color: editForm.booster1_type && editForm.booster1_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster1_type] ? BOOSTER_CATEGORIES[editForm.booster1_type].color : '#e2e8f0',
-                                                background: '#121214'
-                                            }}
-                                        >
-                                            <option value="ALL">All Booster Types</option>
-                                            <option value="SPECIAL" style={{ color: '#a855f7' }}>Special / Named</option>
-                                            <option value="STANDARD" style={{ color: '#38bdf8' }}>Standard</option>
-                                            <option value="TOTAL_PACKAGE" style={{ color: '#eab308' }}>Total Package</option>
-                                            <option value="POTW" style={{ color: '#22c55e' }}>POTW</option>
-                                        </select>
-                                    </div>
+                                    <BoosterTypeSelect
+                                        value={editForm.booster1_type || 'ALL'}
+                                        onChange={newType => {
+                                            const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
+                                                ? BOOSTER_CATEGORIES[newType].maxBoost 
+                                                : editForm.booster1_val;
+                                            setEditForm(prev => ({
+                                                ...prev,
+                                                booster1_type: newType,
+                                                booster1_val: defVal || 4
+                                            }));
+                                        }}
+                                        accentColor="rgba(0, 242, 254, 0.4)"
+                                    />
 
                                     {/* Booster 1 Name & Boost Value */}
                                     <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Name & Value</label>
@@ -1447,13 +1624,24 @@ const handleCardSelectForStats = async (e) => {
                                             value={editForm.booster1_name || 'none'} 
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                const bObj = getBoosterByName(val);
-                                                setEditForm(prev => ({
-                                                    ...prev,
-                                                    booster1_name: val,
-                                                    booster1_type: (prev.booster1_type && prev.booster1_type !== 'ALL') ? prev.booster1_type : (bObj ? bObj.category : 'ALL'),
-                                                    booster1_val: prev.booster1_val || (bObj && BOOSTER_CATEGORIES[bObj.category] ? BOOSTER_CATEGORIES[bObj.category].maxBoost : 4)
-                                                }));
+                                                if (val === 'none') {
+                                                    setEditForm(prev => ({
+                                                        ...prev,
+                                                        booster1_name: 'none',
+                                                        booster1_val: 0
+                                                    }));
+                                                } else {
+                                                    const bObj = getBoosterByName(val);
+                                                    const defVal = (bObj && BOOSTER_CATEGORIES[bObj.category]) 
+                                                        ? BOOSTER_CATEGORIES[bObj.category].maxBoost 
+                                                        : 4;
+                                                    setEditForm(prev => ({
+                                                        ...prev,
+                                                        booster1_name: val,
+                                                        booster1_type: (prev.booster1_type && prev.booster1_type !== 'ALL') ? prev.booster1_type : (bObj ? bObj.category : 'ALL'),
+                                                        booster1_val: (prev.booster1_val && prev.booster1_val > 0) ? prev.booster1_val : defVal
+                                                    }));
+                                                }
                                             }} 
                                             style={{ ...inputStyle, flex: 1, fontSize: '0.8em' }}
                                         >
@@ -1464,18 +1652,21 @@ const handleCardSelectForStats = async (e) => {
                                                 </option>
                                             ))}
                                         </select>
-                                        {editForm.booster1_name && editForm.booster1_name !== 'none' && (
-                                            <select 
-                                                value={editForm.booster1_val || 4} 
-                                                onChange={e => setEditForm({...editForm, booster1_val: parseInt(e.target.value, 10)})} 
-                                                style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: '#00f2fe' }}
-                                                title="Stat Boost Value"
-                                            >
-                                                {[1, 2, 3, 4, 5].map(v => (
+                                        <select 
+                                            value={editForm.booster1_name === 'none' ? 0 : (editForm.booster1_val || 4)} 
+                                            onChange={e => setEditForm({...editForm, booster1_val: parseInt(e.target.value, 10)})} 
+                                            style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: editForm.booster1_name === 'none' ? '#64748b' : '#00f2fe' }}
+                                            disabled={editForm.booster1_name === 'none'}
+                                            title="Stat Boost Value"
+                                        >
+                                            {editForm.booster1_name === 'none' ? (
+                                                <option value={0}>0</option>
+                                            ) : (
+                                                [1, 2, 3, 4, 5].map(v => (
                                                     <option key={`b1-val-${v}`} value={v}>+{v}</option>
-                                                ))}
-                                            </select>
-                                        )}
+                                                ))
+                                            )}
+                                        </select>
                                     </div>
                                     {editForm.booster1_name && editForm.booster1_name !== 'none' && (() => {
                                         const b = getBoosterByName(editForm.booster1_name);
@@ -1500,38 +1691,20 @@ const handleCardSelectForStats = async (e) => {
                                     </div>
 
                                     {/* Booster 2 Type Selector */}
-                                    <div style={{ marginBottom: '6px' }}>
-                                        <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Type</label>
-                                        <select
-                                            value={editForm.booster2_type || 'ALL'}
-                                            onChange={e => {
-                                                const newType = e.target.value;
-                                                const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
-                                                    ? BOOSTER_CATEGORIES[newType].maxBoost 
-                                                    : editForm.booster2_val;
-                                                setEditForm(prev => ({
-                                                    ...prev,
-                                                    booster2_type: newType,
-                                                    booster2_val: defVal || 3
-                                                }));
-                                            }}
-                                            style={{
-                                                ...inputStyle,
-                                                padding: '5px 8px',
-                                                fontSize: '0.75em',
-                                                fontWeight: 'bold',
-                                                borderColor: editForm.booster2_type && editForm.booster2_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster2_type] ? BOOSTER_CATEGORIES[editForm.booster2_type].color : 'rgba(249, 115, 22, 0.4)',
-                                                color: editForm.booster2_type && editForm.booster2_type !== 'ALL' && BOOSTER_CATEGORIES[editForm.booster2_type] ? BOOSTER_CATEGORIES[editForm.booster2_type].color : '#e2e8f0',
-                                                background: '#121214'
-                                            }}
-                                        >
-                                            <option value="ALL">All Booster Types</option>
-                                            <option value="SPECIAL" style={{ color: '#a855f7' }}>Special / Named</option>
-                                            <option value="STANDARD" style={{ color: '#38bdf8' }}>Standard</option>
-                                            <option value="TOTAL_PACKAGE" style={{ color: '#eab308' }}>Total Package</option>
-                                            <option value="POTW" style={{ color: '#22c55e' }}>POTW</option>
-                                        </select>
-                                    </div>
+                                    <BoosterTypeSelect
+                                        value={editForm.booster2_type || 'ALL'}
+                                        onChange={newType => {
+                                            const defVal = (newType !== 'ALL' && BOOSTER_CATEGORIES[newType]) 
+                                                ? BOOSTER_CATEGORIES[newType].maxBoost 
+                                                : editForm.booster2_val;
+                                            setEditForm(prev => ({
+                                                ...prev,
+                                                booster2_type: newType,
+                                                booster2_val: defVal || 3
+                                            }));
+                                        }}
+                                        accentColor="rgba(249, 115, 22, 0.4)"
+                                    />
 
                                     {/* Booster 2 Name & Boost Value */}
                                     <label style={{ fontSize: '0.62em', color: '#888', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Booster Name & Value</label>
@@ -1540,36 +1713,56 @@ const handleCardSelectForStats = async (e) => {
                                             value={editForm.booster2_name || 'none'} 
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                const bObj = getBoosterByName(val);
-                                                setEditForm(prev => ({
-                                                    ...prev,
-                                                    booster2_name: val,
-                                                    booster2_type: (prev.booster2_type && prev.booster2_type !== 'ALL') ? prev.booster2_type : (bObj ? bObj.category : 'ALL'),
-                                                    booster2_val: prev.booster2_val || (bObj && BOOSTER_CATEGORIES[bObj.category] ? BOOSTER_CATEGORIES[bObj.category].maxBoost : 3)
-                                                }));
+                                                if (val === 'none') {
+                                                    setEditForm(prev => ({
+                                                        ...prev,
+                                                        booster2_name: 'none',
+                                                        booster2_val: 0
+                                                    }));
+                                                } else if (val === 'Craftable Slot') {
+                                                    setEditForm(prev => ({
+                                                        ...prev,
+                                                        booster2_name: 'Craftable Slot',
+                                                        booster2_val: 0
+                                                    }));
+                                                } else {
+                                                    const bObj = getBoosterByName(val);
+                                                    const defVal = (bObj && BOOSTER_CATEGORIES[bObj.category]) 
+                                                        ? BOOSTER_CATEGORIES[bObj.category].maxBoost 
+                                                        : 3;
+                                                    setEditForm(prev => ({
+                                                        ...prev,
+                                                        booster2_name: val,
+                                                        booster2_type: (prev.booster2_type && prev.booster2_type !== 'ALL') ? prev.booster2_type : (bObj ? bObj.category : 'ALL'),
+                                                        booster2_val: (prev.booster2_val && prev.booster2_val > 0) ? prev.booster2_val : defVal
+                                                    }));
+                                                }
                                             }} 
                                             style={{ ...inputStyle, flex: 1, fontSize: '0.8em' }}
                                         >
                                             <option value="none">No Booster</option>
-                                            <option value="Craftable Slot" style={{ color: '#fbbf24', fontWeight: 'bold' }}>Open Booster Crafting Slot</option>
+                                            <option value="Craftable Slot" style={{ color: '#fbbf24', fontWeight: 'bold' }}>Open Booster Craft</option>
                                             {[...EFOOTBALL_BOOSTERS].sort((a, b) => a.name.localeCompare(b.name)).map(b => (
                                                 <option key={`adm-b2-${b.name}`} value={b.name}>
                                                     {b.name}
                                                 </option>
                                             ))}
                                         </select>
-                                        {editForm.booster2_name && editForm.booster2_name !== 'none' && editForm.booster2_name !== 'Craftable Slot' && (
-                                            <select 
-                                                value={editForm.booster2_val || 3} 
-                                                onChange={e => setEditForm({...editForm, booster2_val: parseInt(e.target.value, 10)})} 
-                                                style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: '#f97316' }}
-                                                title="Stat Boost Value"
-                                            >
-                                                {[1, 2, 3, 4, 5].map(v => (
+                                        <select 
+                                            value={(editForm.booster2_name === 'none' || editForm.booster2_name === 'Craftable Slot') ? 0 : (editForm.booster2_val || 3)} 
+                                            onChange={e => setEditForm({...editForm, booster2_val: parseInt(e.target.value, 10)})} 
+                                            style={{ ...inputStyle, width: '64px', fontWeight: 'bold', color: (editForm.booster2_name === 'none' || editForm.booster2_name === 'Craftable Slot') ? '#64748b' : '#f97316' }}
+                                            disabled={editForm.booster2_name === 'none' || editForm.booster2_name === 'Craftable Slot'}
+                                            title="Stat Boost Value"
+                                        >
+                                            {(editForm.booster2_name === 'none' || editForm.booster2_name === 'Craftable Slot') ? (
+                                                <option value={0}>0</option>
+                                            ) : (
+                                                [1, 2, 3, 4, 5].map(v => (
                                                     <option key={`b2-val-${v}`} value={v}>+{v}</option>
-                                                ))}
-                                            </select>
-                                        )}
+                                                ))
+                                            )}
+                                        </select>
                                     </div>
                                     {editForm.booster2_name && editForm.booster2_name !== 'none' && editForm.booster2_name !== 'Craftable Slot' && (() => {
                                         const b = getBoosterByName(editForm.booster2_name);
@@ -1708,20 +1901,41 @@ const handleCardSelectForStats = async (e) => {
                         </div>
                     </div>
 
+                    {/* MANAGER IMAGE URL */}
+                    <div>
+                        <label style={{ fontSize: '0.7em', color: '#aaa', display: 'block', marginBottom: '4px' }}>Manager Image URL</label>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input 
+                                placeholder="https://... Image URL for manager photo" 
+                                value={editManagerForm.managerimageurl || ''} 
+                                onChange={e => setEditManagerForm({...editManagerForm, managerimageurl: e.target.value})} 
+                                style={{ ...inputStyle, flex: 1 }} 
+                            />
+                            {editManagerForm.managerimageurl && (
+                                <img 
+                                    src={editManagerForm.managerimageurl} 
+                                    alt="Preview" 
+                                    style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1.5px solid #00f2fe' }}
+                                    onError={e => { e.target.style.display = 'none'; }}
+                                />
+                            )}
+                        </div>
+                    </div>
+
                     {/* AFFILIATIONS */}
                     <div style={{ background: '#222', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
-                        <div style={{ fontSize: '0.72em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Affiliations (Optional)</div>
+                        <div style={{ fontSize: '0.72em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Affiliations</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                             <select value={editManagerForm.nationalityid} onChange={e => setEditManagerForm({...editManagerForm, nationalityid: e.target.value})} style={inputStyle}>
-                                <option value="">Nationality (Optional)</option>
+                                <option value="">Nationality</option>
                                 {helpers.nations.map(n => <option key={n.nationalityid} value={n.nationalityid}>{n.countryname}</option>)}
                             </select>
                             <select value={editManagerForm.leagueid} onChange={e => setEditManagerForm({ ...editManagerForm, leagueid: e.target.value, clubid: '' })} style={inputStyle}>
-                                <option value="">League (Optional)</option>
+                                <option value="">League</option>
                                 {helpers.leagues.map(l => <option key={l.leagueid} value={l.leagueid}>{l.leaguename}</option>)}
                             </select>
                             <select value={editManagerForm.clubid} onChange={e => setEditManagerForm({ ...editManagerForm, clubid: e.target.value })} style={inputStyle} disabled={!editManagerForm.leagueid}>
-                                <option value="">{editManagerForm.leagueid ? 'Club (Optional)' : 'Select League first...'}</option>
+                                <option value="">{editManagerForm.leagueid ? 'Club' : 'Select League first...'}</option>
                                 {editManagerClubs.map(c => <option key={c.clubid} value={c.clubid}>{c.clubname}</option>)}
                             </select>
                         </div>
@@ -1729,31 +1943,38 @@ const handleCardSelectForStats = async (e) => {
 
                     {/* 5 PLAYSTYLES */}
                     <div style={{ background: '#222', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
-                        <div style={{ fontSize: '0.72em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Tactical Playstyle Proficiencies (40 - 99)</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                        <div style={{ fontSize: '0.72em', color: '#00f2fe', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Tactical Playstyle Proficiencies</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
                             <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>Possession</label><input type="number" min="40" max="99" value={editManagerForm.possession_game} onChange={e => setEditManagerForm({...editManagerForm, possession_game: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
                             <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>QC</label><input type="number" min="40" max="99" value={editManagerForm.quick_counter} onChange={e => setEditManagerForm({...editManagerForm, quick_counter: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
                             <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>LBC</label><input type="number" min="40" max="99" value={editManagerForm.long_ball_counter} onChange={e => setEditManagerForm({...editManagerForm, long_ball_counter: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
                             <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>Out Wide</label><input type="number" min="40" max="99" value={editManagerForm.out_wide} onChange={e => setEditManagerForm({...editManagerForm, out_wide: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
                             <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>Long Ball</label><input type="number" min="40" max="99" value={editManagerForm.long_ball} onChange={e => setEditManagerForm({...editManagerForm, long_ball: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
+                            <div><label style={{ fontSize: '0.6em', color: '#aaa' }}>Overload</label><input type="number" min="40" max="99" value={editManagerForm.overload} onChange={e => setEditManagerForm({...editManagerForm, overload: parseInt(e.target.value) || 50})} style={{ ...inputStyle, padding: '6px' }} /></div>
                         </div>
                     </div>
 
                     {/* BOOSTERS */}
                     <div style={{ background: '#222', padding: '10px', borderRadius: '8px', border: '1px solid #333' }}>
-                        <div style={{ fontSize: '0.72em', color: '#ff4d79', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Stat Boosters (Optional)</div>
+                        <div style={{ fontSize: '0.72em', color: '#ff4d79', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}>Stat Boosters</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px' }}>
                                 <select value={editManagerForm.boost1_stat} onChange={e => setEditManagerForm({...editManagerForm, boost1_stat: e.target.value})} style={inputStyle}>
                                     <option value="">Boost 1 (None)</option>
-                                    {statTypes.map(s => <option key={s.statname} value={s.statname}>{s.statname}</option>)}
+                                    {statTypes.map(s => {
+                                        const formatted = s.statname.replace(/([A-Z])/g, ' $1').replace(/^Gk\b/i, 'GK').trim();
+                                        return <option key={s.statname} value={s.statname}>{formatted}</option>;
+                                    })}
                                 </select>
                                 <input type="number" min="1" max="3" value={editManagerForm.boost1_val} onChange={e => setEditManagerForm({...editManagerForm, boost1_val: parseInt(e.target.value) || 1})} style={inputStyle} disabled={!editManagerForm.boost1_stat} />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px' }}>
                                 <select value={editManagerForm.boost2_stat} onChange={e => setEditManagerForm({...editManagerForm, boost2_stat: e.target.value})} style={inputStyle}>
                                     <option value="">Boost 2 (None)</option>
-                                    {statTypes.map(s => <option key={s.statname} value={s.statname}>{s.statname}</option>)}
+                                    {statTypes.map(s => {
+                                        const formatted = s.statname.replace(/([A-Z])/g, ' $1').replace(/^Gk\b/i, 'GK').trim();
+                                        return <option key={s.statname} value={s.statname}>{formatted}</option>;
+                                    })}
                                 </select>
                                 <input type="number" min="1" max="3" value={editManagerForm.boost2_val} onChange={e => setEditManagerForm({...editManagerForm, boost2_val: parseInt(e.target.value) || 1})} style={inputStyle} disabled={!editManagerForm.boost2_stat} />
                             </div>
@@ -1762,7 +1983,7 @@ const handleCardSelectForStats = async (e) => {
 
                     {/* LINK-UP */}
                     <div style={{ background: '#222', padding: '10px', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.4)' }}>
-                        <div style={{ fontSize: '0.72em', color: '#fbbf24', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}> Link-Up Philosophy (Optional)</div>
+                        <div style={{ fontSize: '0.72em', color: '#fbbf24', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 'bold' }}> Link-Up Philosophy</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '6px' }}>
                             <input placeholder="Type (e.g. Breakthrough Pass A)" value={editManagerForm.linkup_type} onChange={e => setEditManagerForm({...editManagerForm, linkup_type: e.target.value})} style={inputStyle} />
                             <input placeholder="Positions (e.g. AMF, CF)" value={editManagerForm.linkup_positions} onChange={e => setEditManagerForm({...editManagerForm, linkup_positions: e.target.value})} style={inputStyle} />
