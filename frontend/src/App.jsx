@@ -1614,27 +1614,7 @@ function App() {
                                                                         style={{ width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover', border: '2px solid rgba(255, 255, 255, 0.15)' }}
                                                                         onError={(e) => { e.target.onerror = null; e.target.src = 'https://secure.gravatar.com/avatar/unknown?d=mp'; }}
                                                                     />
-                                                                    {/* Green shirts badge overlay */}
-                                                                    <div style={{
-                                                                        background: '#090d16',
-                                                                        border: '1px solid rgba(255,255,255,0.15)',
-                                                                        borderRadius: '6px',
-                                                                        padding: '2px 6px',
-                                                                        position: 'absolute',
-                                                                        bottom: '-6px',
-                                                                        left: '50%',
-                                                                        transform: 'translateX(-50%)',
-                                                                        display: 'flex',
-                                                                        gap: '3px',
-                                                                        zIndex: 2,
-                                                                        fontSize: '0.65em',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.5)'
-                                                                    }}>
-                                                                        <span style={{ color: '#00ff87', textShadow: '0 0 2px #00ff87' }}>👕</span>
-                                                                        <span style={{ color: '#00ff87', textShadow: '0 0 2px #00ff87' }}>👕</span>
-                                                                    </div>
+
                                                                 </div>
 
                                                                 {/* Info column */}
