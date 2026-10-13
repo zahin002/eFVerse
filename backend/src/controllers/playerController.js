@@ -54,9 +54,7 @@ const getCardsList = async (req, res) => {
     const { filter, sort } = req.query; 
 
     try {
-        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS cardimageurl VARCHAR(500)');
-        await pool.query('ALTER TABLE card ADD COLUMN IF NOT EXISTS imageurl VARCHAR(500)');
-        await pool.query('ALTER TABLE player ADD COLUMN IF NOT EXISTS imageurl VARCHAR(500)');
+
         
         let sql = `
             SELECT 

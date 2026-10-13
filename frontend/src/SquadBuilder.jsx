@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { calculateEffectivePositionOVR, getAffinityTier, POSITION_PRIMARY_MAP, POSITION_FULL_AFFINITY_MAP, POSITION_PARTIAL_AFFINITY_MAP } from './progressionEngine';
+import { getAffinityTier, POSITION_PRIMARY_MAP, POSITION_FULL_AFFINITY_MAP, POSITION_PARTIAL_AFFINITY_MAP } from './progressionEngine';
 import { getTierBadge, getClubLogoUrl, getManagerPhotoUrl } from './badgeAssetEngine';
 import {
     FiLayers,
@@ -133,9 +133,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const [mySquads, setMySquads] = useState([]);
     const [managers, setManagers] = useState([]);
     const [myCards, setMyCards] = useState([]);
-    const [penalties, setPenalties] = useState([]);
-    const [positions, setPositions] = useState([]);
-
+        
     const [squadName, setSquadName] = useState('My Dream Team');
     const [selectedManager, setSelectedManager] = useState('');
     const [managerPickerOpen, setManagerPickerOpen] = useState(false);
@@ -157,8 +155,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
     const [isFluidFormation, setIsFluidFormation] = useState(false);
     const [defensiveFormation, setDefensiveFormation] = useState('4-4-2');
     const [activePitchView, setActivePitchView] = useState('attacking'); // 'attacking' | 'defensive'
-    const [communityPitchView, setCommunityPitchView] = useState('attacking');
-    const [loading, setLoading] = useState(false);
+        const [loading, setLoading] = useState(false);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [currentSlot, setCurrentSlot] = useState(null);
@@ -515,12 +512,10 @@ export default function SquadBuilder({ currentUser, onBack }) {
         const cacheBust = `_t=${Date.now()}`;
 
         try {
-            const [squadsRes, managersRes, cardsRes, penaltiesRes, positionsRes] = await Promise.all([
+            const [squadsRes, managersRes, cardsRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/squads/user/${userId}?${cacheBust}`),
                 axios.get(`${API_BASE_URL}/managers/list?${cacheBust}`),
-                axios.get(`${API_BASE_URL}/squads/cards?${cacheBust}`),
-                axios.get(`${API_BASE_URL}/squads/penalties-all?${cacheBust}`),
-                axios.get(`${API_BASE_URL}/squads/positions?${cacheBust}`)
+                axios.get(`${API_BASE_URL}/squads/cards?${cacheBust}`)
             ]);
 
             const loadedSquads = squadsRes.data || [];
@@ -535,9 +530,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
             }));
             setManagers(normalizedManagers);
             setMyCards(cardsRes.data || []);
-            setPenalties(penaltiesRes.data || []);
-            setPositions(positionsRes.data || []);
-            return loadedSquads;
+                                    return loadedSquads;
         } catch (err) {
             console.error("Failed to load squad data:", err);
             return [];
@@ -3275,8 +3268,7 @@ export default function SquadBuilder({ currentUser, onBack }) {
                             const tier = getCardTierColor(cardType);
                             const cardImg = c.cardimageurl || c.imageurl || c.cardImageURL || c.imageURL;
                             const badge = getTierBadge(baseOvr);
-                            const clubLogo = clubName ? getClubLogoUrl(clubName) : null;
-                            const isExact = cardPos === targetPos;
+                                                        const isExact = cardPos === targetPos;
 
                             return (
                                 <div

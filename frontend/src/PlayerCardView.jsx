@@ -9,6 +9,7 @@ import AttributeMatrixPanel from './AttributeMatrixPanel';
 import ProgressionSlidersPanel from './ProgressionSlidersPanel';
 import { getCountryFlagUrl, getTournamentBadgeUrl, getClubLogoUrl, getTierBadge } from './badgeAssetEngine';
 import BoosterHexagonIcon from './BoosterHexagonIcon';
+import { getDefensivePlaystyleInfo } from './defensivePlaystyles';
 import { EFOOTBALL_BOOSTERS, getBoosterByName, getBoosterCategoryColor, getBoosterTypeColor, formatStatName, getBoosterStatLabels } from './efootballBoosters';
 import { autoAllocatePoints, calculateAllocatedStats, calculatePositionOVR, calculateFinalLiveOVR, getLevelCost } from './progressionEngine';
 import shootingIcon from './assets/progression_icons/shooting.png';
@@ -1178,7 +1179,7 @@ export default function PlayerCardView({ data, onBack, onTrain, onSelectCard }) 
                                                 </div>
                                             )}
                                             <span 
-                                                title={player.defensive_playstyle}
+                                                title={getDefensivePlaystyleInfo(player.defensive_playstyle)?.overview || player.defensive_playstyle}
                                                 style={{ 
                                                     color: '#fff', 
                                                     fontSize: '0.92em', 
