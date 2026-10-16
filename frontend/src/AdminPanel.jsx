@@ -189,7 +189,7 @@ export default function AdminPanel() {
       const path = (window.location.pathname || '').toLowerCase();
       if (path.startsWith('/admin/')) {
         const tab = path.split('/admin/')[1]?.split('/')[0];
-        if (['player', 'card', 'stats', 'status', 'manager', 'boosts', 'clubs'].includes(tab)) {
+        if (['player', 'card', 'stats', 'status', 'manager', 'boosts'].includes(tab)) {
           setActiveTab(tab);
         }
       } else if (path === '/admin') {
@@ -204,7 +204,6 @@ export default function AdminPanel() {
 
   const handleTabSelect = (tabKey) => {
     setActiveTab(tabKey);
-    if (tabKey === 'clubs') { setMgmtTab('clubs'); fetchClubs(); }
     setMessage('');
     const targetPath = `/admin/${tabKey}`;
     if (window.location.pathname.toLowerCase() !== targetPath) {
@@ -946,8 +945,7 @@ const handleCardSelectForStats = async (e) => {
           { key: 'stats', label: '3. ADD STATS' },
           { key: 'status', label: '4. UPDATE STATUS' },
           { key: 'manager', label: '5. ADD MANAGER' },
-          { key: 'boosts', label: '6. MANAGER BOOSTER' },
-          { key: 'clubs', label: '7. CLUBS' }
+          { key: 'boosts', label: '6. MANAGER BOOSTER' }
         ].map(item => (
             <button className="click-btn"
               key={item.key} 
@@ -1267,8 +1265,6 @@ const handleCardSelectForStats = async (e) => {
         <div style={{ background: '#6a6969', borderRadius: '4px', display: 'flex', padding: '2px' }}>
             <button onClick={() => setMgmtTab('database')} style={{ background: mgmtTab === 'database' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>PLAYERS</button>
             <button onClick={() => { setMgmtTab('managers'); fetchManagers(); }} style={{ background: mgmtTab === 'managers' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>MANAGERS</button>
-            <button onClick={() => { setMgmtTab('clubs'); fetchClubs(); }} style={{ background: mgmtTab === 'clubs' ? '#00f2fe' : 'none', color: '#000', border: 'none', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold' }}>CLUBS</button>
-          {/* ({managersList.length}) */}
         </div>
     </div>
 
