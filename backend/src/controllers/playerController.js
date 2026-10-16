@@ -50,48 +50,87 @@ const getPlayersList = async (req, res) => {
 };
 
 
+// IN-MEMORY CARDS LIST CACHE FOR HIGH-SPEED BROWSING
+const cardsListCache = new Map();
+const CARDS_LIST_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
 const getCardsList = async (req, res) => {
-    const { filter, sort } = req.query; 
+    const { filter, sort, limit: customLimit } = req.query; 
+    const cacheKey = `${filter || 'all'}_${sort || 'default'}_${customLimit || 'default'}`;
+
+    // Return instant cached response if valid
+    const cached = cardsListCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CARDS_LIST_CACHE_TTL_MS) {
+        return res.json(cached.data);
+    }
 
     try {
+        let result;
 
-        
-        let sql = `
-            SELECT 
-                p.PlayerID, p.PlayerName,
-                c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
-                c.GPCost as gpcost,
-                COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl
-            FROM Player p
-            LEFT JOIN Card c ON p.PlayerID = c.PlayerID
-            WHERE 1=1 
-        `;
-
-        const params = [];
-        let paramIdx = 1;
-
-        if (filter === 'cards_only') {
-            sql += ` AND c.CardID IS NOT NULL`;
-        } else if (filter === 'no_cards') {
-            sql += ` AND c.CardID IS NULL`;
-        } else if (filter && filter !== 'all') {
-            sql += ` AND c.CardType ILIKE $${paramIdx++}`;
-            params.push(filter);
-        }
-
-        if (sort === 'ovr_desc') {
-            sql += ` ORDER BY c.BaseOverallRating DESC NULLS LAST, p.PlayerName ASC`;
-        } else if (sort === 'ovr_asc') {
-            sql += ` ORDER BY c.BaseOverallRating ASC NULLS LAST, p.PlayerName ASC`;
-        } else if (sort === 'name_asc') {
-            sql += ` ORDER BY p.PlayerName ASC`;
-        } else if (sort === 'name_desc') {
-            sql += ` ORDER BY p.PlayerName DESC`;
+        // HIGH-PERFORMANCE DEFAULT: Partition by card type to get top cards across all collections
+        // Avoids full 44,000+ row scan while providing cards for Legendary, Showtime, Big Time, POTW & Standard
+        if ((!filter || filter === 'all') && (!sort || sort === 'default')) {
+            const partitionSql = `
+                WITH RankedCards AS (
+                    SELECT 
+                        p.PlayerID, p.PlayerName,
+                        c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
+                        c.GPCost as gpcost,
+                        COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY c.CardType 
+                            ORDER BY c.BaseOverallRating DESC NULLS LAST, c.CardID DESC
+                        ) as rank
+                    FROM Player p
+                    JOIN Card c ON p.PlayerID = c.PlayerID
+                )
+                SELECT * FROM RankedCards 
+                WHERE rank <= 35
+                ORDER BY BaseOverallRating DESC NULLS LAST
+            `;
+            result = await pool.query(partitionSql);
         } else {
-            sql += ` ORDER BY c.CardID DESC NULLS LAST, p.PlayerID DESC`; 
-        }
+            let sql = `
+                SELECT 
+                    p.PlayerID, p.PlayerName,
+                    c.CardID, c.CardType, c.BaseOverallRating, c.CurrentOverallRating, c.PositionCode,
+                    c.GPCost as gpcost,
+                    COALESCE(c.cardimageurl, c.imageurl, p.imageurl) as cardimageurl
+                FROM Player p
+                LEFT JOIN Card c ON p.PlayerID = c.PlayerID
+                WHERE 1=1 
+            `;
 
-        const result = await pool.query(sql, params);
+            const params = [];
+            let paramIdx = 1;
+
+            if (filter === 'cards_only') {
+                sql += ` AND c.CardID IS NOT NULL`;
+            } else if (filter === 'no_cards') {
+                sql += ` AND c.CardID IS NULL`;
+            } else if (filter && filter !== 'all') {
+                sql += ` AND c.CardType ILIKE $${paramIdx++}`;
+                params.push(filter);
+            }
+
+            if (sort === 'ovr_desc') {
+                sql += ` ORDER BY c.BaseOverallRating DESC NULLS LAST, p.PlayerName ASC`;
+            } else if (sort === 'ovr_asc') {
+                sql += ` ORDER BY c.BaseOverallRating ASC NULLS LAST, p.PlayerName ASC`;
+            } else if (sort === 'name_asc') {
+                sql += ` ORDER BY p.PlayerName ASC`;
+            } else if (sort === 'name_desc') {
+                sql += ` ORDER BY p.PlayerName DESC`;
+            } else {
+                sql += ` ORDER BY c.CardID DESC NULLS LAST, p.PlayerID DESC`; 
+            }
+
+            const limitVal = parseInt(customLimit) || 300;
+            sql += ` LIMIT $${paramIdx++}`;
+            params.push(limitVal);
+
+            result = await pool.query(sql, params);
+        }
         
         const formattedData = result.rows.map(row => ({
             cardid: row.cardid,
@@ -100,13 +139,20 @@ const getCardsList = async (req, res) => {
             currentoverallrating: row.currentoverallrating || "-",
             cardimageurl: row.cardimageurl || row.imageurl || null,
             playerid: row.playerid,
+            gpcost: row.gpcost,
+            positioncode: row.positioncode,
             player: {
                 playername: row.playername || "Unknown Player",
                 primaryposition: row.positioncode || "N/A" 
             }
         }));
+
+        // Cache the formatted data in memory
+        cardsListCache.set(cacheKey, { timestamp: Date.now(), data: formattedData });
+
         res.json(formattedData);
     } catch (error) {
+        console.error("Error in getCardsList:", error);
         res.status(500).json({ error: error.message });
     }
 };
